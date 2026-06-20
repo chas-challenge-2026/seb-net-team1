@@ -1,0 +1,20 @@
+## .NET build artifacts
+bin/
+obj/
+
+## Rider / VS / VSCode
+.idea/
+.vs/
+*.user
+*.suo
+.vscode/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Logs
+*.log
+
+## Docker volumes (local)
+pgdata/

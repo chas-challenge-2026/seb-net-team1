@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - SEB Företagsbetalningar</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
+    <style>
+        body { background-color: #f5f5f5; }
+        .navbar-brand { color: #ffffff !important; font-weight: bold; }
+        .navbar { background-color: #60b22c; border-bottom: none; }
+        .navbar .navbar-nav > li > a { color: #ffffff !important; }
+        .navbar .navbar-nav > li > a:hover { color: #003300 !important; }
+        .btn-seb { background-color: #006831; color: #fff; border: none; }
+        .btn-seb:hover { background-color: #004d22; color: #fff; }
+        .card { box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+        .balance-card { border-left: 4px solid #006831; }
+    </style>
+</head>
+<body>
+    @if (Context.Session.GetString("UserId") != null)
+    {
+        <nav class="navbar navbar-expand-lg mb-4">
+            <div class="container">
+                <a class="navbar-brand" href="/Dashboard"><img src="/images/logo.png" alt="SEB" style="height:30px;vertical-align:middle;"></a>
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="/Dashboard">Översikt</a>
+                    <a class="nav-link" href="/NewPayment">Ny betalning</a>
+                    @if (Context.Session.GetString("Role") == "attestant" || Context.Session.GetString("Role") == "admin")
+                    {
+                        <a class="nav-link" href="/ApprovalInbox">Attestkorg</a>
+                    }
+                    <a class="nav-link" href="/BatchUpload">Batch</a>
+                    <a class="nav-link" href="/AuditLog">Granskningslogg</a>
+                    <span class="nav-link text-muted">Inloggad: @Context.Session.GetString("Name")</span>
+                    <a class="nav-link" href="/Logout">Logga ut</a>
+                </div>
+            </div>
+        </nav>
+    }
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

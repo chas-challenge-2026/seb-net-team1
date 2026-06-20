@@ -1,0 +1,60 @@
+@page
+@model SebPortal.Pages.AuditLogModel
+@{
+    ViewData["Title"] = "Granskningslogg";
+}
+
+<div class="row mb-4">
+    <div class="col">
+        <h2>Granskningslogg</h2>
+        <p class="text-muted">Händelselogg från databasen (OBS: vissa händelser loggas enbart till fil)</p>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <strong>OBS:</strong> Denna vy visar endast händelser lagrade i databasen.
+    Vissa händelser (t.ex. batchbetalningar och delvisa atteststeg) loggas enbart till
+    <code>/tmp/audit.log</code> och syns inte här.
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Tidpunkt</th>
+                    <th>Användare</th>
+                    <th>Händelse</th>
+                    <th>Entitet</th>
+                    <th>Beskrivning</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in Model.Entries)
+                {
+                    <tr>
+                        <td><small>@entry.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</small></td>
+                        <td>@entry.UserName</td>
+                        <td><code>@entry.Action</code></td>
+                        <td>@entry.EntityType #@entry.EntityId</td>
+                        <td>@entry.Description</td>
+                    </tr>
+                }
+                @if (!Model.Entries.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">Inga loggposter i databasen.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+<p class="text-muted small mt-2">
+    Visar de senaste 200 posterna. För fullständig logg, se även <code>/tmp/audit.log</code> på servern.
+</p>

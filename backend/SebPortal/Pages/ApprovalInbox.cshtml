@@ -1,0 +1,139 @@
+@page
+@model SebPortal.Pages.ApprovalInboxModel
+@{
+    ViewData["Title"] = "Attestkorg";
+}
+
+<div class="row mb-4">
+    <div class="col">
+        <h2>Attestkorg</h2>
+        <p class="text-muted">Betalningar som kräver ditt godkännande</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+@if (!Model.PendingPayments.Any())
+{
+    <div class="card">
+        <div class="card-body text-center text-muted py-5">
+            <h5>Attestkorgen är tom</h5>
+            <p>Det finns inga betalningar som väntar på din attest.</p>
+        </div>
+    </div>
+}
+else
+{
+    foreach (var payment in Model.PendingPayments)
+    {
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>
+                    <strong>Betalning #@payment.Id</strong>
+                    @if (payment.Amount > 200000)
+                    {
+                        <span class="badge bg-danger ms-2">Dubbel attest krävs</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning text-dark ms-2">Attest krävs</span>
+                    }
+                </span>
+                <small class="text-muted">@payment.CreatedAt.ToString("yyyy-MM-dd HH:mm")</small>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Initierad av</dt>
+                            <dd class="col-sm-8">@payment.CreatedByName</dd>
+                            <dt class="col-sm-4">Till IBAN</dt>
+                            <dd class="col-sm-8"><code>@payment.ToIban</code></dd>
+                            <dt class="col-sm-4">Belopp</dt>
+                            <dd class="col-sm-8"><strong>@payment.Amount.ToString("N2") @payment.Currency</strong></dd>
+                            <dt class="col-sm-4">Referens</dt>
+                            <dd class="col-sm-8">@payment.Reference</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Steg</dt>
+                            <dd class="col-sm-7">@payment.CurrentStep av @payment.TotalSteps</dd>
+                            <dt class="col-sm-5">Från konto</dt>
+                            <dd class="col-sm-7">@payment.FromAccountName</dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <hr />
+
+                <form method="post" class="d-flex gap-2 align-items-end">
+                    <input type="hidden" name="paymentId" value="@payment.Id" />
+                    <input type="hidden" name="approvalStepId" value="@payment.ApprovalStepId" />
+                    <div class="flex-grow-1">
+                        <label class="form-label">Kommentar (valfritt)</label>
+                        <input type="text" name="comment" class="form-control"
+                               placeholder="Lägg till en kommentar..." maxlength="255" />
+                    </div>
+                    <button type="submit" name="action" value="approve" class="btn btn-success">
+                        Godkänn
+                    </button>
+                    <button type="submit" name="action" value="reject" class="btn btn-danger">
+                        Avvisa
+                    </button>
+                </form>
+            </div>
+        </div>
+    }
+}
+
+<div class="mt-4">
+    <h4>Nyligen hanterade</h4>
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Betalning #</th>
+                        <th>Belopp</th>
+                        <th>Status</th>
+                        <th>Hanterad</th>
+                        <th>Kommentar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var h in Model.RecentlyHandled)
+                    {
+                        <tr>
+                            <td>@h.PaymentId</td>
+                            <td>@h.Amount.ToString("N2") SEK</td>
+                            <td>
+                                @if (h.Status == "approved")
+                                {
+                                    <span class="badge bg-success">Godkänd</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Avvisad</span>
+                                }
+                            </td>
+                            <td>@(h.DecidedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                            <td>@h.Comment</td>
+                        </tr>
+                    }
+                    @if (!Model.RecentlyHandled.Any())
+                    {
+                        <tr><td colspan="5" class="text-muted text-center">Inga hanterade ännu.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

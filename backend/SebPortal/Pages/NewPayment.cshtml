@@ -1,0 +1,87 @@
+@page
+@model SebPortal.Pages.NewPaymentModel
+@{
+    ViewData["Title"] = "Ny betalning";
+}
+
+<div class="row mb-4">
+    <div class="col">
+        <h2>Ny betalning</h2>
+        <p class="text-muted">Skapa en ny utgående betalning</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success">@Model.SuccessMessage</div>
+}
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label">Från konto</label>
+                        <select name="fromAccountId" class="form-select" required>
+                            <option value="">Välj konto...</option>
+                            @foreach (var acc in Model.Accounts)
+                            {
+                                <option value="@acc.Id">@acc.AccountName — @acc.Balance.ToString("N2") @acc.Currency</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Till IBAN</label>
+                        <input type="text" name="toIban" class="form-control"
+                               placeholder="SE00 0000 0000 0000 0000 0000"
+                               value="@Model.ToIban"
+                               maxlength="34" required />
+                        <div class="form-text">Format: Landskod + kontrollsiffror + kontonummer</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Belopp (SEK)</label>
+                        <input type="number" name="amount" class="form-control"
+                               step="0.01" min="1" value="@Model.Amount"
+                               placeholder="0.00" required />
+                        <div class="form-text">
+                            Betalningar över 50 000 SEK kräver attest.
+                            Betalningar över 500 000 SEK kräver dubbel attest.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Referens</label>
+                        <input type="text" name="reference" class="form-control"
+                               value="@Model.Reference"
+                               placeholder="Faktura #1234" maxlength="100" />
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-seb">Skicka betalning</button>
+                        <a href="/Dashboard" class="btn btn-outline-secondary">Avbryt</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">Regler för godkännande</div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li>✅ Upp till 50 000 SEK — genomförs direkt</li>
+                    <li>⏳ 50 001 – 500 000 SEK — kräver 1 attestant</li>
+                    <li>⚠️ Över 500 000 SEK — kräver 2 attestanter</li>
+                </ul>
+                <hr />
+                <p class="text-muted small">
+                    Attestanter får e-postnotifiering vid nya betalningar
+                    som kräver godkännande.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

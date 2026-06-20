@@ -1,0 +1,99 @@
+@page
+@model SebPortal.Pages.DashboardModel
+@{
+    ViewData["Title"] = "Översikt";
+}
+
+<div class="row mb-4">
+    <div class="col">
+        <h2>Välkommen, @Model.UserName</h2>
+        <p class="text-muted">@Model.TenantName &mdash; @Model.UserRole</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">@Model.ErrorMessage</div>
+}
+
+<h4 class="mb-3">Konton</h4>
+<div class="row mb-4">
+    @foreach (var account in Model.Accounts)
+    {
+        <div class="col-md-4 mb-3">
+            <div class="card balance-card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">@account.AccountName</h6>
+                    <p class="card-text fs-4 fw-bold">@account.Balance.ToString("N2") @account.Currency</p>
+                    <small class="text-muted">@account.Iban</small>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (Model.PendingApprovals.Any())
+{
+    <div class="alert alert-warning">
+        <strong>Åtgärd krävs:</strong> Du har @Model.PendingApprovals.Count betalning(ar) som väntar på attest.
+        <a href="/ApprovalInbox" class="alert-link">Gå till attestkorgen &rarr;</a>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <h4 class="mb-3">Senaste betalningar</h4>
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Datum</th>
+                            <th>Till IBAN</th>
+                            <th>Referens</th>
+                            <th>Belopp</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.RecentPayments)
+                        {
+                            <tr>
+                                <td>@p.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                <td><small>@p.ToIban</small></td>
+                                <td>@p.Reference</td>
+                                <td>@p.Amount.ToString("N2") @p.Currency</td>
+                                <td>
+                                    @if (p.Status == "completed")
+                                    {
+                                        <span class="badge bg-success">Genomförd</span>
+                                    }
+                                    else if (p.Status == "pending_approval")
+                                    {
+                                        <span class="badge bg-warning text-dark">Väntar på attest</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Avvisad</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.RecentPayments.Any())
+                        {
+                            <tr><td colspan="5" class="text-center text-muted">Inga betalningar ännu.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <h4 class="mb-3">Snabbåtgärder</h4>
+        <div class="d-grid gap-2">
+            <a href="/NewPayment" class="btn btn-seb">Ny betalning</a>
+            <a href="/BatchUpload" class="btn btn-outline-secondary">Batch-uppladdning</a>
+            <a href="/AuditLog" class="btn btn-outline-secondary">Granskningslogg</a>
+        </div>
+    </div>
+</div>

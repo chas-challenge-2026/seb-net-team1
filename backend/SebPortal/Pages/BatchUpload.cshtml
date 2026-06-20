@@ -1,0 +1,110 @@
+@page
+@model SebPortal.Pages.BatchUploadModel
+@{
+    ViewData["Title"] = "Batch-uppladdning";
+}
+
+<div class="row mb-4">
+    <div class="col">
+        <h2>Batch-uppladdning</h2>
+        <p class="text-muted">Ladda upp flera betalningar via CSV-fil</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ResultMessage))
+{
+    <div class="alert @(Model.HasErrors ? "alert-warning" : "alert-success")">@Model.ResultMessage</div>
+}
+@if (Model.Errors.Any())
+{
+    <div class="alert alert-danger">
+        <strong>Fel i CSV-filen:</strong>
+        <ul class="mb-0 mt-2">
+            @foreach (var err in Model.Errors)
+            {
+                <li>@err</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">CSV-fil</label>
+                        <input type="file" class="form-control" name="csvFile" accept=".csv" required />
+                        <div class="form-text">Max filstorlek: 1 MB. Kodning: UTF-8.</div>
+                    </div>
+                    <button type="submit" class="btn btn-seb">Ladda upp och behandla</button>
+                </form>
+            </div>
+        </div>
+
+        @if (Model.ProcessedRows.Any())
+        {
+            <div class="card mt-3">
+                <div class="card-header">Resultat</div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Rad</th>
+                                <th>Till IBAN</th>
+                                <th>Belopp</th>
+                                <th>Referens</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.ProcessedRows)
+                            {
+                                <tr class="@(row.Success ? "" : "table-danger")">
+                                    <td>@row.RowNumber</td>
+                                    <td><small>@row.ToIban</small></td>
+                                    <td>@row.Amount.ToString("N2")</td>
+                                    <td>@row.Reference</td>
+                                    <td>
+                                        @if (row.Success)
+                                        {
+                                            <span class="badge bg-success">OK</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger" title="@row.Error">Fel</span>
+                                            <small class="text-danger">@row.Error</small>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">CSV-format</div>
+            <div class="card-body">
+                <p class="small">Filen ska ha följande kolumner:</p>
+                <pre class="bg-light p-2 small">from_account_id,to_iban,amount,reference
+1,SE8550000000054910000003,5000.00,Faktura #2001
+1,SE8550000000054910000005,12500.00,Faktura #2002</pre>
+                <div class="alert alert-warning small mt-2 mb-0">
+                    <strong>OBS:</strong> Kommatecken i fält stöds inte. Undvik referenser som innehåller kommatecken.
+                </div>
+            </div>
+        </div>
+        <div class="card mt-3">
+            <div class="card-header">Exempelfil</div>
+            <div class="card-body">
+                <a href="/example-batch.csv" class="btn btn-outline-secondary btn-sm">
+                    Ladda ned example-batch.csv
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
