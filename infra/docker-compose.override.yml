@@ -2,3 +2,6 @@ services:
   app:
     ports:
       - "8081:8081"
+  db:
+    ports:
+      - "5433:5432"

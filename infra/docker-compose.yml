@@ -16,8 +16,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    ports:
-      - "5433:5432"
+    expose:
+      - "5432"
 
   app:
     build:
