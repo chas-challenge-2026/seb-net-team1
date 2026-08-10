@@ -32,7 +32,7 @@ docker compose up --build
 ```
 ChasChallenge/
 ├── backend/
-│   └── SebPortal/        — ASP.NET Core 8 Razor Pages
+│   └── SebPortal/        — ASP.NET Core 6 Razor Pages
 │       ├── Pages/        — En PageModel per sida, all logik här
 │       ├── wwwroot/      — Statiska filer
 │       ├── Dockerfile
@@ -86,7 +86,7 @@ Kortversion:
 
 ## Teknisk stack (v1)
 
-- ASP.NET Core 8 Razor Pages
+- ASP.NET Core 6 Razor Pages
 - Npgsql (ADO.NET)
 - PostgreSQL 12
 - Docker Compose

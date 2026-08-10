@@ -2,7 +2,7 @@
 
 ## Översikt
 
-SEB Företagsbetalningar är en Razor Pages-monolit byggd med ASP.NET Core 8. Applikationen hanterar betalningsflöden för SME-kunder: en initiator skapar betalningar, attestanter godkänner dem, och allt loggas (delvis) i en granskningslogg.
+SEB Företagsbetalningar är en Razor Pages-monolit byggd med ASP.NET Core 6. Applikationen hanterar betalningsflöden för SME-kunder: en initiator skapar betalningar, attestanter godkänner dem, och allt loggas (delvis) i en granskningslogg.
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -10,7 +10,7 @@ SEB Företagsbetalningar är en Razor Pages-monolit byggd med ASP.NET Core 8. Ap
 └───────────────────┬─────────────────────────────────┘
                     │ HTTP (port 8081)
 ┌───────────────────▼─────────────────────────────────┐
-│           ASP.NET Core 8 Razor Pages                │
+│           ASP.NET Core 6 Razor Pages                │
 │                                                     │
 │  Pages/                                             │
 │  ├── Index          — Inloggning (MD5, SQL-injektion│
@@ -65,4 +65,4 @@ Rollkontroll sker via `== "attestant"` strängkomparering — ingen policy, inga
 
 ## Deployment
 
-Docker Compose med två tjänster: `db` (PostgreSQL 12) och `app` (ASP.NET Core 8). Port 8081. Databas initieras via `seed.sql`.
+Docker Compose med två tjänster: `db` (PostgreSQL 12) och `app` (ASP.NET Core 6). Port 8081. Databas initieras via `seed.sql`.
