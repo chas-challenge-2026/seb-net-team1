@@ -1,3 +1,14 @@
+# =====================================================================
+# PLATTFORMSFIL: ändra denna fil med försiktighet. Se DRIFT.md.
+# Er deploy-miljö (stage/prod) kräver att:
+#   1. filen ligger kvar som infra/docker-compose.yml
+#   2. webbtjänsten heter "app"
+#   3. "expose" används här, aldrig "ports"
+#      (lokala portar: se docker-compose.override.yml)
+#   4. appens lyssningsport matchar expose-värdet
+# En automatisk kontroll (.github/workflows/infra-guard.yml) ger rött X
+# på push som bryter mot regel 1-3.
+# =====================================================================
 version: "3.9"
 name: seb
 

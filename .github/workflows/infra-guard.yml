@@ -1,0 +1,15 @@
+name: infra-guard
+
+on:
+  push:
+    branches: [main, develop]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kontrollera plattformskontraktet
+        run: |
+          pip install pyyaml --quiet
+          python3 .github/scripts/infra_guard.py
