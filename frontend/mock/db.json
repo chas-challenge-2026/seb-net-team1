@@ -29,6 +29,7 @@
       "tenantId": 1,
       "name": "Lisa Persson",
       "email": "lisa@malmobygg.se",
+      "password": "password123",
       "role": "initiator"
     },
     {
@@ -36,6 +37,7 @@
       "tenantId": 1,
       "name": "Johan Berg",
       "email": "johan@malmobygg.se",
+      "password": "password123",
       "role": "attestant_1"
     },
     {
@@ -43,6 +45,7 @@
       "tenantId": 1,
       "name": "Anna Lind",
       "email": "anna@malmobygg.se",
+      "password": "password123",
       "role": "attestant_2"
     },
     {
@@ -50,6 +53,7 @@
       "tenantId": 1,
       "name": "Sara Ek",
       "email": "sara@malmobygg.se",
+      "password": "password123",
       "role": "admin"
     }
   ],
