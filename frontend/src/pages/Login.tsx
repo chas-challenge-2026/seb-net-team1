@@ -1,16 +1,8 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { getUserByEmail } from "../api/usersApi";
 import "../App.css";
-
-type User = {
-  id: number;
-  tenantId: number;
-  name: string;
-  email: string;
-  password: string;
-  role: string;
-};
 
 function Login() {
   const navigate = useNavigate();
@@ -24,12 +16,7 @@ function Login() {
     setError("");
 
     try {
-      const response = await fetch(
-        `http://localhost:3001/users?email=${encodeURIComponent(email)}`
-      );
-
-      const users: User[] = await response.json();
-      const user = users[0];
+      const user = await getUserByEmail(email);
 
       if (!user || user.password !== password) {
         setError("Fel e-post eller lösenord.");
@@ -39,7 +26,7 @@ function Login() {
       localStorage.setItem("user", JSON.stringify(user));
       navigate("/dashboard");
     } catch {
-      setError("Kunde inte ansluta till mock-API:t.");
+      setError("Kunde inte ansluta till API:t.");
     }
   }
 
