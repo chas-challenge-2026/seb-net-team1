@@ -1,0 +1,6 @@
+@SebPortal.Api_HostAddress = http://localhost:5010
+
+GET {{SebPortal.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
