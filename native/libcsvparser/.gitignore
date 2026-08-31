@@ -1,0 +1,4 @@
+build_temp
+csv_debugging.exe
+libcsvparser.dll
+libcsvparser.so
