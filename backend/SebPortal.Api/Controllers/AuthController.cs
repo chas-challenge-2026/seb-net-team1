@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.DTOs;
+using SebPortal.Api.Services;
 
 namespace SebPortal.Api.Controllers;
 
@@ -7,6 +8,13 @@ namespace SebPortal.Api.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+    private readonly AuthService _authService;
+
+    public AuthController(AuthService authService)
+    {
+        _authService = authService;
+    }
+
     [HttpPost("login")]
     public IActionResult Login(LoginRequest request)
     {
@@ -15,19 +23,13 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "E-post och lösenord måste anges." });
         }
 
-        var response = new LoginResponse
-        {
-            AccessToken = "mock-jwt-token",
-            User = new AuthenticatedUserDto
-            {
-                Id = 1,
-                Name = "Lisa Andersson",
-                Email = request.Email,
-                Role = "initiator",
-                TenantId = 1
-            }
-        };
+        var response = _authService.Login(request);
 
+        if (response is null)
+        {
+            return Unauthorized(new { message = "Fel e-post eller lösenord" });
+        }
         return Ok(response);
+
     }
 }
