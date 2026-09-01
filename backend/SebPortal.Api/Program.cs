@@ -1,10 +1,11 @@
+using SebPortal.Api.Repositories;
 using SebPortal.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddScoped<AuthService>();
-
+builder.Services.AddScoped<UserRepository>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

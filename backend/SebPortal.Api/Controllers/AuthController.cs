@@ -6,15 +6,8 @@ namespace SebPortal.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController : ControllerBase
+public class AuthController(AuthService authService) : ControllerBase
 {
-    private readonly AuthService _authService;
-
-    public AuthController(AuthService authService)
-    {
-        _authService = authService;
-    }
-
     [HttpPost("login")]
     public IActionResult Login(LoginRequest request)
     {
@@ -23,7 +16,7 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "E-post och lösenord måste anges." });
         }
 
-        var response = _authService.Login(request);
+        var response = authService.Login(request);
 
         if (response is null)
         {
