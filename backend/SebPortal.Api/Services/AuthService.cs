@@ -3,13 +3,17 @@ using SebPortal.Api.Repositories;
 
 namespace SebPortal.Api.Services;
 
-public class AuthService(UserRepository userRepository)
+public class AuthService(UserRepository userRepository, PasswordHasher passwordHasher)
 {
-    public LoginResponse? Login(LoginRequest request) // Tar in LoginRequest från Frontend (? betyder = antingen så lyckas login eller missluyckas den)
+    /// <summary>
+    /// Performs a login request using the provided LoginRequest
+    /// </summary>
+    /// <returns>A LoginResponse upon success, otherwise null</returns>
+    public LoginResponse? Login(LoginRequest request)
     {
         var user = userRepository.GetByEmail(request.Email!);
 
-        if (user is null || request.Password != "password123")
+        if (user is null || user.PasswordHash is null || !passwordHasher.VerifyPassword(request.Password!, user.PasswordHash))
         {
             return null;
         }
@@ -17,7 +21,14 @@ public class AuthService(UserRepository userRepository)
         var response = new LoginResponse
         {
             AccessToken = "mock-jwt-token",
-            User = user
+            User = new AuthenticatedUserDto
+            {
+                Id = user.Id,
+                Name = user.Name,
+                Email = user.Email,
+                Role = user.Role,
+                TenantId = user.TenantId
+            }
         };
 
         return response;
