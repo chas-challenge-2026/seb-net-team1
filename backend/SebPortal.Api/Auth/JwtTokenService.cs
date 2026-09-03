@@ -24,7 +24,7 @@ public class JwtTokenService
     }
 
     /// <summary>
-    /// Generates a signed JWT string for an authenticated user containing identity, role, and tenant claims.
+    /// Generates a signed JWT string for an authenticated user containing identity and role claims.
     /// </summary>
     /// <param name="userId">Unique identifier of the user (stored in 'sub' claim).</param>
     /// <param name="email">User's email address (stored in 'email' claim).</param>
@@ -65,7 +65,7 @@ public class JwtTokenService
             new Claim(ClaimTypes.Name, name),
 
             // Role claim: Used by ASP.NET Core authorization attributes [Authorize(Roles = "...")]
-            new Claim(ClaimTypes.Role, role),
+            new Claim(ClaimTypes.Role, role)
         };
 
         // 4. Construct the JWT security token object
