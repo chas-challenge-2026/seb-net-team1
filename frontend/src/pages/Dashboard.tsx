@@ -1,4 +1,5 @@
 import DashboardHeader from "../components/dashboard/DashboardHeader";
+import Sidebar from "../components/dashboard/Sidebar";
 import "../styles/dashboard.css";
 
 function Dashboard() {
@@ -11,8 +12,11 @@ function Dashboard() {
   };
 
   return (
-    <div>
-      <DashboardHeader user={user} />
+    <div className="dashboard-layout">
+      <Sidebar />
+      <main className="dashboard-main">
+        <DashboardHeader user={user} />
+      </main>
     </div>
   );
 }

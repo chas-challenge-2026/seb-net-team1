@@ -1,3 +1,10 @@
+/* DASHBOARD LAYOUT */
+.dashboard-layout {
+	display: flex;
+	height: 100vh;
+	overflow: hidden;
+}
+
 /* DASHBOARD HEADER */
 .dashboard-header {
 	align-items: center;
@@ -74,6 +81,131 @@
 .dashboard-notification-icon {
 	height: 19px;
 	width: 19px;
+}
+
+/* DASHBOARD SIDEBAR */
+
+.dashboard-sidebar {
+	background: #12372a;
+	color: #ffffff;
+	display: flex;
+	flex: 0 0 240px;
+	flex-direction: column;
+	height: 100vh;
+	padding: 24px 16px;
+}
+
+.dashboard-sidebar-logo {
+	display: block;
+	margin-bottom: 32px;
+	padding: 0;
+}
+
+.dashboard-sidebar-logo-image {
+	display: block;
+	height: auto;
+	max-width: 100%;
+	width: 150px;
+}
+
+.dashboard-sidebar-nav {
+	display: grid;
+	gap: 6px;
+}
+
+.dashboard-sidebar-link {
+	align-items: center;
+	border-radius: 6px;
+	color: #d9e7df;
+	display: flex;
+	gap: 12px;
+	min-height: 42px;
+	padding: 0 12px;
+	text-decoration: none;
+}
+
+.dashboard-sidebar-link:hover,
+.dashboard-sidebar-link.active {
+	background: #245743;
+	color: #ffffff;
+}
+
+.dashboard-sidebar-link svg {
+	height: 18px;
+	width: 18px;
+}
+
+.dashboard-sidebar-badge {
+	background: #d8a83e;
+	border-radius: 999px;
+	color: #12372a;
+	font-size: 0.75rem;
+	font-weight: 700;
+	margin-left: auto;
+	min-width: 22px;
+	padding: 3px 6px;
+	text-align: center;
+}
+
+.dashboard-sidebar-user {
+	align-items: center;
+	display: flex;
+	gap: 10px;
+	margin-top: auto;
+	padding: 24px 8px 0;
+}
+
+.dashboard-sidebar-avatar {
+	align-items: center;
+	background: #d8a83e;
+	border-radius: 50%;
+	color: #12372a;
+	display: flex;
+	font-size: 0.75rem;
+	font-weight: 700;
+	height: 34px;
+	justify-content: center;
+	width: 34px;
+}
+
+.dashboard-sidebar-user-info {
+	min-width: 0;
+}
+
+.dashboard-sidebar-user-name,
+.dashboard-sidebar-user-company {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.dashboard-sidebar-user-name {
+	font-size: 0.85rem;
+	font-weight: 700;
+}
+
+.dashboard-sidebar-user-company {
+	color: #b8cec2;
+	font-size: 0.72rem;
+	margin-top: 3px;
+}
+
+.dashboard-sidebar-logout {
+	background: transparent;
+	border: 0;
+	color: #d9e7df;
+	cursor: pointer;
+	margin-left: auto;
+	padding: 8px;
+}
+
+.dashboard-main {
+	background: #f6f8f7;
+	flex: 1;
+	height: 100vh;
+	min-width: 0;
+	overflow: hidden;
 }
 
 /* RESPONSIVE */
