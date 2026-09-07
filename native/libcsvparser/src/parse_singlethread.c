@@ -160,7 +160,7 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
             fieldIndex = 0;
             validRows++;
             currentRow++;
-            if(!DynCSV_Increment(dyncsv)) return NULL;
+            if(!DynCSV_Increment(dyncsv)) goto malformed;
         } else {
             fieldIndex++;
         }
@@ -173,7 +173,8 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
     return rows;
 
     malformed:
-    free(dyncsv->buffer);
+    if(dyncsv->buffer != NULL)
+        free(dyncsv->buffer);
     free(dyncsv);
     return NULL;
 }

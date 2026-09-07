@@ -43,4 +43,4 @@ typedef struct {
 
 CsvRow* parse_csv(const char* content, int content_len, int* rows_out);
 
-void free_csv_rows(CsvResult* rows);
+void free_csv_rows(CsvRow* rows);

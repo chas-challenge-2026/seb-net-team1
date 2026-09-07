@@ -53,9 +53,8 @@ CsvRow* parse_csv(const char* content, int content_len, int* rows_out) {
     //return (use_multithread ? parse_csv_multi : parse_csv_single)(contentBegin, trueDataSize, rows_out, containsCRLF);
 }
 
-void free_csv_rows(CsvResult* rows) {
+void free_csv_rows(CsvRow* rows) {
     if(rows == NULL)
         return;
-    free(rows->rows);
     free(rows);
 }
