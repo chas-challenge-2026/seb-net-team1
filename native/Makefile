@@ -10,4 +10,4 @@ SRCS1 := $(wildcard libcsvparser/src/*.c)
 all: libcsvparser.so
 
 libcsvparser.so:
-	$(CC) $(CFLAGS) $(SRCS1) -o libcsvparser.so $(LDFLAGS)
+	$(CC) $(CFLAGS) $(SRCS1) -o $@ $< $(LDFLAGS)
