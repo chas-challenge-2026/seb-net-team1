@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { getUserByEmail } from "../api/usersApi";
+import { login } from "../api/usersApi";
 import "../App.css";
 
 function Login() {
@@ -16,17 +16,14 @@ function Login() {
     setError("");
 
     try {
-      const user = await getUserByEmail(email);
+      const response = await login(email, password);
 
-      if (!user || user.password !== password) {
-        setError("Fel e-post eller lösenord.");
-        return;
-      }
+      localStorage.setItem("user", JSON.stringify(response.user));
+      localStorage.setItem("accessToken", response.accessToken);
 
-      localStorage.setItem("user", JSON.stringify(user));
       navigate("/dashboard");
     } catch {
-      setError("Kunde inte ansluta till API:t.");
+      setError("Fel e-post eller lösenord.");
     }
   }
 

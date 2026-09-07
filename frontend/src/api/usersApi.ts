@@ -1,24 +1,25 @@
-export type User = {
-  id: number;
-  tenantId: number;
-  name: string;
-  email: string;
-  password: string;
-  role: string;
-};
+import type { LoginResponse } from "../types/User";
 
-const API_URL = "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL;
 
-export async function getUserByEmail(email: string): Promise<User | null> {
-  const response = await fetch(
-    `${API_URL}/users?email=${encodeURIComponent(email)}`
-  );
+export async function login(
+  email: string,
+  password: string
+): Promise<LoginResponse> {
+  const response = await fetch(`${API_URL}/api/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  });
 
   if (!response.ok) {
-    throw new Error("Kunde inte hämta användare");
+    throw new Error("Fel e-post eller lösenord");
   }
 
-  const users: User[] = await response.json();
-
-  return users[0] ?? null;
+  return response.json();
 }
