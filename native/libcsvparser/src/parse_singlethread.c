@@ -1,9 +1,9 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "parse.h"
-#include "helpers.h"
 
 /*
   Single-threaded parser path for small CSV files
@@ -60,14 +60,15 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
     int fieldIndex = 0;
     int validRows = 0;
     while(1) {
-        if (readHead >= dataEnd) break;
+        if (readHead >= dataEnd && fieldIndex == 0) break;
 
         char fieldData[FIELD_MAX_LEN];
         char* writeHead = fieldData;
-        char* fieldDataEnd = fieldData + FIELD_MAX_LEN - 1;
+        char* fieldDataEnd = fieldData + FIELD_MAX_LEN;
         bool isQuotedField = *readHead == '\"';
         bool quoteClosed = false;
         bool rowEnded = false;
+        bool fieldEnded = false;
 
         if(isQuotedField)
             readHead++;
@@ -82,6 +83,7 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
                         *writeHead++ = '\"';
                     } else if(byte2 == ',') {
                         quoteClosed = true;
+                        fieldEnded = true;
                         break;
                     } else if(byte2 == '\r' || byte2 == '\n') {
                         if(byte2 == '\r' && readHead < dataEnd && *readHead == '\n')
@@ -98,6 +100,7 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
                 }
             } else {
                 if(byte == ',') {
+                    fieldEnded = true;
                     break;
                 } else if(byte == '\r') {
                     if(readHead < dataEnd && *readHead == '\n') readHead++;
@@ -154,7 +157,7 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
                 break;
         }
 
-        if(rowEnded || readHead >= dataEnd) {
+        if(rowEnded || (readHead >= dataEnd && !fieldEnded)) {
             if(fieldIndex != 3)
                 goto malformed;
             fieldIndex = 0;
@@ -164,6 +167,13 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
         } else {
             fieldIndex++;
         }
+    }
+
+    if(validRows == 0) {
+        if(dyncsv->buffer != NULL)
+            free(dyncsv->buffer);
+        free(dyncsv);
+        return NULL;
     }
 
     *rows_out = validRows;

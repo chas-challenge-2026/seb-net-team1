@@ -5,7 +5,6 @@
 #include <stdbool.h>
 
 #include "parse.h"
-#include "helpers.h"
 #include "csv_parser.h"
 
 CSV_API CsvRow* parse_csv(const char* content, int content_len, int* rows_out) {
@@ -19,7 +18,7 @@ CSV_API CsvRow* parse_csv(const char* content, int content_len, int* rows_out) {
             break;
         }
     }
-    if(!headerEnd) { dprintf("No newline found so header never ended.\n"); return NULL; }
+    if(!headerEnd) { return NULL; } //dprintf("No newline found so header never ended.\n"); return NULL; }
     const char* contentBegin = headerEnd + 1;
     if (*headerEnd == '\r') {
         if (headerEnd + 1 < content + content_len && *(headerEnd + 1) == '\n') {
@@ -34,7 +33,7 @@ CSV_API CsvRow* parse_csv(const char* content, int content_len, int* rows_out) {
 
     int header_size = headerEnd - content;
     if(header_size != strlen(REQUIRED_HEADER) || strncmp(REQUIRED_HEADER, content, header_size) != 0) {
-        dprintf("Header does not match expected format.\n");
+        //dprintf("Header does not match expected format.\n");
         return NULL;
     }
     //dprintf("File contains CRLF: %s\n", (containsCRLF) ? "true" : "false");

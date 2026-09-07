@@ -5,9 +5,14 @@ LDFLAGS = -shared
 
 SRCS1 := $(wildcard libcsvparser/src/*.c)
 
-.PHONY: all libcsvparser.so
+.PHONY: all test
 
-all: libcsvparser.so
+all: test libcsvparser.so
 
 libcsvparser.so:
-	$(CC) $(CFLAGS) $(SRCS1) -o $@ $< $(LDFLAGS)
+	$(CC) $(CFLAGS) $(SRCS1) -o $@ $(LDFLAGS)
+
+test:
+	mkdir -p tests/binary
+	$(CC) $(CFLAGS) $(SRCS1) tests/test_libcsvparser.c -o tests/binary/test_libcsvparser
+	./tests/binary/test_libcsvparser

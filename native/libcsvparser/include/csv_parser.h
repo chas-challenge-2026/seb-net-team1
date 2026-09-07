@@ -15,6 +15,8 @@
 // How many rows the single-threaded parser allocates in advance, adjusted for best performance, do not modify.
 #define DEFAULT_ALLOC_SIZE 64
 
+#define CSV_API __attribute__((visibility("default")))
+
 enum CSVValue {
     CSVValue_AccountID = 0,
     CSVValue_ToIBAN = 1,
