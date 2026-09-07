@@ -8,7 +8,7 @@
 #include "helpers.h"
 #include "csv_parser.h"
 
-CsvRow* parse_csv(const char* content, int content_len, int* rows_out) {
+CSV_API CsvRow* parse_csv(const char* content, int content_len, int* rows_out) {
     bool containsCRLF = false;
 
     // Trim out header and locate CRLF
@@ -53,7 +53,7 @@ CsvRow* parse_csv(const char* content, int content_len, int* rows_out) {
     //return (use_multithread ? parse_csv_multi : parse_csv_single)(contentBegin, trueDataSize, rows_out, containsCRLF);
 }
 
-void free_csv_rows(CsvRow* rows) {
+CSV_API void free_csv_rows(CsvRow* rows) {
     if(rows == NULL)
         return;
     free(rows);

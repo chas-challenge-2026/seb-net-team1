@@ -44,7 +44,7 @@
             return 0;
         }
 
-        printf("Parser completed in %lf ms.\n", (double)us_spent / 1000.0);
+        printf("Parser completed in %lf ms. (rows=%i)\n", (double)us_spent / 1000.0, row_count);
 
         bool valid = true;
         for(int i = 0; i < row_count; i++) {

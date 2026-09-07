@@ -1,4 +1,0 @@
-LIBRARY libcsvparser
-EXPORTS
-    parse_csv=parse_csv
-    free_csv_rows=free_csv_rows
