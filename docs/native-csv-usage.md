@@ -34,7 +34,7 @@ public static class CsvParser
     public static extern CsvResult parse_csv(byte[] content, int content_len);
     
     [DllImport("native/libcsvparser.so", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void free_csv_rows(CsvRow* rows);
+    public static extern unsafe void free_csv_rows(CsvRow* rows);
 }
 ```
 
