@@ -44,7 +44,7 @@ export default function DashboardSidebar(){
           <span>Godkännanden</span>
 
           <span className="dashboard-sidebar-badge">
-            12 {/* Exempel siffra, implementera rätt siffra senare*/}
+            12 {/* Exempel siffra, implementera riktig data senare*/}
           </span>
         </a>
 
