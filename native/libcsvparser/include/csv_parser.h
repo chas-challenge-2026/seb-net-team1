@@ -12,6 +12,9 @@
 // Max field length allowed in the CSV data.
 #define FIELD_MAX_LEN 100
 
+// How many rows the single-threaded parser allocates in advance, adjusted for best performance, do not modify.
+#define DEFAULT_ALLOC_SIZE 64
+
 enum CSVValue {
     CSVValue_AccountID = 0,
     CSVValue_ToIBAN = 1,
@@ -21,8 +24,8 @@ enum CSVValue {
 
 /*
   CsvRow was modified to exclude valid and error, including this information per-row wastes memory as we should never return a partially processed batch payment file.
+  The excluded values are now part of another struct where memory is not cloned.
   Allocating memory for 50,000 rows with this new model takes 7.6MB as opposed to 20.8MB.
-  Failures will return IntPtr.Zero and the error can be fetched with a separate function.
 */
 typedef struct {
     int from_account_id;
@@ -31,6 +34,13 @@ typedef struct {
     char reference[101];
 } CsvRow;
 
+typedef struct {
+    int valid;
+    char error[256];
+    int row_count;
+    CsvRow* rows;
+} CsvResult;
+
 CsvRow* parse_csv(const char* content, int content_len, int* rows_out);
 
-void free_csv_rows(CsvRow* rows);
+void free_csv_rows(CsvResult* rows);

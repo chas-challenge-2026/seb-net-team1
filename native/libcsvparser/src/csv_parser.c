@@ -37,14 +37,14 @@ CsvRow* parse_csv(const char* content, int content_len, int* rows_out) {
         dprintf("Header does not match expected format.\n");
         return NULL;
     }
-    dprintf("File contains CRLF: %s\n", (containsCRLF) ? "true" : "false");
+    //dprintf("File contains CRLF: %s\n", (containsCRLF) ? "true" : "false");
 
     int trueDataSize = content_len - (contentBegin - content);
     bool use_multithread = (trueDataSize > SINGLETHREAD_THRESHOLD);
 
-    dprintf("True data size: %i\n", trueDataSize);
+    //dprintf("True data size: %i\n", trueDataSize);
 
-    dprintf("Invoking single-threaded parser path...\n");
+    //dprintf("Invoking single-threaded parser path...\n");
     return parse_csv_single(contentBegin, trueDataSize, rows_out);
 
     // Implement this code when multithread path is complete.
@@ -53,7 +53,9 @@ CsvRow* parse_csv(const char* content, int content_len, int* rows_out) {
     //return (use_multithread ? parse_csv_multi : parse_csv_single)(contentBegin, trueDataSize, rows_out, containsCRLF);
 }
 
-void free_csv_rows(CsvRow* rows) {
-    if(rows != NULL)
-        free(rows);
+void free_csv_rows(CsvResult* rows) {
+    if(rows == NULL)
+        return;
+    free(rows->rows);
+    free(rows);
 }

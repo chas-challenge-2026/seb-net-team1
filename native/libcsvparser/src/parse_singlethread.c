@@ -10,10 +10,50 @@
   Unlike the multithreaded path, this path uses a growing heap allocation to avoid sweeping the file twice ensuring maximum parse speed.
 */
 
-CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
-    CsvRow* rows = malloc(sizeof(CsvRow) * 2); // TODO: Change to dynamic allocation
+typedef struct {
+    int count;
+    int capacity;
+    CsvRow* buffer;
+} DynamicCsvRow;
 
-    CsvRow* currentRow = rows;
+DynamicCsvRow* DynCSV_Init() {
+    DynamicCsvRow* dyncsv = malloc(sizeof(DynamicCsvRow));  
+    if(!dyncsv) return NULL;
+    dyncsv->capacity = DEFAULT_ALLOC_SIZE;
+    dyncsv->count = 0;
+    dyncsv->buffer = malloc(sizeof(CsvRow) * dyncsv->capacity);
+    if(!dyncsv->buffer) {
+        free(dyncsv);
+        return NULL;
+    }
+    return dyncsv;
+}
+
+bool DynCSV_Increment(DynamicCsvRow* dyncsv) {
+    dyncsv->count++;
+    if(dyncsv->count >= dyncsv->capacity) {
+        dyncsv->capacity *= 2;
+        dyncsv->buffer = realloc(dyncsv->buffer, sizeof(CsvRow) * dyncsv->capacity);
+        if(!dyncsv->buffer)
+            return false;
+    }
+    return true;
+}
+
+void DynCSV_Trim(DynamicCsvRow* dyncsv) {
+    if(dyncsv->count < dyncsv->capacity) {
+        CsvRow* smallerBuf = realloc(dyncsv->buffer, sizeof(CsvRow) * dyncsv->count);
+        if(smallerBuf != NULL) {
+            dyncsv->buffer = smallerBuf;
+            dyncsv->capacity = dyncsv->count;
+        }
+    }
+}
+
+CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
+    DynamicCsvRow* dyncsv = DynCSV_Init();
+    if(dyncsv == NULL) return NULL;
+
     const char* dataEnd = content + content_len;
 
     const char* readHead = content;
@@ -79,6 +119,7 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
 
         int fieldLength = writeHead-fieldData;
 
+        CsvRow* currentRow = dyncsv->buffer + validRows;
         switch(fieldIndex) {
             case CSVValue_AccountID:
                 if(fieldLength > 9)
@@ -119,27 +160,20 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
             fieldIndex = 0;
             validRows++;
             currentRow++;
+            if(!DynCSV_Increment(dyncsv)) return NULL;
         } else {
             fieldIndex++;
         }
     }
 
-#ifdef DEBUG
-    dprintf("Processed %i CSV rows.\n", validRows);
-
-    for(int i = 0; i < validRows; i++) {
-        CsvRow* row = rows + i;
-        dprintf("\n=== Row %i ===\n", i);
-        dprintf("From account %i to IBAN: %s\n", row->from_account_id, row->to_iban);
-        dprintf("Amount: %lf\n", row->amount);
-        dprintf("Reference: %s\n", row->reference);
-    }
-#endif
-
     *rows_out = validRows;
+    DynCSV_Trim(dyncsv);
+    CsvRow* rows = dyncsv->buffer;
+    free(dyncsv);
     return rows;
 
     malformed:
-    free(rows);
+    free(dyncsv->buffer);
+    free(dyncsv);
     return NULL;
 }

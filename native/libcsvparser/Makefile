@@ -3,7 +3,7 @@ SHELL := cmd.exe
 
 CFLAGS = -O2 -Iinclude -fopenmp -fPIC
 CFLAGS_WIN = -shared
-CFLAGS_DBG = -DDEBUG
+CFLAGS_DBG = -D_DEBUG
 LDFLAGS = 
 
 OBJ_DIR := build_temp
@@ -23,7 +23,7 @@ all: debug
 debug: CFLAGS += $(CFLAGS_DBG)
 debug: $(OBJS)
 	$(CC_WIN) $(CFLAGS) -o $(OUT_DEBUG) $^ $(LDFLAGS)
-	./$(OUT_DEBUG)
+	$(OUT_DEBUG)
 
 windows: CFLAGS += $(CFLAGS_WIN)
 windows: $(OBJS) $(DEF_FILE)
