@@ -5,7 +5,7 @@ LDFLAGS = -shared
 
 SRCS1 := $(wildcard libcsvparser/src/*.c)
 
-.PHONY: all test
+.PHONY: all test libcsvparser.so
 
 all: test libcsvparser.so
 
