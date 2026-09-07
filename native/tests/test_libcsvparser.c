@@ -8,10 +8,10 @@
 
 int test_basic_row() {
     const char testData[] = CSV_HEADER "\r\n1,SE8550000000054910000003,5000.00,Faktura #2001";
-    int row_count = 0;
-    CsvRow* row = parse_csv(testData, sizeof(testData)-1, &row_count);
-    TEST_ASSERT(row != NULL, "parser failed to load the test data");
-    TEST_ASSERT(row_count == 1, "parser returned an incorrect row count");
+    CsvResult res = parse_csv(testData, sizeof(testData)-1);
+    TEST_ASSERT(res.valid == 1, "parser failed to load the test data");
+    TEST_ASSERT(res.row_count == 1, "parser returned an incorrect row count");
+    CsvRow* row = res.rows;
     TEST_ASSERT(row->from_account_id == 1, "parser returned an incorrect account ID");
     TEST_ASSERT(strcmp(row->to_iban, "SE8550000000054910000003") == 0, "parser returned an incorrect IBAN");
     TEST_ASSERT(row->amount == 5000.00, "parser returned an incorrect payment amount");
@@ -22,33 +22,31 @@ int test_basic_row() {
 
 int test_mixed_newlines() {
     const char testData[] = CSV_HEADER "\r\n1,SE8550000000054910000003,5000.00,Faktura #2001\n1,SE8550000000054910000003,5000.00,Faktura #2001\r1,SE8550000000054910000003,5000.00,Faktura #2001";
-    int row_count = 0;
-    CsvRow* rows = parse_csv(testData, sizeof(testData)-1, &row_count);
-    TEST_ASSERT(rows != NULL, "parser failed to load the test data");
-    TEST_ASSERT(row_count == 3, "parser returned an incorrect row count");
+    CsvResult res = parse_csv(testData, sizeof(testData)-1);
+    TEST_ASSERT(res.valid == 1, "parser failed to load the test data");
+    TEST_ASSERT(res.row_count == 3, "parser returned an incorrect row count");
     for(int i = 0; i < 3; i++) {
-        CsvRow* row = rows + i;
+        CsvRow* row = res.rows + i;
         TEST_ASSERT(row->from_account_id == 1, "row %d: parser returned an incorrect account ID", i+1);
         TEST_ASSERT(strcmp(row->to_iban, "SE8550000000054910000003") == 0, "row %d: parser returned an incorrect IBAN", i+1);
         TEST_ASSERT(row->amount == 5000.00, "row %d: parser returned an incorrect payment amount", i+1);
         TEST_ASSERT(strcmp(row->reference, "Faktura #2001") == 0, "row %d: parser returned an incorrect reference", i+1);
     }
-    free_csv_rows(rows);
+    free_csv_rows(res.rows);
     return 0;
 }
 
 int test_empty_strings() {
     const char testData1[] = CSV_HEADER "\r\n1,,5000.00,Faktura #2001";
     const char testData2[] = CSV_HEADER "\r\n1,SE8550000000054910000003,5000.00,";
-    int row_count = 0;
-    CsvRow* rows = parse_csv(testData1, sizeof(testData1)-1, &row_count);
-    TEST_ASSERT(rows != NULL, "parser failed when to_iban was empty");
-    TEST_ASSERT(row_count == 1, "parser returned an incorrect row count on testData1");
-    free_csv_rows(rows);
-    rows = parse_csv(testData2, sizeof(testData2)-1, &row_count);
-    TEST_ASSERT(rows != NULL, "parser failed when reference was empty");
-    TEST_ASSERT(row_count == 1, "parser returned an incorrect row count on testData2");
-    free_csv_rows(rows);
+    CsvResult res = parse_csv(testData1, sizeof(testData1)-1);
+    TEST_ASSERT(res.valid == 1, "parser failed when to_iban was empty");
+    TEST_ASSERT(res.row_count == 1, "parser returned an incorrect row count on testData1");
+    free_csv_rows(res.rows);
+    res = parse_csv(testData2, sizeof(testData2)-1);
+    TEST_ASSERT(res.valid == 1, "parser failed when reference was empty");
+    TEST_ASSERT(res.row_count == 1, "parser returned an incorrect row count on testData2");
+    free_csv_rows(res.rows);
     return 0;
 }
 
@@ -57,25 +55,24 @@ int test_empty_data() {
     const char testData2[] = CSV_HEADER;
     const char testData3[] = CSV_HEADER "\r\n";
     const char testData4[] = CSV_HEADER "\r\n\r\n";
-    int row_count = 0;
-    CsvRow* rows = parse_csv(testData1, sizeof(testData1)-1, &row_count);
-    TEST_ASSERT(rows == NULL, "parser unexpectedly succeeded on testData1");
-    rows = parse_csv(testData2, sizeof(testData2)-1, &row_count);
-    TEST_ASSERT(rows == NULL, "parser unexpectedly succeeded on testData2");
-    rows = parse_csv(testData3, sizeof(testData3)-1, &row_count);
-    TEST_ASSERT(rows == NULL, "parser unexpectedly succeeded on testData3");
-    rows = parse_csv(testData4, sizeof(testData4)-1, &row_count);
-    TEST_ASSERT(rows == NULL, "parser unexpectedly succeeded on testData4");
+    CsvResult res = parse_csv(testData1, sizeof(testData1)-1);
+    TEST_ASSERT(res.valid == 0, "parser unexpectedly succeeded on testData1");
+    res = parse_csv(testData2, sizeof(testData2)-1);
+    TEST_ASSERT(res.valid == 0, "parser unexpectedly succeeded on testData2");
+    res = parse_csv(testData3, sizeof(testData3)-1);
+    TEST_ASSERT(res.valid == 0, "parser unexpectedly succeeded on testData3");
+    res = parse_csv(testData4, sizeof(testData4)-1);
+    TEST_ASSERT(res.valid == 0, "parser unexpectedly succeeded on testData4");
     return 0;
 }
 
 int test_rfc4180_quotes() {
     const char testData1[] = CSV_HEADER "\r\n1,\"SE855\"\"'',,005491\r\r\n\n003\",5000.00,Faktura #2001";
-    int row_count = 0;
-    CsvRow* rows = parse_csv(testData1, sizeof(testData1)-1, &row_count);
-    TEST_ASSERT(rows != NULL, "parser failed to load the test data");
-    TEST_ASSERT(row_count == 1, "parser returned an incorrect row count");
-    TEST_ASSERT(strcmp(rows->to_iban, "SE855\"'',,005491\r\r\n\n003") == 0, "parser returned an incorrect IBAN");
+    CsvResult res = parse_csv(testData1, sizeof(testData1)-1);
+    TEST_ASSERT(res.valid == 1, "parser failed to load the test data");
+    TEST_ASSERT(res.row_count == 1, "parser returned an incorrect row count");
+    TEST_ASSERT(strcmp(res.rows->to_iban, "SE855\"'',,005491\r\r\n\n003") == 0, "parser returned an incorrect IBAN");
+    free_csv_rows(res.rows);
     return 0;
 }
 
@@ -85,15 +82,19 @@ int test_invalid_values() {
     const char testData3[] = CSV_HEADER "\r\n1,SE8550000000054910000003,12345a,Faktura #2001";
     const char testData4[] = CSV_HEADER "\r\n1,S,5000.00,abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvw";
     int row_count = 0;
-    CsvRow* rows;
-    rows = parse_csv(testData1, sizeof(testData1)-1, &row_count);
-    TEST_ASSERT(rows == NULL, "parser wrongfully accepted a non-numeric account ID");
-    rows = parse_csv(testData2, sizeof(testData2)-1, &row_count);
-    TEST_ASSERT(rows == NULL, "parser wrongfully accepted an IBAN too large");
-    rows = parse_csv(testData3, sizeof(testData3)-1, &row_count);
-    TEST_ASSERT(rows == NULL, "parser wrongfully accepted a non-numeric payment amount");
-    rows = parse_csv(testData4, sizeof(testData4)-1, &row_count);
-    TEST_ASSERT(rows == NULL, "parser wrongfully accepted a reference too large");
+    CsvResult res;
+    res = parse_csv(testData1, sizeof(testData1)-1);
+    TEST_ASSERT(res.valid == 0, "parser wrongfully accepted a non-numeric account ID");
+    free_csv_rows(res.rows);
+    res = parse_csv(testData2, sizeof(testData2)-1);
+    TEST_ASSERT(res.valid == 0, "parser wrongfully accepted an IBAN too large");
+    free_csv_rows(res.rows);
+    res = parse_csv(testData3, sizeof(testData3)-1);
+    TEST_ASSERT(res.valid == 0, "parser wrongfully accepted a non-numeric payment amount");
+    free_csv_rows(res.rows);
+    res = parse_csv(testData4, sizeof(testData4)-1);
+    TEST_ASSERT(res.valid == 0, "parser wrongfully accepted a reference too large");
+    free_csv_rows(res.rows);
     return 0;
 }
 
@@ -103,10 +104,12 @@ int test_multiple_different_rows() {
     const char testData[] = CSV_HEADER "\r\n" "1,SE8550000000054910000003,5000.00,Faktura #2001\n" "42,SE1234567890123456789012345,123.45,Test payment\n" "999999,SE9876543210987654321098765,0.01,Another payment";
 
     int row_count = 0;
-    CsvRow* rows = parse_csv(testData, sizeof(testData)-1, &row_count);
+    CsvResult res = parse_csv(testData, sizeof(testData)-1);
 
-    TEST_ASSERT(rows != NULL, "parser failed to load multiple rows");
-    TEST_ASSERT(row_count == 3, "parser returned an incorrect row count");
+    TEST_ASSERT(res.valid == 1, "parser failed to load multiple rows");
+    TEST_ASSERT(res.row_count == 3, "parser returned an incorrect row count");
+
+    CsvRow* rows = res.rows;
 
     TEST_ASSERT(rows[0].from_account_id == 1, "row 1 has incorrect account ID");
     TEST_ASSERT(rows[1].from_account_id == 42, "row 2 has incorrect account ID");
@@ -124,13 +127,13 @@ int test_invalid_column_count() {
     const char testData2[] = CSV_HEADER "\r\n1,SE8550000000054910000003,5000.00,Faktura #2001,extra";
 
     int row_count = 0;
-    CsvRow* rows;
+    CsvResult res;
 
-    rows = parse_csv(testData1, sizeof(testData1)-1, &row_count);
-    TEST_ASSERT(rows == NULL, "parser accepted a row with a missing field");
+    res = parse_csv(testData1, sizeof(testData1)-1);
+    TEST_ASSERT(res.valid == 0, "parser accepted a row with a missing field");
 
-    rows = parse_csv(testData2, sizeof(testData2)-1, &row_count);
-    TEST_ASSERT(rows == NULL, "parser accepted a row with an extra field");
+    res = parse_csv(testData2, sizeof(testData2)-1);
+    TEST_ASSERT(res.valid == 0, "parser accepted a row with an extra field");
 
     return 0;
 }

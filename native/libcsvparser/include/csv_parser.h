@@ -37,12 +37,12 @@ typedef struct {
 } CsvRow;
 
 typedef struct {
-    int valid;
+    bool valid;
     char error[256];
     int row_count;
     CsvRow* rows;
 } CsvResult;
 
-CsvRow* parse_csv(const char* content, int content_len, int* rows_out);
+CsvResult parse_csv(const char* content, int content_len);
 
 void free_csv_rows(CsvRow* rows);

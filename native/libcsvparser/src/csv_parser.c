@@ -7,7 +7,13 @@
 #include "parse.h"
 #include "csv_parser.h"
 
-CSV_API CsvRow* parse_csv(const char* content, int content_len, int* rows_out) {
+static inline CsvResult generateError(const char* error) {
+    CsvResult result = {0};
+    strcpy(result.error, error);
+    return result;
+}
+
+CSV_API CsvResult parse_csv(const char* content, int content_len) {
     bool containsCRLF = false;
 
     // Trim out header and locate CRLF
@@ -18,7 +24,8 @@ CSV_API CsvRow* parse_csv(const char* content, int content_len, int* rows_out) {
             break;
         }
     }
-    if(!headerEnd) { return NULL; } //dprintf("No newline found so header never ended.\n"); return NULL; }
+    if(!headerEnd)
+        return generateError("No newline found so header never ended.");
     const char* contentBegin = headerEnd + 1;
     if (*headerEnd == '\r') {
         if (headerEnd + 1 < content + content_len && *(headerEnd + 1) == '\n') {
@@ -32,10 +39,8 @@ CSV_API CsvRow* parse_csv(const char* content, int content_len, int* rows_out) {
     }
 
     int header_size = headerEnd - content;
-    if(header_size != strlen(REQUIRED_HEADER) || strncmp(REQUIRED_HEADER, content, header_size) != 0) {
-        //dprintf("Header does not match expected format.\n");
-        return NULL;
-    }
+    if(header_size != strlen(REQUIRED_HEADER) || strncmp(REQUIRED_HEADER, content, header_size) != 0)
+        return generateError("Header does not match expected format.");
     //dprintf("File contains CRLF: %s\n", (containsCRLF) ? "true" : "false");
 
     int trueDataSize = content_len - (contentBegin - content);
@@ -44,7 +49,7 @@ CSV_API CsvRow* parse_csv(const char* content, int content_len, int* rows_out) {
     //dprintf("True data size: %i\n", trueDataSize);
 
     //dprintf("Invoking single-threaded parser path...\n");
-    return parse_csv_single(contentBegin, trueDataSize, rows_out);
+    return parse_csv_single(contentBegin, trueDataSize);
 
     // Implement this code when multithread path is complete.
 

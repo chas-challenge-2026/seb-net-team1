@@ -1,7 +1,7 @@
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 #include "parse.h"
 
@@ -50,12 +50,20 @@ void DynCSV_Trim(DynamicCsvRow* dyncsv) {
     }
 }
 
-CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
+static inline CsvResult generateError(const char* error) {
+    if(error == NULL)
+        error = "Unknown error";
+    CsvResult result = {0};
+    strcpy(result.error, error);
+    return result;
+}
+
+CsvResult parse_csv_single(const char* content, int content_len) {
     DynamicCsvRow* dyncsv = DynCSV_Init();
-    if(dyncsv == NULL) return NULL;
+    if(dyncsv == NULL) return generateError("Internal server error, out of memory");
 
     const char* dataEnd = content + content_len;
-
+    const char* outError = NULL;
     const char* readHead = content;
     int fieldIndex = 0;
     int validRows = 0;
@@ -79,7 +87,7 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
                 if(byte == '\"') {
                     char byte2 = (readHead < dataEnd) ? *readHead++ : '\n';
                     if(byte2 == '\"') {
-                        if (writeHead >= fieldDataEnd) goto malformed;
+                        if (writeHead >= fieldDataEnd) { outError = "CSV contained a quoted field too long"; goto malformed; }
                         *writeHead++ = '\"';
                     } else if(byte2 == ',') {
                         quoteClosed = true;
@@ -92,10 +100,11 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
                         quoteClosed = true;
                         break;
                     } else {
+                        outError = "CSV is malformed, contains data after end of quoted field";
                         goto malformed;
                     }
                 } else {
-                    if (writeHead >= fieldDataEnd) goto malformed;
+                    if (writeHead >= fieldDataEnd) { outError = "CSV contained a quoted field too long"; goto malformed; }
                     *writeHead++ = byte;
                 }
             } else {
@@ -110,14 +119,15 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
                     rowEnded = true;
                     break;
                 } else if(byte == '\"') {
+                    outError = "CSV is malformed, contains a quote in an unquoted field";
                     goto malformed; // Bottom of function.
                 } else {
-                    if (writeHead >= fieldDataEnd) goto malformed;
+                    if (writeHead >= fieldDataEnd) { outError = "CSV contained a quoted field too long"; goto malformed; }
                     *writeHead++ = byte;
                 }
             }
         }
-        if (isQuotedField && !quoteClosed) goto malformed;
+        if (isQuotedField && !quoteClosed) { outError = "CSV is malformed, missing end quote on quoted field"; goto malformed; }
         *writeHead = '\0';
 
         int fieldLength = writeHead-fieldData;
@@ -125,18 +135,24 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
         CsvRow* currentRow = dyncsv->buffer + validRows;
         switch(fieldIndex) {
             case CSVValue_AccountID:
-                if(fieldLength > 9)
+                if(fieldLength > 9) {
+                    outError = "CSV is unsupported, found an account ID larger than 9 characters";
                     goto malformed;
+                }
                 for(char* pos = fieldData; pos < fieldData+fieldLength; pos++) {
                     char byte = *pos;
-                    if(byte < 0x30 || byte > 0x39) // Is the byte outside the ASCII number range?
+                    if(byte < 0x30 || byte > 0x39) { // Is the byte outside the ASCII number range?
+                        outError = "CSV is malformed, found a non-numeric account ID";
                         goto malformed;
+                    }
                 }
                 currentRow->from_account_id = atoi(fieldData);
                 break;
             case CSVValue_ToIBAN:
-                if(fieldLength > 34)
+                if(fieldLength > 34) {
+                    outError = "CSV is unsupported, found an IBAN longer than 34 characters";
                     goto malformed;
+                }
                 strcpy(currentRow->to_iban, fieldData);
                 break;
             case CSVValue_Amount:
@@ -145,25 +161,34 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
                 char *endptr;
                 double value = strtod(fieldData, &endptr);
                 bool success = endptr != fieldData && *endptr == '\0' && errno != ERANGE;
-                if(!success)
+                if(!success) {
+                    outError = "CSV is malformed, failed to convert a payment amount";
                     goto malformed;
+                }
                 currentRow->amount = value;
                 break;
             }
             case CSVValue_Reference:
-                if(fieldLength > 100)
+                if(fieldLength > 100) {
+                    outError = "CSV is unsupported, found a reference longer than 100 characters";
                     goto malformed;
+                }
                 strcpy(currentRow->reference, fieldData);
                 break;
         }
 
         if(rowEnded || (readHead >= dataEnd && !fieldEnded)) {
-            if(fieldIndex != 3)
+            if(fieldIndex != 3) {
+                outError = "CSV is malformed, a row doesn't contain the expected value count";
                 goto malformed;
+            }
             fieldIndex = 0;
             validRows++;
             currentRow++;
-            if(!DynCSV_Increment(dyncsv)) goto malformed;
+            if(!DynCSV_Increment(dyncsv)) {
+                outError = "Internal server error, out of memory";
+                goto malformed;
+            }
         } else {
             fieldIndex++;
         }
@@ -173,18 +198,20 @@ CsvRow* parse_csv_single(const char* content, int content_len, int* rows_out) {
         if(dyncsv->buffer != NULL)
             free(dyncsv->buffer);
         free(dyncsv);
-        return NULL;
+        return generateError("CSV contained no rows");
     }
 
-    *rows_out = validRows;
     DynCSV_Trim(dyncsv);
     CsvRow* rows = dyncsv->buffer;
     free(dyncsv);
-    return rows;
+
+    CsvResult result = {.valid = 1, .rows = rows, .row_count = validRows};
+    memset(result.error, 0, 256);
+    return result;
 
     malformed:
     if(dyncsv->buffer != NULL)
         free(dyncsv->buffer);
     free(dyncsv);
-    return NULL;
+    return generateError(outError);
 }
