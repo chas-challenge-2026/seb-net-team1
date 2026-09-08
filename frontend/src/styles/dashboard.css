@@ -87,16 +87,20 @@
 
 .dashboard-sidebar {
 	background: #12372a;
+	box-sizing: border-box;
 	color: #ffffff;
 	display: flex;
 	flex: 0 0 240px;
 	flex-direction: column;
 	height: 100vh;
+	overflow-y: auto;
 	padding: 24px 16px;
 }
 
 .dashboard-sidebar-logo {
-	display: block;
+	align-items: center;
+	display: flex;
+	justify-content: space-between;
 	margin-bottom: 32px;
 	padding: 0;
 }
@@ -106,6 +110,15 @@
 	height: auto;
 	max-width: 100%;
 	width: 150px;
+}
+
+.dashboard-sidebar-close {
+	background: transparent;
+	border: 0;
+	color: #d9e7df;
+	cursor: pointer;
+	display: none;
+	padding: 6px;
 }
 
 .dashboard-sidebar-nav {
@@ -208,12 +221,42 @@
 	overflow: hidden;
 }
 
+/*SIDEBAR TOGGLE MOBILE VIEW*/
+.sidebar-toggle {
+	display: flex;
+	align-items: center;
+}
+
+.hamburger-btn {
+	display: none;
+	background: transparent;
+	border: none;
+	color: #12372a;
+	cursor: pointer;
+	padding: 6px;
+	border-radius: 6px;
+	transition: background-color 0.2s;
+}
+
+.hamburger-btn:hover {
+    background-color: #eef6f1;
+    color: #006831;
+}
+
+.hamburger-btn.is-open {
+	display: none;
+}
+
+.sidebar-overlay {
+    display: none;
+}
+
 /* RESPONSIVE */
 @media (max-width: 700px) {
 	.dashboard-header {
 		align-items: flex-start;
 		flex-direction: column;
-		padding: 20px;
+		padding: 72px 20px 20px;
 	}
 
 	.dashboard-header-actions {
@@ -228,4 +271,65 @@
 		min-width: 0;
 		width: 100%;
 	}
+
+	.dashboard-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 100;
+        box-shadow: 4px 0 15px rgba(0, 0, 0, 0.2);
+    }
+
+	.dashboard-sidebar-close {
+		display: inline-flex;
+	}
+
+    .dashboard-sidebar.is-open {
+        transform: translateX(0);
+    }
+
+    .sidebar-overlay.is-open {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 90;
+    }
+
+    .hamburger-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+		position: fixed;
+		top: 16px;
+		left: 20px;
+		z-index: 110;
+    }
+
+    .dashboard-header-title {
+		width: 100%;
+    }
+
+    .dashboard-header-title h1 {
+        font-size: 1.35rem;
+    }
+
+    .dashboard-header-actions {
+        width: 100%;
+    }
+
+    .search-input-wrapper {
+        flex: 1;
+    }
+
+    .search-input-wrapper input {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .dashboard-notification-button {
+		flex: 0 0 auto;
+    }
 }
