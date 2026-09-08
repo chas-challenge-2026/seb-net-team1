@@ -30,6 +30,14 @@ services:
     expose:
       - "5432"
 
+  native:
+    build:
+      context: ../native
+      dockerfile: Dockerfile
+    working_dir: /workspace
+    volumes:
+      - ../native:/workspace
+
   app:
     build:
       context: ../backend/SebPortal
