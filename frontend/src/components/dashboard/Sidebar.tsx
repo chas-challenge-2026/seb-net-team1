@@ -120,7 +120,7 @@ export default function DashboardSidebar({
           </span>
 
           <span className="dashboard-sidebar-user-company">
-            Acme Corporation
+            Malmö Bygg AB
           </span>
         </div>
 

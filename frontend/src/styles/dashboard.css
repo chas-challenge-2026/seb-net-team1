@@ -218,7 +218,7 @@
 	flex: 1;
 	height: 100vh;
 	min-width: 0;
-	overflow: hidden;
+	overflow-y: auto;
 }
 
 /*SIDEBAR TOGGLE MOBILE VIEW*/
@@ -250,8 +250,87 @@
 .sidebar-overlay {
     display: none;
 }
+/*------------------------- DASHBOARD KPI -------------------------*/
+.dashboard-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
 
-/* RESPONSIVE */
+.summary-card {
+	background: #ffffff;
+	border: 1px solid #e2e7e5;
+	border-radius: 10px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+
+	min-height: 150px;
+	padding: 22px 24px;
+
+	transition:
+		box-shadow 0.2s ease,
+		transform 0.2s ease;
+}
+
+.summary-card:hover {
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+	transform: translateY(-1px);
+}
+
+.summary-card__label {
+	color: #43504c;
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 1.4;
+}
+
+.summary-card__value {
+	color: #142d26;
+	font-size: 28px;
+	font-weight: 600;
+	letter-spacing: -0.4px;
+	line-height: 1.2;
+	margin-top: 12px;
+}
+
+.summary-card__description {
+	color: #74817d;
+	font-size: 12px;
+	line-height: 1.4;
+	margin-top: 10px;
+}
+
+.summary-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  background: #eef6f1;
+  color: #006831;
+  border-radius: 8px;
+}
+
+.summary-card__icon svg {
+  width: 19px;
+  height: 19px;
+  stroke-width: 1.8;
+}
+
+/* ---------------------RESPONSIVE------------------------- */
+
+/*Tablet*/
+@media (max-width: 1100px) {
+	.dashboard-summary {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
 @media (max-width: 700px) {
 	.dashboard-header {
 		align-items: flex-start;
@@ -332,4 +411,17 @@
     .dashboard-notification-button {
 		flex: 0 0 auto;
     }
+	.dashboard-summary {
+		grid-template-columns: 1fr;
+		gap: 12px;
+	  }
+	
+	  .summary-card {
+		min-height: 130px;
+		padding: 18px 20px;
+	  }
+	
+	  .summary-card__value {
+		font-size: 24px;
+	  }
 }
