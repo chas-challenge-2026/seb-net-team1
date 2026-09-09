@@ -1,8 +1,11 @@
+import { useState } from "react";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import Sidebar from "../components/dashboard/Sidebar";
 import "../styles/dashboard.css";
 
 function Dashboard() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   const user = {
     id: 1,
     tenantId: 1,
@@ -13,7 +16,17 @@ function Dashboard() {
 
   return (
     <div className="dashboard-layout">
-      <Sidebar />
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen((isOpen) => !isOpen)}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+      <button
+        type="button"
+        className={`sidebar-overlay${isSidebarOpen ? " is-open" : ""}`}
+        onClick={() => setIsSidebarOpen(false)}
+        aria-label="Stäng meny"
+      />
       <main className="dashboard-main">
         <DashboardHeader user={user} />
       </main>

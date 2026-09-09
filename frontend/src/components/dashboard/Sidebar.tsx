@@ -10,11 +10,34 @@ import {
   FiActivity,
   FiSettings,
   FiLogOut,
+  FiMenu,
+  FiX,
 } from "react-icons/fi";
 
-export default function DashboardSidebar(){
+interface SidebarProps {
+  isOpen?: boolean;
+  onToggle?: () => void;
+  onClose?: () => void;
+}
+
+export default function DashboardSidebar({
+  isOpen = false,
+  onToggle,
+  onClose,
+}: SidebarProps){
     return (
-           <aside className="dashboard-sidebar">
+      <>
+        <button
+          type="button"
+          className={`hamburger-btn${isOpen ? " is-open" : ""}`}
+          onClick={onToggle}
+          aria-label="Öppna meny"
+          aria-expanded={isOpen}
+        >
+          <FiMenu size={24} />
+        </button>
+
+        <aside className={`dashboard-sidebar${isOpen ? " is-open" : ""}`}>
 
       {/* Logga*/}
       <div className="dashboard-sidebar-logo">
@@ -23,6 +46,14 @@ export default function DashboardSidebar(){
           src={logo}
           alt="SEB"
         />
+        <button
+          type="button"
+          className="dashboard-sidebar-close"
+          onClick={onClose}
+          aria-label="Stäng meny"
+        >
+          <FiX size={24} />
+        </button>
       </div>
 
 
@@ -103,6 +134,7 @@ export default function DashboardSidebar(){
 
       </div>
 
-    </aside>
+        </aside>
+      </>
   );
 }
