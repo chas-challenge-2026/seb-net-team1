@@ -1,6 +1,7 @@
 import { useState } from "react";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import Sidebar from "../components/dashboard/Sidebar";
+import DashboardSummary from "../components/dashboard/DashboardSummary";
 import "../styles/dashboard.css";
 
 function Dashboard() {
@@ -29,6 +30,7 @@ function Dashboard() {
       />
       <main className="dashboard-main">
         <DashboardHeader user={user} />
+        <DashboardSummary />
       </main>
     </div>
   );
