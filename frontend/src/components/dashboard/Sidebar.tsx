@@ -65,7 +65,7 @@ export default function DashboardSidebar({
           <span>Översikt</span>
         </a>
 
-        <a href="#" className="dashboard-sidebar-link">
+        <a href="/new-payment" className="dashboard-sidebar-link">
           <FiCreditCard />
           <span>Betalningar</span>
         </a>
