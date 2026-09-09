@@ -1,0 +1,103 @@
+.new-payment-page {
+  background: var(--light-gray);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-y: auto;
+  padding: 40px 32px;
+}
+
+.new-payment-content {
+  margin: 0 auto;
+  max-width: 760px;
+}
+
+.new-payment-header {
+  margin-bottom: 24px;
+}
+
+.new-payment-header h1 {
+  color: var(--seb-deep-green);
+  margin: 0;
+}
+
+.new-payment-card {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(23, 33, 43, 0.08);
+  padding: 32px;
+}
+
+.new-payment-form {
+  display: grid;
+  gap: 20px;
+}
+
+.new-payment-field {
+  display: grid;
+  gap: 8px;
+}
+
+.new-payment-field label {
+  color: var(--dark-gray);
+  font-weight: 600;
+}
+
+.new-payment-field input,
+.new-payment-field select {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font: inherit;
+  min-height: 44px;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+.new-payment-field input:focus,
+.new-payment-field select:focus {
+  border-color: var(--seb-green);
+  box-shadow: 0 0 0 3px rgba(0, 166, 81, 0.14);
+  outline: none;
+}
+
+.new-payment-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
+.new-payment-submit {
+  background: var(--seb-green);
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--white);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  min-height: 44px;
+  padding: 0 20px;
+}
+
+.new-payment-submit:hover {
+  background: var(--green-hover);
+}
+
+@media (max-width: 700px) {
+  .new-payment-page {
+    padding: 24px 16px;
+  }
+
+  .new-payment-card {
+    padding: 24px;
+  }
+
+  .new-payment-actions {
+    justify-content: stretch;
+  }
+
+  .new-payment-submit {
+    width: 100%;
+  }
+}
