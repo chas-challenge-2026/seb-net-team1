@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FiCreditCard, FiCheckCircle, FiSend, FiAlertCircle } from "react-icons/fi";
+import {LuWalletCards,LuCircleCheck,LuArrowUpRight,LuTriangleAlert,} from "react-icons/lu";
 import Card from "../shared/Card";
 
 interface Account {
@@ -80,8 +80,11 @@ export default function DashboardSummary() {
 return (
     <section className="dashboard-summary">
       <Card className="summary-card">
-        <span className="summary-card__label">Totalt saldo (SEK)</span>
+        <div className="summary-card__icon">
+			<LuWalletCards />
+		</div>
 
+        <span className="summary-card__label">Totalt saldo (SEK)</span>
         <strong className="summary-card__value">
           {totalBalance.toLocaleString("sv-SE")} kr
         </strong>
@@ -92,6 +95,10 @@ return (
       </Card>
 
       <Card className="summary-card">
+        <div className="summary-card__icon">
+          <LuCircleCheck />
+        </div>
+
         <span className="summary-card__label">
           Väntande godkännanden
         </span>
@@ -106,6 +113,10 @@ return (
       </Card>
 
       <Card className="summary-card">
+        <div className="summary-card__icon">
+          <LuArrowUpRight />
+        </div>
+
         <span className="summary-card__label">
           Betalningar
         </span>
@@ -120,6 +131,10 @@ return (
       </Card>
 
       <Card className="summary-card">
+        <div className="summary-card__icon">
+          <LuTriangleAlert />
+        </div>
+
         <span className="summary-card__label">
           Valideringsavvikelser
         </span>
