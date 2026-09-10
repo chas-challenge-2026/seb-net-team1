@@ -590,6 +590,97 @@
 	color: #66716e;
 }
 
+/* ----------- UPCOMING PAYMENTS ------------------ */
+
+.upcoming-payments {
+	min-width: 0;
+}
+
+.upcoming-payments__list {
+	display: flex;
+	flex-direction: column;
+}
+
+.upcoming-payments__item {
+	align-items: center;
+	border-bottom: 1px solid #edf0ef;
+	display: flex;
+	gap: 12px;
+	min-height: 58px;
+	padding: 8px 0;
+}
+
+.upcoming-payments__item:last-child {
+	border-bottom: none;
+}
+
+.upcoming-payments__icon {
+	align-items: center;
+	background: #eef6f1;
+	border-radius: 50%;
+	color: #006831;
+	display: flex;
+	flex-shrink: 0;
+	height: 34px;
+	justify-content: center;
+	width: 34px;
+}
+
+.upcoming-payments__icon svg {
+	height: 17px;
+	stroke-width: 1.8;
+	width: 17px;
+}
+
+.upcoming-payments__info {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+
+.upcoming-payments__info strong {
+	color: #142d26;
+	font-size: 12px;
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.upcoming-payments__info span {
+	color: #74817d;
+	font-size: 11px;
+}
+
+.upcoming-payments__details {
+	align-items: flex-end;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	flex-shrink: 0;
+}
+
+.upcoming-payments__details strong {
+	color: #142d26;
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.upcoming-payments__details .status-badge {
+	font-size: 10px;
+	padding: 4px 7px;
+}
+
+.upcoming-payments__empty {
+	color: #74817d;
+	font-size: 12px;
+	padding: 20px 0;
+	text-align: center;
+}
+
 /* ---------------------RESPONSIVE------------------------- */
 
 /*Tablet*/
@@ -717,4 +808,18 @@
 	height: 17px;
 	width: 17px;
 }
+
+.upcoming-payments__item {
+		min-height: 54px;
+	}
+
+	.upcoming-payments__icon {
+		height: 32px;
+		width: 32px;
+	}
+
+	.upcoming-payments__details strong {
+		font-size: 11px;
+	}
+
 }

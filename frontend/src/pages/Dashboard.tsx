@@ -4,6 +4,7 @@ import Sidebar from "../components/dashboard/Sidebar";
 import DashboardSummary from "../components/dashboard/DashboardSummary";
 import AccountOverview from "../components/dashboard/AccountOverview";
 import PaymentStatus from "../components/dashboard/PaymentStatus";
+import UpcomingPayments from "../components/dashboard/UpcomingPayments";
 import "../styles/dashboard.css";
 
 function Dashboard() {
@@ -37,6 +38,7 @@ function Dashboard() {
           <AccountOverview />
           <PaymentStatus />
         </section>
+        <UpcomingPayments />
       </main>
     </div>
   );
