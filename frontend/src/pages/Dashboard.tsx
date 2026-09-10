@@ -2,6 +2,12 @@ import { useState } from "react";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import Sidebar from "../components/dashboard/Sidebar";
 import DashboardSummary from "../components/dashboard/DashboardSummary";
+import AccountOverview from "../components/dashboard/AccountOverview";
+import PaymentStatus from "../components/dashboard/PaymentStatus";
+import UpcomingPayments from "../components/dashboard/UpcomingPayments";
+import PendingApprovals from "../components/dashboard/PendingApprovals";
+import RecentActivity from "../components/dashboard/RecentActivity";
+import QuickActions from "../components/dashboard/QuickActions";
 import "../styles/dashboard.css";
 
 function Dashboard() {
@@ -22,15 +28,39 @@ function Dashboard() {
         onToggle={() => setIsSidebarOpen((isOpen) => !isOpen)}
         onClose={() => setIsSidebarOpen(false)}
       />
+
       <button
         type="button"
         className={`sidebar-overlay${isSidebarOpen ? " is-open" : ""}`}
         onClick={() => setIsSidebarOpen(false)}
         aria-label="Stäng meny"
       />
+
       <main className="dashboard-main">
         <DashboardHeader user={user} />
-        <DashboardSummary />
+
+        <div className="dashboard-content">
+          
+          <DashboardSummary />
+
+         
+          <section className="dashboard-overview-grid">
+            <AccountOverview />
+            <PaymentStatus />
+          </section>
+
+         
+          <section className="dashboard-lower-grid">
+            <PendingApprovals />
+            <UpcomingPayments />
+          </section>
+
+          
+          <section className="dashboard-lower-grid">
+            <RecentActivity />
+            <QuickActions />
+          </section>
+        </div>
       </main>
     </div>
   );
