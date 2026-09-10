@@ -681,6 +681,107 @@
 	text-align: center;
 }
 
+/* --------------------- PENDING APPROVALS --------------------- */
+/* PENDING APPROVALS */
+
+.pending-approvals {
+	min-width: 0;
+}
+
+.pending-approvals__list {
+	display: flex;
+	flex-direction: column;
+}
+
+.pending-approvals__item {
+	align-items: center;
+	border-bottom: 1px solid #edf0ef;
+	display: flex;
+	gap: 12px;
+	min-height: 58px;
+	padding: 8px 0;
+}
+
+.pending-approvals__item:last-child {
+	border-bottom: none;
+}
+
+.pending-approvals__icon {
+	align-items: center;
+	background: #fff4d8;
+	border-radius: 50%;
+	color: #c58a00;
+	display: flex;
+	flex-shrink: 0;
+	height: 34px;
+	justify-content: center;
+	width: 34px;
+}
+
+.pending-approvals__icon svg {
+	height: 17px;
+	stroke-width: 1.8;
+	width: 17px;
+}
+
+.pending-approvals__info {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+
+.pending-approvals__info strong {
+	color: #142d26;
+	font-size: 12px;
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pending-approvals__info span {
+	color: #74817d;
+	font-size: 11px;
+}
+
+.pending-approvals__details {
+	align-items: flex-end;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	flex-shrink: 0;
+}
+
+.pending-approvals__details strong {
+	color: #142d26;
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.pending-approvals__details .status-badge {
+	font-size: 10px;
+	padding: 4px 7px;
+}
+
+.pending-approvals__empty {
+	align-items: center;
+	color: #74817d;
+	display: flex;
+	font-size: 12px;
+	gap: 8px;
+	justify-content: center;
+	padding: 20px 0;
+}
+
+.pending-approvals__empty svg {
+	color: #188038;
+	height: 17px;
+	width: 17px;
+}
+
 /* ---------------------RESPONSIVE------------------------- */
 
 /*Tablet*/
@@ -821,5 +922,18 @@
 	.upcoming-payments__details strong {
 		font-size: 11px;
 	}
+
+	.pending-approvals__item {
+	min-height: 54px;
+}
+
+.pending-approvals__icon {
+	height: 32px;
+	width: 32px;
+}
+
+.pending-approvals__details strong {
+	font-size: 11px;
+}
 
 }
