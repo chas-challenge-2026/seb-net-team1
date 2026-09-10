@@ -7,6 +7,7 @@ import PaymentStatus from "../components/dashboard/PaymentStatus";
 import UpcomingPayments from "../components/dashboard/UpcomingPayments";
 import PendingApprovals from "../components/dashboard/PendingApprovals";
 import RecentActivity from "../components/dashboard/RecentActivity";
+import QuickActions from "../components/dashboard/QuickActions";
 import "../styles/dashboard.css";
 
 function Dashboard() {
@@ -43,6 +44,7 @@ function Dashboard() {
         <UpcomingPayments />
         <PendingApprovals />
         <RecentActivity />
+        <QuickActions />
 
       </main>
     </div>

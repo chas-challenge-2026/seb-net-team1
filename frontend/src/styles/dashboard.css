@@ -854,6 +854,124 @@
 	text-align: center;
 }
 
+/* ------------------ QUICK ACTIONS ------------------------- */
+
+.quick-actions {
+	min-width: 0;
+	margin: 24px 0 32px;
+}
+
+.quick-actions__grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.quick-actions__item {
+	align-items: center;
+	background: #ffffff;
+	border: 1px solid #e2e7e5;
+	border-radius: 8px;
+	cursor: pointer;
+	display: flex;
+	gap: 10px;
+	min-height: 62px;
+	padding: 10px 12px;
+	text-align: left;
+	transition:
+		border-color 0.2s ease,
+		box-shadow 0.2s ease,
+		transform 0.2s ease;
+	width: 100%;
+}
+
+.quick-actions__item:hover {
+	border-color: #cbd8d2;
+	box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+	transform: translateY(-1px);
+}
+
+
+
+.quick-actions__icon {
+	align-items: center;
+	border-radius: 8px;
+	display: flex;
+	flex-shrink: 0;
+	height: 34px;
+	justify-content: center;
+	width: 34px;
+}
+
+.quick-actions__icon svg {
+	height: 17px;
+	stroke-width: 1.8;
+	width: 17px;
+}
+
+
+
+.quick-actions__item--green .quick-actions__icon {
+	background: #e7f6eb;
+	color: #188038;
+}
+
+
+
+.quick-actions__item--blue .quick-actions__icon {
+	background: #eaf1fb;
+	color: #3975c6;
+}
+
+
+
+.quick-actions__item--yellow .quick-actions__icon {
+	background: #fff4d8;
+	color: #c58a00;
+}
+
+
+.quick-actions__item--purple .quick-actions__icon {
+	background: #f0eafd;
+	color: #7654c6;
+}
+
+
+
+.quick-actions__content {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+
+.quick-actions__label {
+	color: #142d26;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
+.quick-actions__description {
+	color: #74817d;
+	font-size: 10px;
+	line-height: 1.3;
+}
+
+
+
+.quick-actions__arrow {
+	color: #74817d;
+	flex-shrink: 0;
+	height: 14px;
+	width: 14px;
+}
+
+.quick-actions__item:hover .quick-actions__arrow {
+	color: #006831;
+}
+
 /* ---------------------RESPONSIVE------------------------- */
 
 /*Tablet*/
@@ -1019,6 +1137,24 @@
 
 .recent-activity__info strong {
 	font-size: 11px;
+}
+
+.quick-actions__grid {
+	grid-template-columns: 1fr;
+}
+
+.quick-actions__item {
+	min-height: 58px;
+}
+
+.quick-actions__icon {
+	height: 32px;
+	width: 32px;
+}
+
+.quick-actions__icon svg {
+	height: 16px;
+	width: 16px;
 }
 
 }
