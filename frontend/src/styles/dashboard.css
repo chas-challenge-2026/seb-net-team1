@@ -782,6 +782,78 @@
 	width: 17px;
 }
 
+/*------------- RECENT ACTIVITY --------------*/
+
+.recent-activity {
+	min-width: 0;
+	margin-top: 24px;
+}
+
+.recent-activity__list {
+	display: flex;
+	flex-direction: column;
+}
+
+.recent-activity__item {
+	align-items: center;
+	border-bottom: 1px solid #edf0ef;
+	display: flex;
+	gap: 12px;
+	min-height: 58px;
+	padding: 8px 0;
+}
+
+.recent-activity__item:last-child {
+	border-bottom: none;
+}
+
+.recent-activity__icon {
+	align-items: center;
+	background: #eef6f1;
+	border-radius: 50%;
+	color: #006831;
+	display: flex;
+	flex-shrink: 0;
+	height: 34px;
+	justify-content: center;
+	width: 34px;
+}
+
+.recent-activity__icon svg {
+	height: 17px;
+	stroke-width: 1.8;
+	width: 17px;
+}
+
+.recent-activity__info {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+
+.recent-activity__info strong {
+	color: #142d26;
+	font-size: 12px;
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.recent-activity__info span {
+	color: #74817d;
+	font-size: 11px;
+}
+
+.recent-activity__empty {
+	color: #74817d;
+	font-size: 12px;
+	padding: 20px 0;
+	text-align: center;
+}
+
 /* ---------------------RESPONSIVE------------------------- */
 
 /*Tablet*/
@@ -933,6 +1005,19 @@
 }
 
 .pending-approvals__details strong {
+	font-size: 11px;
+}
+
+.recent-activity__item {
+	min-height: 54px;
+}
+
+.recent-activity__icon {
+	height: 32px;
+	width: 32px;
+}
+
+.recent-activity__info strong {
 	font-size: 11px;
 }
 
