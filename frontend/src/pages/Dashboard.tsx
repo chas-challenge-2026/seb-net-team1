@@ -3,6 +3,7 @@ import DashboardHeader from "../components/dashboard/DashboardHeader";
 import Sidebar from "../components/dashboard/Sidebar";
 import DashboardSummary from "../components/dashboard/DashboardSummary";
 import AccountOverview from "../components/dashboard/AccountOverview";
+import PaymentStatus from "../components/dashboard/PaymentStatus";
 import "../styles/dashboard.css";
 
 function Dashboard() {
@@ -32,9 +33,10 @@ function Dashboard() {
       <main className="dashboard-main">
         <DashboardHeader user={user} />
         <DashboardSummary />
-         <section className="dashboard-overview-grid">
-        <AccountOverview />
-      </section>
+        <section className="dashboard-overview-grid">
+          <AccountOverview />
+          <PaymentStatus />
+        </section>
       </main>
     </div>
   );

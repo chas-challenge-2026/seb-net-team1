@@ -469,6 +469,112 @@
   letter-spacing: -0.2px;
 }
 
+/* ---------------------PAYMENT STATUS------------------------- */
+
+.payment-status {
+	min-width: 0;
+}
+
+
+.payment-status__list {
+	display: flex;
+	flex-direction: column;
+}
+
+
+
+.payment-status__row {
+	align-items: center;
+	border-bottom: 1px solid #edf0ef;
+	display: flex;
+	justify-content: space-between;
+	min-height: 42px;
+}
+
+.payment-status__row:last-child {
+	border-bottom: none;
+}
+
+
+.payment-status__label {
+	align-items: center;
+	color: #43504c;
+	display: flex;
+	font-size: 12px;
+	font-weight: 500;
+	gap: 10px;
+}
+
+.payment-status__label svg {
+	height: 18px;
+	flex-shrink: 0;
+	stroke-width: 1.8;
+	width: 18px;
+}
+
+
+.payment-status__row:nth-child(1) .payment-status__label svg {
+	color: #188038;
+}
+
+.payment-status__row:nth-child(2) .payment-status__label svg {
+	color: #3975c6;
+}
+
+.payment-status__row:nth-child(3) .payment-status__label svg {
+	color: #c58a00;
+}
+
+.payment-status__row:nth-child(4) .payment-status__label svg {
+	color: #d64545;
+}
+
+.payment-status__row:nth-child(5) .payment-status__label svg {
+	color: #66716e;
+}
+
+
+.status-badge {
+	align-items: center;
+	border-radius: 999px;
+	display: inline-flex;
+	font-size: 11px;
+	font-weight: 600;
+	justify-content: center;
+	line-height: 1;
+	min-width: 28px;
+	padding: 5px 8px;
+}
+
+
+.status-badge--success {
+	background: #e7f6eb;
+	color: #188038;
+}
+
+
+.status-badge--processing {
+	background: #eaf1fb;
+	color: #3975c6;
+}
+
+
+.status-badge--pending {
+	background: #fff4d8;
+	color: #c58a00;
+}
+
+.status-badge--rejected {
+	background: #fdebea;
+	color: #d64545;
+}
+
+
+.status-badge--failed {
+	background: #edf0f1;
+	color: #66716e;
+}
+
 /* ---------------------RESPONSIVE------------------------- */
 
 /*Tablet*/
@@ -583,4 +689,17 @@
   .account-card {
     min-height: 120px;
   }
+  
+  .payment-status__row {
+	min-height: 44px;
+}
+
+.payment-status__label {
+	font-size: 12px;
+}
+
+.payment-status__label svg {
+	height: 17px;
+	width: 17px;
+}
 }
