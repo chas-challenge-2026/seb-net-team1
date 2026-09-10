@@ -2,6 +2,7 @@ import { useState } from "react";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import Sidebar from "../components/dashboard/Sidebar";
 import DashboardSummary from "../components/dashboard/DashboardSummary";
+import AccountOverview from "../components/dashboard/AccountOverview";
 import "../styles/dashboard.css";
 
 function Dashboard() {
@@ -31,6 +32,9 @@ function Dashboard() {
       <main className="dashboard-main">
         <DashboardHeader user={user} />
         <DashboardSummary />
+         <section className="dashboard-overview-grid">
+        <AccountOverview />
+      </section>
       </main>
     </div>
   );

@@ -322,13 +322,164 @@
   stroke-width: 1.8;
 }
 
+/* ---------------------ACCOUNT OVERVIEW + PAYMENT STATUS ------------------------- */
+.dashboard-overview-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.dashboard-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 18px;
+}
+
+.dashboard-section__header h2 {
+  margin: 0;
+
+  color: #142d26;
+
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.dashboard-section__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 0;
+
+  border: none;
+  background: none;
+
+  color: #43504c;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+
+  cursor: pointer;
+}
+
+.dashboard-section__link svg {
+  width: 14px;
+  height: 14px;
+}
+
+.dashboard-section__link:hover {
+  color: #006831;
+}
+
+/* ---------------------ACCOUNT OVERVIEW------------------------- */
+.account-overview {
+  min-width: 0;
+}
+
+.account-overview__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.account-card {
+  display: flex;
+  flex-direction: column;
+
+  min-width: 0;
+  min-height: 145px;
+
+  padding: 16px;
+
+  background: #ffffff;
+
+  border: 1px solid #e2e7e5;
+  border-radius: 8px;
+}
+
+.account-card__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 36px;
+  height: 36px;
+
+  flex-shrink: 0;
+
+  background: #eef6f1;
+  color: #006831;
+
+  border-radius: 50%;
+}
+
+.account-card__icon svg {
+  width: 18px;
+  height: 18px;
+
+  stroke-width: 1.8;
+}
+
+.account-card h3 {
+  margin: 0 0 3px;
+
+  color: #142d26;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.account-card__iban {
+  color: #74817d;
+
+  font-size: 11px;
+}
+
+.account-card__balance {
+  display: flex;
+  flex-direction: column;
+
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+.account-card__balance span {
+  margin-bottom: 4px;
+
+  color: #74817d;
+
+  font-size: 11px;
+}
+
+.account-card__balance strong {
+  color: #142d26;
+
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
 /* ---------------------RESPONSIVE------------------------- */
 
 /*Tablet*/
 @media (max-width: 1100px) {
 	.dashboard-summary {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: repeat(2, minmax(0, 1fr));	
 	}
+
+	.dashboard-overview-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 700px) {
@@ -424,4 +575,12 @@
 	  .summary-card__value {
 		font-size: 24px;
 	  }
+
+	  .account-overview__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-card {
+    min-height: 120px;
+  }
 }
