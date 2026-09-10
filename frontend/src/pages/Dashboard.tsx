@@ -28,24 +28,39 @@ function Dashboard() {
         onToggle={() => setIsSidebarOpen((isOpen) => !isOpen)}
         onClose={() => setIsSidebarOpen(false)}
       />
+
       <button
         type="button"
         className={`sidebar-overlay${isSidebarOpen ? " is-open" : ""}`}
         onClick={() => setIsSidebarOpen(false)}
         aria-label="Stäng meny"
       />
+
       <main className="dashboard-main">
         <DashboardHeader user={user} />
-        <DashboardSummary />
-        <section className="dashboard-overview-grid">
-          <AccountOverview />
-          <PaymentStatus />
-        </section>
-        <UpcomingPayments />
-        <PendingApprovals />
-        <RecentActivity />
-        <QuickActions />
 
+        <div className="dashboard-content">
+          
+          <DashboardSummary />
+
+         
+          <section className="dashboard-overview-grid">
+            <AccountOverview />
+            <PaymentStatus />
+          </section>
+
+         
+          <section className="dashboard-lower-grid">
+            <PendingApprovals />
+            <UpcomingPayments />
+          </section>
+
+          
+          <section className="dashboard-lower-grid">
+            <RecentActivity />
+            <QuickActions />
+          </section>
+        </div>
       </main>
     </div>
   );
