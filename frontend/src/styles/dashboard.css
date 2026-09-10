@@ -430,6 +430,21 @@
   stroke-width: 1.8;
 }
 
+.account-card__icon--1 {
+	background: #e7f6eb;
+	color: #188038;
+}
+
+.account-card__icon--2 {
+	background: #f0eafb;
+	color: #7652b8;
+}
+
+.account-card__icon--3 {
+	background: #e8f1fb;
+	color: #3975c6;
+}
+
 .account-card h3 {
   margin: 0 0 3px;
 

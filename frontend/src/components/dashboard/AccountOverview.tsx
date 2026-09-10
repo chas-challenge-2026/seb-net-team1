@@ -37,7 +37,9 @@ export default function AccountOverview() {
         {accounts.map((account) => (
           <div className="account-card" key={account.id}>
             <div className="account-card__top">
-              <div className="account-card__icon">
+              <div
+                className={`account-card__icon account-card__icon--${account.id}`}
+              >
                 <LuBuilding2 />
               </div>
 
