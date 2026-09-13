@@ -1,25 +1,22 @@
+using Microsoft.EntityFrameworkCore;
+using SebPortal.Api.Data;
 using SebPortal.Api.Models;
 
 namespace SebPortal.Api.Repositories;
 
 public class UserRepository
 {
+    private readonly SebDbContext _context;
+
+    public UserRepository(SebDbContext context)
+    {
+        _context = context;
+    }
+
     public User? GetByEmail(string email)
     {
-        if (email != "lisa@malmobygg.se")
-        {
-            return null;
-        }
-
-        return new User
-        {
-            Id = 1,
-            Name = "Lisa Andersson",
-            Email = "lisa@malmobygg.se",
-            Role = "initiator",
-            TenantId = 1,
-            PasswordHash = "$2a$11$eyQ2yJDRRPWxS4ZzT.heGuZ9.KxzwNHyrtiHWC2fU0atSb9ucAg.y"
-        };
-
+        return _context.Users
+            .AsNoTracking()
+            .FirstOrDefault(u => u.Email == email);
     }
 }
