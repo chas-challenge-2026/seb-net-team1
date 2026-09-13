@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<PasswordHasher>();
+builder.Services.AddScoped<PaymentService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
