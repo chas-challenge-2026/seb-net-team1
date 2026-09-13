@@ -1,0 +1,54 @@
+/* GLOBAL ROOT & DESIGN SYSTEM */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+
+    --seb-deep-green: #003C2F;
+    --seb-green: #00A651;
+    --green-hover: #008F45;
+    --light-green: #EAF7EF;
+
+    --ink: #17212B;
+    --dark-gray: #344154;
+    --medium-gray: #667280;
+    --light-gray: #F4F6F7;
+    
+    --border-color: #D0E3E7;
+    --white: #FFFFFF;
+
+    /* Statusfärger */
+    --success: #16A34A;
+    --warning: #F59E0B;
+    --error: #DC2626;
+    --info: #2563EB;
+    --pending: #667280;
+
+    /* Typografi */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    /* Layout */
+    --sidebar-width: 240px;
+    --header-height: 80px;
+    --radius-sm: 6px;
+    --radius-full: 9999px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--light-gray);
+    color: var(--ink);
+    font-family: var(--font-family);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Gemensamma Typografi */
+h1 { font-size: 28px; font-weight: 700; color: var(--ink); }
+h2 { font-size: 24px; font-weight: 700; }
+h3 { font-size: 20px; font-weight: 600; }
+p, body { font-size: 14px; font-weight: 400; }
+.small { font-size: 12px; color: var(--medium-gray); }
