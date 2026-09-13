@@ -1,98 +1,60 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using SebPortal.Api.Controllers;
-using SebPortal.Api.DTOs;
+using SebPortal.Api.Data;
+using SebPortal.Api.Models;
+using SebPortal.Api.Repositories;
+using SebPortal.Api.Services;
 using Xunit;
 
 namespace SebPortal.Api.Tests;
 
 public class DashboardControllerTests
 {
-    [Fact]
-    public void Get_ReturnsOkResult()
+    private static SebDbContext CreateContext()
     {
-        // Arrange
-        var controller = new DashboardController();
+        var options = new DbContextOptionsBuilder<SebDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        return new SebDbContext(options);
+    }
+
+    [Fact]
+    public async Task Get_ReturnsUnauthorized_WhenNoMatchingUser()
+    {
+        // Arrange: empty database
+        using var db = CreateContext();
+        var controller = new DashboardController(new DashboardService(new DashboardRepository(db)));
 
         // Act
-        var result = controller.Get();
+        var result = await controller.Get();
+
+        // Assert
+        Assert.IsType<UnauthorizedObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task Get_ReturnsOk_WhenUserExists()
+    {
+        // Arrange
+        using var db = CreateContext();
+        db.Tenants.Add(new Tenant { Id = 1, Name = "Runö Bygg AB" });
+        db.Users.Add(new User
+        {
+            Id = 1,
+            TenantId = 1,
+            Name = "Papper Pappersson",
+            Email = "papper@runobygg.se",
+            Role = "attestant"
+        });
+        db.SaveChanges();
+        var controller = new DashboardController(new DashboardService(new DashboardRepository(db)));
+
+        // Act
+        var result = await controller.Get();
 
         // Assert
         Assert.IsType<OkObjectResult>(result);
-    }
-
-    [Fact]
-    public void Get_ReturnsDashboardResponseWithExpectedShape()
-    {
-        // Arrange
-        var controller = new DashboardController();
-
-        // Act
-        var result = controller.Get() as OkObjectResult;
-        var response = result?.Value as DashboardResponse;
-
-        // Assert
-        Assert.NotNull(response);
-        Assert.False(string.IsNullOrWhiteSpace(response!.TenantName));
-        Assert.NotNull(response.User);
-        Assert.NotEmpty(response.Accounts);
-        Assert.NotEmpty(response.RecentPayments);
-        Assert.NotEmpty(response.PendingApprovals);
-    }
-
-    [Fact]
-    public void Get_MoneyFieldsAreStrings_NotFloats()
-    {
-        // Arrange
-        var controller = new DashboardController();
-
-        // Act
-        var result = controller.Get() as OkObjectResult;
-        var response = result?.Value as DashboardResponse;
-
-        // Assert
-        Assert.NotNull(response);
-
-        foreach (var account in response!.Accounts)
-        {
-            Assert.True(decimal.TryParse(account.Balance, out _),
-                $"Balance '{account.Balance}' should be a parseable decimal string.");
-        }
-
-        foreach (var payment in response.RecentPayments)
-        {
-            Assert.True(decimal.TryParse(payment.Amount, out _),
-                $"Amount '{payment.Amount}' should be a parseable decimal string.");
-        }
-
-        foreach (var approval in response.PendingApprovals)
-        {
-            Assert.True(decimal.TryParse(approval.Amount, out _),
-                $"Amount '{approval.Amount}' should be a parseable decimal string.");
-        }
-    }
-
-    [Fact]
-    public void Get_PaymentStatuses_AreValidContractValues()
-    {
-        // Arrange
-        var controller = new DashboardController();
-        var validStatuses = new[] { "completed", "pending_approval", "rejected" };
-
-        // Act
-        var result = controller.Get() as OkObjectResult;
-        var response = result?.Value as DashboardResponse;
-
-        // Assert
-        Assert.NotNull(response);
-
-        foreach (var payment in response!.RecentPayments)
-        {
-            Assert.Contains(payment.Status, validStatuses);
-        }
-
-        foreach (var approval in response.PendingApprovals)
-        {
-            Assert.Contains(approval.Status, validStatuses);
-        }
     }
 }

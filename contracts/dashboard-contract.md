@@ -14,14 +14,7 @@ Requires a valid JWT (`Authorization: Bearer <token>`).
 
 ## Request
 
-No request body.
-
-### Query parameters
-
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `limit` | number | No | Max number of recent payments to return. Default `20`. |
-| `cursor` | string | No | Pagination cursor for fetching older payments. Omit for the first page. |
+No request body, no query parameters.
 
 ---
 
@@ -69,8 +62,7 @@ No request body.
       "status": "pending_approval",
       "createdAt": "2026-08-31T14:00:00Z"
     }
-  ],
-  "nextCursor": "eyJpZCI6NDJ9"
+  ]
 }
 ```
 
@@ -97,7 +89,6 @@ No request body.
 | `recentPayments[].status` | string | One of: `completed`, `pending_approval`, `rejected` |
 | `recentPayments[].createdAt` | string (ISO 8601) | When the payment was created |
 | `pendingApprovals[]` | array | Same shape as `recentPayments[]`. Only populated for `attestant`/`admin` roles. Empty array otherwise |
-| `nextCursor` | string \| null | Pass as `cursor` to fetch the next page of `recentPayments`. `null` when there are no more results |
 
 ### Status values
 
@@ -140,9 +131,7 @@ Backend should use this contract to:
 - derive `tenantId` and the user id from the JWT claims only. Never trust a client-supplied id for either. v1 built SQL by inserting a session tenant id directly into the query (BUG-01/BUG-11 pattern), which this contract prevents at the endpoint boundary
 - scope `pendingApprovals` to the logged-in attestant's own id, not any id passed by the client. This is the same issue as BUG-11 (IDOR in attestkorgen)
 - only populate `pendingApprovals` when the user's role is `attestant` or `admin`
-- if `limit` is invalid or missing, default to `20`. If it exceeds a sane max (e.g. `100`), clamp to that max instead of returning `400`
-- if `cursor` is invalid or expired, treat it as if no cursor was given and return the first page rather than erroring
-- respect `limit`/`cursor` and return `nextCursor` accordingly. v1 fetched all accounts and the last 20 payments with no way to page further
+- return the most recent 20 payments for the tenant
 - represent all money values as decimal strings, never floating-point numbers
 - return consistent error responses per the format above
 
