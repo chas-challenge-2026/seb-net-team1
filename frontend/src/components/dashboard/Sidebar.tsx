@@ -60,7 +60,7 @@ export default function DashboardSidebar({
       {/* Navigation */}
       <nav className="dashboard-sidebar-nav">
 
-        <a href="#" className="dashboard-sidebar-link active">
+        <a href="/dashboard" className="dashboard-sidebar-link active">
           <FiHome />
           <span>Översikt</span>
         </a>
