@@ -1,31 +1,27 @@
-.new-payment-page {
-  background: var(--light-gray);
-  color: var(--ink);
-  min-height: 100vh;
-  overflow-y: auto;
-  padding: 40px 32px;
-}
-
 .new-payment-content {
-  margin: 0 auto;
-  max-width: 760px;
-}
-
-.new-payment-header {
-  margin-bottom: 24px;
-}
-
-.new-payment-header h1 {
-  color: var(--seb-deep-green);
-  margin: 0;
+  max-width: 720px;
+  width: 100%;
 }
 
 .new-payment-card {
   background: var(--white);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 8px 24px rgba(23, 33, 43, 0.08);
-  padding: 32px;
+  border: 1px solid #e2e7e5;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: 24px;
+}
+
+.new-payment-card-header {
+  border-bottom: 1px solid #edf0ef;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+}
+
+.new-payment-card-header h2 {
+  color: #142d26;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
 }
 
 .new-payment-form {
@@ -39,17 +35,19 @@
 }
 
 .new-payment-field label {
-  color: var(--dark-gray);
+  color: #43504c;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .new-payment-field input,
 .new-payment-field select {
   background: var(--white);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
+  border: 1px solid #cbd5d0;
+  border-radius: 6px;
   color: var(--ink);
   font: inherit;
+  font-size: 14px;
   min-height: 44px;
   padding: 10px 12px;
   width: 100%;
@@ -65,32 +63,29 @@
 .new-payment-actions {
   display: flex;
   justify-content: flex-end;
-  padding-top: 8px;
+  padding-top: 4px;
 }
 
 .new-payment-submit {
-  background: var(--seb-green);
+  background: #006831;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 6px;
   color: var(--white);
   cursor: pointer;
   font: inherit;
+  font-size: 14px;
   font-weight: 600;
   min-height: 44px;
   padding: 0 20px;
 }
 
 .new-payment-submit:hover {
-  background: var(--green-hover);
+  background: #005429;
 }
 
 @media (max-width: 700px) {
-  .new-payment-page {
-    padding: 24px 16px;
-  }
-
   .new-payment-card {
-    padding: 24px;
+    padding: 20px;
   }
 
   .new-payment-actions {

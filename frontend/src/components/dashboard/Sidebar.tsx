@@ -1,5 +1,6 @@
 import "../../styles/dashboard.css";
 import logo from "../../assets/seb_logo_white.png";
+import { useLocation } from "react-router-dom";
 import {
   FiHome,
   FiCreditCard,
@@ -25,6 +26,10 @@ export default function DashboardSidebar({
   onToggle,
   onClose,
 }: SidebarProps){
+    const { pathname } = useLocation();
+    const overviewClassName = `dashboard-sidebar-link${pathname === "/dashboard" ? " active" : ""}`;
+    const paymentsClassName = `dashboard-sidebar-link${pathname === "/new-payment" ? " active" : ""}`;
+
     return (
       <>
         <button
@@ -60,12 +65,12 @@ export default function DashboardSidebar({
       {/* Navigation */}
       <nav className="dashboard-sidebar-nav">
 
-        <a href="#" className="dashboard-sidebar-link active">
+        <a href="/dashboard" className={overviewClassName}>
           <FiHome />
           <span>Översikt</span>
         </a>
 
-        <a href="/new-payment" className="dashboard-sidebar-link">
+        <a href="/new-payment" className={paymentsClassName}>
           <FiCreditCard />
           <span>Betalningar</span>
         </a>
