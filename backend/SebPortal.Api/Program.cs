@@ -1,7 +1,19 @@
+using Microsoft.EntityFrameworkCore;
+using SebPortal.Api.Data;
 using SebPortal.Api.Repositories;
 using SebPortal.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add database context
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<SebDbContext>(options =>
+{
+    if (!string.IsNullOrEmpty(connectionString))
+    {
+        options.UseNpgsql(connectionString);
+    }
+});
 
 // Add services to the container.
 builder.Services.AddScoped<AuthService>();
