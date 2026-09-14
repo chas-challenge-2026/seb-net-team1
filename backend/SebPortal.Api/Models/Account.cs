@@ -1,11 +1,14 @@
-﻿public class Account
+namespace SebPortal.Api.Models;
+
+public class Account
 {
     public int Id { get; set; }
-    public string? AccountNumber { get; set; }
+    public int TenantId { get; set; }
+    public string AccountName { get; set; } = string.Empty;
+    public string Iban { get; set; } = string.Empty;
     public decimal Balance { get; set; }
-    public string? AccountType { get; set; }
-    public int CustomerId { get; set; }
-    public int IBAN { get; set; }
-    public ICollection<Transaction> Transactions { get; set; }
-        = new List<Transaction>();
+    public string Currency { get; set; } = "SEK";
+
+    public Tenant? Tenant { get; set; }
+    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
 }

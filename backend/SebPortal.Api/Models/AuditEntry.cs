@@ -1,14 +1,14 @@
-﻿namespace SebPortal.Api.Models
+namespace SebPortal.Api.Models;
+
+public class AuditEntry
 {
-    public class AuditEntry
-    {
-        public int Id { get; set; }
-        public int userId { get; set; }
-        public int PaymentId { get; set; }
-        public string Action{ get; set; }
-        public string EntityType { get; set; }
-        public string EntityId { get; set; }
-        public string Description { get; set; }
-        public DateTime CreatedAt { get; set; }
-    }
+    public int Id { get; set; }
+    public int? UserId { get; set; }
+    public string Action { get; set; } = string.Empty;
+    public string? EntityType { get; set; }
+    public int? EntityId { get; set; }
+    public string? Description { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public User? User { get; set; }
 }
