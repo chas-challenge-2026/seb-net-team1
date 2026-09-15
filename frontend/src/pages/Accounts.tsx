@@ -1,6 +1,9 @@
 import { useState } from "react";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import Sidebar from "../components/dashboard/Sidebar";
+import AccountSummary from "../components/accounts/AccountSummary";
+import AccountList from "../components/accounts/AccountList";
+
 
 const Accounts = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -36,7 +39,8 @@ const Accounts = () => {
 
           <div className="accounts-layout">
             <section className="accounts-content">
-              {/* TODO: Lägg till account summaryn samt account listan */}
+                <AccountSummary />
+                <AccountList />
             </section>
 
             <aside className="accounts-aside">
