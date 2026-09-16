@@ -1,9 +1,64 @@
+using Microsoft.EntityFrameworkCore;
+using SebPortal.Api.Data;
 using SebPortal.Api.Models;
+using SebPortal.Api.Repositories;
 
 namespace SebPortal.Api.Services;
 
-public class PaymentService
+public class PaymentService(PaymentRepository paymentRepository)
 {
+    /// <summary>
+    /// Creates a payment, validates the source account and tenant,
+    /// and either completes the payment or leaves it pending approval.
+    /// </summary>
+    public async Task<Payment> CreatePaymentAsync(
+        int tenantId,
+        int fromAccountId,
+        string toIban,
+        decimal amount,
+        string currency,
+        string? reference,
+        int? createdById,
+        bool requiresApproval) // bool right now, could be changed to so that you instead need
+    {
+        // 1. Look for the right account or tenant
+        var account = await paymentRepository.GetAccountAsync(fromAccountId, tenantId);
+
+        if (account is null)
+        {
+            throw new InvalidOperationException("Account could not be found or the the tenant might be wrong");
+        }
+
+        // 2. Create the payment
+        var payment = new Payment
+        {
+            TenantId = tenantId,
+            FromAccountId = fromAccountId,
+            ToIban = toIban,
+            Amount = amount,
+            Currency = currency,
+            Reference = reference,
+            CreatedById = createdById,
+            CreatedAt = DateTime.UtcNow,
+            Status = PaymentStatuses.PendingApproval
+        };
+
+        // 3. Checks if attest is needed ---------- right now you yourself says if its true or false
+        if (!requiresApproval)
+        {
+            var result = CompletePayment(payment, account);
+
+            if (!result.WasSuccessful)
+            {
+                throw new InvalidOperationException(result.ErrorMessage);
+            }
+        }
+
+        // 4. Saves the logic to be able to send money in the next step
+        await paymentRepository.AddPaymentAsync(payment);
+
+        return payment;
+    }
     /// <summary>
     /// Attempts to complete a payment by keeping the payment status and account
     /// balance update together. The payment should only be completed if it belongs
