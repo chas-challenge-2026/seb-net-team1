@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.Services;
-using System.IdentityModel.Tokens.Jwt;
+using SebPortal.Api.Auth;
 
 namespace SebPortal.Api.Controllers;
 
@@ -15,16 +15,15 @@ public class DashboardController(DashboardService dashboardService) : Controller
     public async Task<IActionResult> Get()
     {
 
-        var userIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        var tenantIdClaim = User.FindFirst("tenantId")?.Value;
+        var userId = User.GetUserId();
+        var tenantId = User.GetTenantId();
 
-        if (!int.TryParse(userIdClaim, out var userId) ||
-            !int.TryParse(tenantIdClaim, out var tenantId))
+        if (userId is null || tenantId is null)
         {
             return Unauthorized(new { message = "Ogiltig eller saknad användarinformation i token." });
         }
 
-        var dashboard = await dashboardService.GetDashboardAsync(tenantId, userId);
+        var dashboard = await dashboardService.GetDashboardAsync(tenantId.Value, userId.Value);
 
         if (dashboard is null)
         {
