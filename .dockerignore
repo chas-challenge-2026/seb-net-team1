@@ -1,0 +1,25 @@
+# Git
+.git
+.gitignore
+
+# .NET build artifacts
+**/bin/
+**/obj/
+
+# Node
+**/node_modules/
+frontend/dist/
+
+# IDE / OS
+.idea/
+.vs/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+**/*.log
+
+# Docker itself
+Dockerfile
+docker-compose*.yml
