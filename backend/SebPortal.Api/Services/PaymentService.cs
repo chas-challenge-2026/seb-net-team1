@@ -1,13 +1,36 @@
 using SebPortal.Api.Models;
+using SebPortal.Api.DTOs;
 
 namespace SebPortal.Api.Services;
 
 public class PaymentService
 {
     /// <summary>
-    /// Attempts to complete a payment by keeping the payment status and account
-    /// balance update together. The payment should only be completed if it belongs
-    /// to the provided account and has not already been completed.
+    /// Creates the initial payment model from the incoming API request.
+    /// The IBAN is normalized and the payment starts with pending approval status.
+    /// </summary>
+    /// <param name="request">The payment data sent from the API layer.</param>
+    /// <returns>A new payment model ready to be handled by the payment flow.</returns>
+    public Payment CreatePayment(CreatePaymentRequestDto request)
+    {
+        var toIban = request.ToIban.Trim().Replace(" ", "");
+
+        return new Payment
+        {
+            Id = 1, // Temporary placeholder until payments are persisted in the database.
+            FromAccountId = request.FromAccountId,
+            ToIban = toIban,
+            Amount = request.Amount,
+            Currency = "SEK",
+            Reference = request.Reference,
+            Status = PaymentStatuses.PendingApproval,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    /// <summary>
+    /// Attempts to complete a payment by keeping the payment status, account balance,
+    /// execution timestamp and transaction history updated together.
     /// </summary>
     /// <param name="payment">The payment that should be completed.</param>
     /// <param name="account">The account the payment should be withdrawn from.</param>
