@@ -3,7 +3,8 @@ import DashboardHeader from "../components/dashboard/DashboardHeader";
 import Sidebar from "../components/dashboard/Sidebar";
 import AccountSummary from "../components/accounts/AccountSummary";
 import AccountList from "../components/accounts/AccountList";
-
+import "../styles/dashboard.css";
+import "../styles/accounts.css";
 
 const Accounts = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -16,8 +17,17 @@ const Accounts = () => {
         onClose={() => setIsSidebarOpen(false)}
       />
 
-      <div className="dashboard-content">
+      <button
+        type="button"
+        className={`sidebar-overlay${isSidebarOpen ? " is-open" : ""}`}
+        onClick={() => setIsSidebarOpen(false)}
+        aria-label="Stäng meny"
+      />
+
+      <main className="dashboard-main">
         <DashboardHeader
+          title="Konton"
+          subtitle="Här ser du en samlad bild av företagets konton och saldo."
           user={{
             id: 1,
             tenantId: 1,
@@ -25,30 +35,17 @@ const Accounts = () => {
             email: "anvandarnamn@seb.se",
             role: "admin",
           }}
-          onSearch={(value) => console.log("Sökning:", value)}
-          onNotificationClick={() => console.log("Notifikationer klickade")}
         />
 
-        <main className="accounts-main">
-          <div className="accounts-header">
-            <div>
-              <h1>Konton</h1>
-              <p>Här ser du samlad bild av företagets konton och saldo.</p>
-            </div>
-          </div>
-
-          <div className="accounts-layout">
+        <div className="dashboard-content">
+          <div className="accounts-main">
             <section className="accounts-content">
-                <AccountSummary />
-                <AccountList />
+              <AccountSummary />
+              <AccountList />
             </section>
-
-            <aside className="accounts-aside">
-              {/* TODO: Lägg till den extra informationen */}
-            </aside>
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };
