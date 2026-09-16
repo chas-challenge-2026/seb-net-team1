@@ -40,7 +40,7 @@ public class PaymentService(PaymentRepository paymentRepository)
             Reference = reference,
             CreatedById = createdById,
             CreatedAt = DateTime.UtcNow,
-            Status = PaymentStatuses.PendingApproval //a
+            Status = PaymentStatuses.PendingApproval 
         };
 
         // 3. Checks if attest is needed ---------- right now you yourself says if its true or false
