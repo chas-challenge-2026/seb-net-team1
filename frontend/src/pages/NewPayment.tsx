@@ -2,11 +2,15 @@ import { useEffect, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { FiBell, FiSearch } from "react-icons/fi";
 import { getAccounts } from "../api/accountsApi";
+import { createPayment } from "../api/paymentsApi";
 import Sidebar from "../components/dashboard/Sidebar";
 import Button from "../components/shared/Button";
 import Card from "../components/shared/Card";
 import type { Account } from "../types/Account";
-import type { CreatePaymentRequest } from "../types/Payment";
+import type {
+  CreatePaymentRequest,
+  CreatePaymentResponse,
+} from "../types/Payment";
 import "../styles/dashboard.css";
 import "../styles/newPayment.css";
 
@@ -21,6 +25,10 @@ function NewPayment() {
     amount: "",
     reference: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [createdPayment, setCreatedPayment] =
+    useState<CreatePaymentResponse | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -53,8 +61,43 @@ function NewPayment() {
     };
   }, []);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
+
+    if (
+      paymentForm.fromAccountId === 0 ||
+      !paymentForm.toIban.trim() ||
+      !paymentForm.amount.trim()
+    ) {
+      setSubmitError("Välj konto, ange IBAN och belopp.");
+      setCreatedPayment(null);
+      return;
+    }
+
+    const paymentToCreate: CreatePaymentRequest = {
+      fromAccountId: paymentForm.fromAccountId,
+      toIban: paymentForm.toIban.trim(),
+      amount: paymentForm.amount,
+      reference: paymentForm.reference?.trim() || undefined,
+    };
+
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      setCreatedPayment(null);
+
+      const payment = await createPayment(paymentToCreate);
+
+      setCreatedPayment(payment);
+    } catch {
+      setSubmitError("Kunde inte skapa betalningen. Försök igen.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function handleAccountChange(event: ChangeEvent<HTMLSelectElement>) {
@@ -66,6 +109,8 @@ function NewPayment() {
       ...currentForm,
       fromAccountId: selectedAccountId,
     }));
+    setSubmitError(null);
+    setCreatedPayment(null);
   }
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
@@ -75,6 +120,8 @@ function NewPayment() {
       ...currentForm,
       [name]: value,
     }));
+    setSubmitError(null);
+    setCreatedPayment(null);
   }
 
   return (
@@ -201,10 +248,22 @@ function NewPayment() {
                 </div>
 
                 <div className="new-payment-actions">
-                  <Button type="submit" className="new-payment-submit">
-                    Skapa betalning
+                  <Button
+                    type="submit"
+                    className="new-payment-submit"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Skapar betalning..." : "Skapa betalning"}
                   </Button>
                 </div>
+
+                {createdPayment ? (
+                  <small role="status">
+                    Betalning skapad i mock-API med ID {createdPayment.id}.
+                  </small>
+                ) : null}
+
+                {submitError ? <small role="alert">{submitError}</small> : null}
               </form>
             </Card>
           </section>

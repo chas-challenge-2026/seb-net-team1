@@ -1,5 +1,7 @@
 export type PaymentStatus = "completed" | "pending_approval";
 
+export type PaymentId = number | string;
+
 export type CreatePaymentRequest = {
   fromAccountId: number;
   toIban: string;
@@ -8,7 +10,7 @@ export type CreatePaymentRequest = {
 };
 
 export type CreatePaymentResponse = {
-  id: number;
+  id: PaymentId;
   status: PaymentStatus;
   fromAccountId: number;
   toIban: string;

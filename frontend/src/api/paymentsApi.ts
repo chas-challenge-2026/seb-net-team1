@@ -51,7 +51,7 @@ export async function createPayment(
   }
 
   return {
-    id: Number(createdPayment.id),
+    id: createdPayment.id,
     status: createdPayment.status ?? MOCK_DEFAULT_STATUS,
     fromAccountId: createdPayment.fromAccountId ?? payment.fromAccountId,
     toIban: createdPayment.toIban ?? payment.toIban,
