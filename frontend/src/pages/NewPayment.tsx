@@ -1,17 +1,80 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { FiBell, FiSearch } from "react-icons/fi";
+import { getAccounts } from "../api/accountsApi";
 import Sidebar from "../components/dashboard/Sidebar";
 import Button from "../components/shared/Button";
 import Card from "../components/shared/Card";
+import type { Account } from "../types/Account";
+import type { CreatePaymentRequest } from "../types/Payment";
 import "../styles/dashboard.css";
 import "../styles/newPayment.css";
 
 function NewPayment() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
+  const [accountLoadError, setAccountLoadError] = useState<string | null>(null);
+  const [paymentForm, setPaymentForm] = useState<CreatePaymentRequest>({
+    fromAccountId: 0,
+    toIban: "",
+    amount: "",
+    reference: "",
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAccounts() {
+      try {
+        setIsLoadingAccounts(true);
+        setAccountLoadError(null);
+
+        const fetchedAccounts = await getAccounts();
+
+        if (isMounted) {
+          setAccounts(fetchedAccounts);
+        }
+      } catch {
+        if (isMounted) {
+          setAccountLoadError("Kunde inte hämta konton.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingAccounts(false);
+        }
+      }
+    }
+
+    loadAccounts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+  }
+
+  function handleAccountChange(event: ChangeEvent<HTMLSelectElement>) {
+    const selectedAccountId = event.target.value
+      ? Number(event.target.value)
+      : 0;
+
+    setPaymentForm((currentForm) => ({
+      ...currentForm,
+      fromAccountId: selectedAccountId,
+    }));
+  }
+
+  function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
+    const { name, value } = event.target;
+
+    setPaymentForm((currentForm) => ({
+      ...currentForm,
+      [name]: value,
+    }));
   }
 
   return (
@@ -69,9 +132,30 @@ function NewPayment() {
               <form className="new-payment-form" onSubmit={handleSubmit}>
                 <div className="new-payment-field">
                   <label htmlFor="from-account">Konto</label>
-                  <select id="from-account" name="fromAccountId" required>
-                    <option value="">Välj konto</option>
+                  <select
+                    id="from-account"
+                    name="fromAccountId"
+                    value={
+                      paymentForm.fromAccountId === 0
+                        ? ""
+                        : String(paymentForm.fromAccountId)
+                    }
+                    onChange={handleAccountChange}
+                    disabled={isLoadingAccounts}
+                    required
+                  >
+                    <option value="">
+                      {isLoadingAccounts ? "Laddar konton..." : "Välj konto"}
+                    </option>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {`${account.accountName} - ${account.iban} (${account.currency})`}
+                      </option>
+                    ))}
                   </select>
+                  {accountLoadError ? (
+                    <small role="alert">{accountLoadError}</small>
+                  ) : null}
                 </div>
 
                 <div className="new-payment-field">
@@ -82,6 +166,8 @@ function NewPayment() {
                     type="text"
                     placeholder="SE00 0000 0000 0000 0000 0000"
                     maxLength={34}
+                    value={paymentForm.toIban}
+                    onChange={handleInputChange}
                     required
                   />
                 </div>
@@ -95,6 +181,8 @@ function NewPayment() {
                     min="0.01"
                     step="0.01"
                     placeholder="0.00"
+                    value={paymentForm.amount}
+                    onChange={handleInputChange}
                     required
                   />
                 </div>
@@ -107,6 +195,8 @@ function NewPayment() {
                     type="text"
                     placeholder="Faktura #1234"
                     maxLength={100}
+                    value={paymentForm.reference ?? ""}
+                    onChange={handleInputChange}
                   />
                 </div>
 
