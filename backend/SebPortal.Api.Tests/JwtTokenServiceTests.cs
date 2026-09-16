@@ -35,6 +35,7 @@ public class JwtTokenServiceTests
         // Act
         var token = service.GenerateToken(
             userId: 1,
+            tenantId: 1,
             email: "lisa@malmobygg.se",
             role: "initiator",
             name: "Lisa Persson");
@@ -49,6 +50,7 @@ public class JwtTokenServiceTests
         // Arrange
         var service = new JwtTokenService(_configuration);
         var expectedUserId = 42;
+        var expectedTenantId = 1;
         var expectedEmail = "johan@malmobygg.se";
         var expectedRole = "attestant";
         var expectedName = "Johan Berg";
@@ -56,9 +58,11 @@ public class JwtTokenServiceTests
         // Act
         var tokenString = service.GenerateToken(
             userId: expectedUserId,
+            tenantId: expectedTenantId,
             email: expectedEmail,
             role: expectedRole,
             name: expectedName);
+
 
         var handler = new JwtSecurityTokenHandler();
         var jwtToken = handler.ReadJwtToken(tokenString);
@@ -66,11 +70,12 @@ public class JwtTokenServiceTests
         // Assert claims
         Assert.Equal("TestIssuer", jwtToken.Issuer);
         Assert.Contains("TestAudience", jwtToken.Audiences);
-
         Assert.Equal(expectedUserId.ToString(), jwtToken.Claims.First(c => c.Type == JwtRegisteredClaimNames.Sub).Value);
+        Assert.Equal(expectedTenantId.ToString(), jwtToken.Claims.First(c => c.Type == "tenantId").Value);
         Assert.Equal(expectedEmail, jwtToken.Claims.First(c => c.Type == JwtRegisteredClaimNames.Email).Value);
         Assert.Equal(expectedName, jwtToken.Claims.First(c => c.Type == ClaimTypes.Name).Value);
         Assert.Equal(expectedRole, jwtToken.Claims.First(c => c.Type == ClaimTypes.Role).Value);
+
     }
 
     [Fact]
@@ -78,7 +83,7 @@ public class JwtTokenServiceTests
     {
         // Arrange
         var service = new JwtTokenService(_configuration);
-        var tokenString = service.GenerateToken(1, "sara@malmobygg.se", "admin", "Sara Ek");
+        var tokenString = service.GenerateToken(1, 1, "sara@malmobygg.se", "admin", "Sara Ek");
 
         var tokenHandler = new JwtSecurityTokenHandler();
         var validationParameters = new TokenValidationParameters
@@ -110,7 +115,7 @@ public class JwtTokenServiceTests
         var service = new JwtTokenService(emptyConfig);
 
         // Act
-        var tokenString = service.GenerateToken(1, "test@seb.se", "initiator", "Test User");
+        var tokenString = service.GenerateToken(1, 1, "test@seb.se", "initiator", "Test User");
 
         // Assert
         Assert.False(string.IsNullOrWhiteSpace(tokenString));

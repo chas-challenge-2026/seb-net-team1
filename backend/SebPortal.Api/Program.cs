@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SebPortal.Api.Data;
 using SebPortal.Api.Repositories;
 using SebPortal.Api.Services;
+using SebPortal.Api.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,7 @@ builder.Services.AddDbContext<SebDbContext>(options =>
 
 // Add services to the container.
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<PasswordHasher>();
 builder.Services.AddScoped<PaymentService>();
