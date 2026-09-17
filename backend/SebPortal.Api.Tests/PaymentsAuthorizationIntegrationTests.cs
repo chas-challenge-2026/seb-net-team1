@@ -5,6 +5,8 @@ using SebPortal.Api.DTOs;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.DependencyInjection;
 using SebPortal.Api.Auth;
+using SebPortal.Api.Data;
+using SebPortal.Api.Models;
 
 namespace SebPortal.Api.Tests;
 
@@ -12,13 +14,13 @@ namespace SebPortal.Api.Tests;
 /// Verifies payment authorization through the complete HTTP and JWT pipeline.
 /// </summary>
 public class PaymentsAuthorizationIntegrationTests
-    : IClassFixture<WebApplicationFactory<Program>>
+    : IClassFixture<PaymentApiFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly PaymentApiFactory _factory;
     private readonly HttpClient _client;
 
     public PaymentsAuthorizationIntegrationTests(
-        WebApplicationFactory<Program> factory)
+        PaymentApiFactory factory)
     {
         _factory = factory;
 
@@ -53,6 +55,20 @@ public class PaymentsAuthorizationIntegrationTests
     public async Task CreatePayment_WithValidToken_ReturnsCreated()
     {
         using var scope = _factory.Services.CreateScope();
+
+        var db = scope.ServiceProvider.GetRequiredService<SebDbContext>();
+
+        db.Accounts.Add(new Account
+        {
+            Id = 1,
+            TenantId = 1,
+            AccountName = "Företagskonto",
+            Iban = "SE3550000000054910000003",
+            Balance = 1000m,
+            Currency = "SEK"
+        });
+
+        await db.SaveChangesAsync();
 
         var tokenService = scope.ServiceProvider
             .GetRequiredService<JwtTokenService>();
