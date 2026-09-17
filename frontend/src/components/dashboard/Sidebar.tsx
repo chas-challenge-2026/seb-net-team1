@@ -29,6 +29,7 @@ export default function DashboardSidebar({
     const { pathname } = useLocation();
     const overviewClassName = `dashboard-sidebar-link${pathname === "/dashboard" ? " active" : ""}`;
     const paymentsClassName = `dashboard-sidebar-link${pathname === "/new-payment" ? " active" : ""}`;
+    const accountsClassName = `dashboard-sidebar-link${pathname === "/accounts" ? " active" : ""}`;
 
     return (
       <>
@@ -84,7 +85,7 @@ export default function DashboardSidebar({
           </span>
         </a>
 
-        <a href="#" className="dashboard-sidebar-link">
+        <a href="/accounts" className={accountsClassName}>
           <FiBriefcase />
           <span>Konton</span>
         </a>
