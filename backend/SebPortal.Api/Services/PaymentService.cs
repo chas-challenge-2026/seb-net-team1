@@ -1,16 +1,17 @@
-using SebPortal.Api.DTOs;
 using SebPortal.Api.Exceptions;
 using SebPortal.Api.Models;
 using SebPortal.Api.Repositories;
+using Microsoft.Extensions.Options;
+using SebPortal.Api.Options;
 
 namespace SebPortal.Api.Services;
 
-public class PaymentService(PaymentRepository paymentRepository)
+public class PaymentService(PaymentRepository paymentRepository, IOptions<PaymentRulesOptions> paymentRules)
 {
-
     /// <summary>
     /// Creates a payment, validates the source account and tenant,
-    /// and either completes the payment or leaves it pending approval.
+    /// and uses the configured approval threshold to either complete the payment
+    /// immediately or leave it pending approval.
     /// </summary>
     public async Task<Payment> CreatePaymentAsync(
         int tenantId,
@@ -19,8 +20,7 @@ public class PaymentService(PaymentRepository paymentRepository)
         decimal amount,
         string currency,
         string? reference,
-        int? createdById,
-        bool requiresApproval) // bool right now, could be changed to so that you instead need
+        int? createdById)
     {
         // 1. Look for the right account or tenant
         var account = await paymentRepository.GetAccountAsync(fromAccountId, tenantId);
@@ -48,7 +48,9 @@ public class PaymentService(PaymentRepository paymentRepository)
             Status = PaymentStatuses.PendingApproval
         };
 
-        // 3. Checks if attest is needed ---------- right now you yourself says if its true or false
+        // 3. Determine the payment flow from the configured approval threshold.
+        var requiresApproval = amount > paymentRules.Value.ApprovalThreshold;
+
         if (!requiresApproval)
         {
             var result = CompletePayment(payment, account);
@@ -70,32 +72,10 @@ public class PaymentService(PaymentRepository paymentRepository)
             }
         }
 
-        // 4. Saves the logic to be able to send money in the next step
+        // 4. Persist the payment together with any balance and transaction changes.
         await paymentRepository.AddPaymentAsync(payment);
 
         return payment;
-    }
-    /// <summary>
-    /// Creates the initial payment model from the incoming API request.
-    /// The IBAN is normalized and the payment starts with pending approval status.
-    /// </summary>
-    /// <param name="request">The payment data sent from the API layer.</param>
-    /// <returns>A new payment model ready to be handled by the payment flow.</returns>
-    public Payment CreatePayment(CreatePaymentRequestDto request)
-    {
-        var toIban = request.ToIban.Trim().Replace(" ", "");
-
-        return new Payment
-        {
-            Id = 1, // Temporary placeholder until payments are persisted in the database.
-            FromAccountId = request.FromAccountId,
-            ToIban = toIban,
-            Amount = request.Amount,
-            Currency = "SEK",
-            Reference = request.Reference,
-            Status = PaymentStatuses.PendingApproval,
-            CreatedAt = DateTime.UtcNow
-        };
     }
 
     /// <summary>

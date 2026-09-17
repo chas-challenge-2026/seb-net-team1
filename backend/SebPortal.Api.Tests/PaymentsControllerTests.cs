@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using SebPortal.Api.Data;
 using SebPortal.Api.Models;
 using SebPortal.Api.Repositories;
+using SebPortal.Api.Options;
 
 namespace SebPortal.Api.Tests;
 
@@ -24,6 +25,17 @@ public class PaymentsControllerTests
             .Options;
 
         return new SebDbContext(options);
+    }
+
+    private static PaymentService CreatePaymentService(SebDbContext db)
+    {
+        var repository = new PaymentRepository(db);
+        var paymentRules = Microsoft.Extensions.Options.Options.Create(new PaymentRulesOptions
+        {
+            ApprovalThreshold = 50000m
+        });
+
+        return new PaymentService(repository, paymentRules);
     }
 
     /// <summary>
@@ -74,8 +86,7 @@ public class PaymentsControllerTests
 
         await db.SaveChangesAsync();
 
-        var repository = new PaymentRepository(db);
-        var service = new PaymentService(repository);
+        var service = CreatePaymentService(db);
         var controller = new PaymentsController(service);
 
         SetAuthenticatedUser(controller);
@@ -96,7 +107,7 @@ public class PaymentsControllerTests
         var response = Assert.IsType<PaymentResponseDto>(createdResult.Value);
 
         Assert.Equal(1, response.Id);
-        Assert.Equal("pending_approval", response.Status);
+        Assert.Equal("completed", response.Status);
         Assert.Equal(1, response.FromAccountId);
         Assert.Equal("SE4550000000054910000099", response.ToIban);
         Assert.Equal("12500.00", response.Amount);
@@ -114,8 +125,7 @@ public class PaymentsControllerTests
         // Arrange
         using var db = CreateContext();
 
-        var repository = new PaymentRepository(db);
-        var service = new PaymentService(repository);
+        var service = CreatePaymentService(db);
         var controller = new PaymentsController(service);
 
         SetAuthenticatedUser(controller);
@@ -144,8 +154,7 @@ public class PaymentsControllerTests
         // Arrange
         using var db = CreateContext();
 
-        var repository = new PaymentRepository(db);
-        var service = new PaymentService(repository);
+        var service = CreatePaymentService(db);
         var controller = new PaymentsController(service);
 
         SetAuthenticatedUser(controller);
@@ -174,8 +183,7 @@ public class PaymentsControllerTests
         // Arrange
         using var db = CreateContext();
 
-        var repository = new PaymentRepository(db);
-        var service = new PaymentService(repository);
+        var service = CreatePaymentService(db);
         var controller = new PaymentsController(service);
 
         SetAuthenticatedUser(controller);

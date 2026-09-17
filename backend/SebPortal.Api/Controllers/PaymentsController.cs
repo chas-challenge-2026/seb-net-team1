@@ -48,11 +48,8 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
             return BadRequest(new { message = "Avsändarkonto måste anges." });
         }
 
-        // bör ändras sen men för att se att allt funkar --- är det inget vi vill ha tar vi ba bort raderna
         var createdById = userId.Value;
-        var requiresApproval = true;
         var currency = "SEK";
-
 
         var payment = await paymentService.CreatePaymentAsync(
             tenantId.Value,
@@ -61,8 +58,7 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
             request.Amount,
             currency,
             request.Reference,
-            createdById,
-            requiresApproval);
+            createdById);
 
         var response = new PaymentResponseDto
         {
