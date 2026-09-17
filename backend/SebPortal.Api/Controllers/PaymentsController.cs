@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.DTOs;
 using SebPortal.Api.Services;
@@ -20,7 +21,7 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
     /// otherwise 400 Bad Request with a validation message.
     /// </returns>
     [HttpPost]
-    public IActionResult CreatePayment(CreatePaymentRequestDto request)
+    public async Task<IActionResult> CreatePayment(CreatePaymentRequestDto request)
     {
         if (request.Amount <= 0)
         {
@@ -35,7 +36,22 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
             return BadRequest(new { message = "Avsändarkonto måste anges." });
         }
 
-        var payment = paymentService.CreatePayment(request);
+        // bör ändras sen men för att se att allt funkar --- är det inget vi vill ha tar vi ba bort raderna
+        var tenantId = 1;
+        var createdById = 1;
+        var requiresApproval = true;
+        var currency = "SEK";
+
+
+        var payment = await paymentService.CreatePaymentAsync(
+            tenantId,
+            request.FromAccountId,
+            request.ToIban,
+            request.Amount,
+            currency,
+            request.Reference,
+            createdById,
+            requiresApproval);
 
         var response = new PaymentResponseDto
         {
