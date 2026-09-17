@@ -28,6 +28,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<PasswordHasher>();
+builder.Services.AddScoped<PaymentRepository>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<DashboardRepository>();
 builder.Services.AddScoped<DashboardService>();
