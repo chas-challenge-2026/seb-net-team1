@@ -4,6 +4,7 @@ using SebPortal.Api.Repositories;
 using SebPortal.Api.Services;
 using SebPortal.Api.Auth;
 using SebPortal.Api.Middleware;
+using SebPortal.Api.Options;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -26,6 +27,10 @@ builder.Services.AddDbContext<SebDbContext>(options =>
 
 builder.Services.AddExceptionHandler<AppExceptionHandler>();
 builder.Services.AddProblemDetails();
+
+// Register configurable payment business rules.
+builder.Services.Configure<PaymentRulesOptions>(
+    builder.Configuration.GetSection(PaymentRulesOptions.SectionName));
 
 // Add services to the container.
 builder.Services.AddScoped<AuthService>();

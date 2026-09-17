@@ -5,6 +5,11 @@ using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.Controllers;
 using SebPortal.Api.DTOs;
 using SebPortal.Api.Services;
+using Microsoft.EntityFrameworkCore;
+using SebPortal.Api.Data;
+using SebPortal.Api.Models;
+using SebPortal.Api.Repositories;
+using SebPortal.Api.Options;
 
 namespace SebPortal.Api.Tests;
 
@@ -13,6 +18,26 @@ namespace SebPortal.Api.Tests;
 /// </summary>
 public class PaymentsControllerTests
 {
+    private static SebDbContext CreateContext()
+    {
+        var options = new DbContextOptionsBuilder<SebDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        return new SebDbContext(options);
+    }
+
+    private static PaymentService CreatePaymentService(SebDbContext db)
+    {
+        var repository = new PaymentRepository(db);
+        var paymentRules = Microsoft.Extensions.Options.Options.Create(new PaymentRulesOptions
+        {
+            ApprovalThreshold = 50000m
+        });
+
+        return new PaymentService(repository, paymentRules);
+    }
+
     /// <summary>
     /// Adds a test user to the controller context so the controller can read
     /// user and tenant claims in the same way it does after JWT authentication.
@@ -44,9 +69,26 @@ public class PaymentsControllerTests
     /// matching the payment API contract.
     /// </summary>
     [Fact]
-    public void CreatePayment_WhenRequestIsValid_ReturnsCreated()
+    public async Task CreatePayment_WhenRequestIsValid_ReturnsCreated()
     {
-        var controller = new PaymentsController(new PaymentService());
+        // Arrange
+        using var db = CreateContext();
+
+        db.Accounts.Add(new Account
+        {
+            Id = 1,
+            TenantId = 1,
+            AccountName = "Företagskonto",
+            Iban = "SE3550000000054910000003",
+            Balance = 100000m,
+            Currency = "SEK"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = CreatePaymentService(db);
+        var controller = new PaymentsController(service);
+
         SetAuthenticatedUser(controller);
 
         var request = new CreatePaymentRequestDto
@@ -57,13 +99,15 @@ public class PaymentsControllerTests
             Reference = "Faktura #2001"
         };
 
-        var result = controller.CreatePayment(request);
+        // Act
+        var result = await controller.CreatePayment(request);
 
+        // Assert
         var createdResult = Assert.IsType<CreatedResult>(result);
         var response = Assert.IsType<PaymentResponseDto>(createdResult.Value);
 
         Assert.Equal(1, response.Id);
-        Assert.Equal("pending_approval", response.Status);
+        Assert.Equal("completed", response.Status);
         Assert.Equal(1, response.FromAccountId);
         Assert.Equal("SE4550000000054910000099", response.ToIban);
         Assert.Equal("12500.00", response.Amount);
@@ -76,9 +120,14 @@ public class PaymentsControllerTests
     /// not greater than zero.
     /// </summary>
     [Fact]
-    public void CreatePayment_WhenAmountIsInvalid_ReturnsBadRequest()
+    public async Task CreatePayment_WhenAmountIsInvalid_ReturnsBadRequest()
     {
-        var controller = new PaymentsController(new PaymentService());
+        // Arrange
+        using var db = CreateContext();
+
+        var service = CreatePaymentService(db);
+        var controller = new PaymentsController(service);
+
         SetAuthenticatedUser(controller);
 
         var request = new CreatePaymentRequestDto
@@ -89,8 +138,10 @@ public class PaymentsControllerTests
             Reference = "Faktura #2001"
         };
 
-        var result = controller.CreatePayment(request);
+        // Act
+        var result = await controller.CreatePayment(request);
 
+        // Assert
         Assert.IsType<BadRequestObjectResult>(result);
     }
 
@@ -98,9 +149,14 @@ public class PaymentsControllerTests
     /// Verifies that the endpoint rejects payment requests without a recipient IBAN.
     /// </summary>
     [Fact]
-    public void CreatePayment_WhenToIbanIsMissing_ReturnsBadRequest()
+    public async Task CreatePayment_WhenToIbanIsMissing_ReturnsBadRequest()
     {
-        var controller = new PaymentsController(new PaymentService());
+        // Arrange
+        using var db = CreateContext();
+
+        var service = CreatePaymentService(db);
+        var controller = new PaymentsController(service);
+
         SetAuthenticatedUser(controller);
 
         var request = new CreatePaymentRequestDto
@@ -111,8 +167,10 @@ public class PaymentsControllerTests
             Reference = "Faktura #2001"
         };
 
-        var result = controller.CreatePayment(request);
+        // Act
+        var result = await controller.CreatePayment(request);
 
+        // Assert
         Assert.IsType<BadRequestObjectResult>(result);
     }
 
@@ -120,9 +178,14 @@ public class PaymentsControllerTests
     /// Verifies that the endpoint rejects payment requests without a valid source account id.
     /// </summary>
     [Fact]
-    public void CreatePayment_WhenFromAccountIdIsInvalid_ReturnsBadRequest()
+    public async Task CreatePayment_WhenFromAccountIdIsInvalid_ReturnsBadRequest()
     {
-        var controller = new PaymentsController(new PaymentService());
+        // Arrange
+        using var db = CreateContext();
+
+        var service = CreatePaymentService(db);
+        var controller = new PaymentsController(service);
+
         SetAuthenticatedUser(controller);
 
         var request = new CreatePaymentRequestDto
@@ -133,8 +196,10 @@ public class PaymentsControllerTests
             Reference = "Faktura #2001"
         };
 
-        var result = controller.CreatePayment(request);
+        // Act
+        var result = await controller.CreatePayment(request);
 
+        // Assert
         Assert.IsType<BadRequestObjectResult>(result);
     }
 }
