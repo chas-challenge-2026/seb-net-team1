@@ -108,7 +108,9 @@ Returned when the JWT is missing, invalid, or expired.
 
 ```json
 {
-  "message": "Åtkomst nekad. Logga in igen."
+  "status": 401,
+  "title": "Unauthorized",
+  "detail": "Åtkomst nekad. Logga in igen."
 }
 ```
 
@@ -133,7 +135,7 @@ Backend should use this contract to:
 - only populate `pendingApprovals` when the user's role is `attestant` or `admin`
 - return the most recent 20 payments for the tenant
 - represent all money values as decimal strings, never floating-point numbers
-- return consistent error responses per the format above
+- return consistent ProblemDetails error responses (status, title, detail) per the format above
 
 ---
 

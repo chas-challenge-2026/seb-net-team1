@@ -74,7 +74,9 @@ Returned when a field is missing, the IBAN format is invalid, or the amount is n
 
 ```json
 {
-  "message": "Ogiltigt IBAN-format."
+  "status": 400,
+  "title": "BadRequest",
+  "detail": "Ogiltigt IBAN-format. Kontrollera att du angett rätt format."
 }
 ```
 
@@ -84,7 +86,9 @@ Returned when `fromAccountId` does not belong to the logged-in user's tenant.
 
 ```json
 {
-  "message": "Du har inte behörighet till det kontot."
+  "status": 403,
+  "title": "Forbidden",
+  "detail": "Du har inte behörighet till det kontot."
 }
 ```
 
@@ -94,7 +98,9 @@ Returned when the JWT is missing, invalid, or expired.
 
 ```json
 {
-  "message": "Åtkomst nekad. Logga in igen."
+  "status": 401,
+  "title": "Unauthorized",
+  "detail": "Åtkomst nekad. Logga in igen."
 }
 ```
 
@@ -119,7 +125,8 @@ Backend should use this contract to:
 - represent `amount` as a decimal string, never a floating-point number
 - read the approval threshold from a single shared source of truth, not a hardcoded constant per file. v1 defined the same threshold inconsistently across `NewPayment.cs`, `ApprovalInbox.cs`, and `appsettings.json` (BUG-006). This contract only defines the endpoint's behavior. Consolidating the threshold value itself belongs to whichever ticket owns approval-chain logic (US-25/US-26)
 - return `201 Created` with the payment, not `200 OK`, since a new resource was created
-- return consistent error responses per the format above
+- return consistent ProblemDetails error responses (status, title, detail) per the format above
+- throw the matching custom exception (InvalidIbanException, InvalidPaymentAmountException, AccountAccessDeniedException) rather than returning ad-hoc error objects. The global exception handler converts these to the responses shown above automatically
 
 **Out of scope for this contract (belongs to later sprints):**
 - Atomic balance deduction on completed payments (US-24)
