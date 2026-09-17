@@ -134,7 +134,9 @@ Returned when `action` is missing or not one of `approve`/`reject`, or `comment`
 
 ```json
 {
-  "message": "Ogiltig åtgärd."
+  "status": 400,
+  "title": "BadRequest",
+  "detail": "Ogiltig åtgärd."
 }
 ```
 
@@ -144,7 +146,9 @@ Returned when the approval step is not assigned to the logged-in attestant (and 
 
 ```json
 {
-  "message": "Du har inte behörighet till detta atteststeg."
+  "status": 403,
+  "title": "Forbidden",
+  "detail": "Du har inte behörighet till detta atteststeg."
 }
 ```
 
@@ -152,13 +156,23 @@ Returned when the approval step is not assigned to the logged-in attestant (and 
 
 Returned when the approval step doesn't exist.
 
+```json
+{
+  "status": 404,
+  "title": "NotFound",
+  "detail": "Atteststeget hittades inte."
+}
+```
+
 ### `409 Conflict`
 
 Returned when the approval step has already been decided.
 
 ```json
 {
-  "message": "Det här atteststeget är redan hanterat."
+  "status": 409,
+  "title": "Conflict",
+  "detail": "Det här atteststeget är redan hanterat."
 }
 ```
 
@@ -186,7 +200,8 @@ Backend should use this contract to:
 - compute `requiresDoubleApproval` on the backend from a single shared threshold source. v1 used two different threshold values across `NewPayment.cs` (500 000) and `ApprovalInbox.cs` (200 000) for the same rule (BUG-006). Consolidating that value is part of US-25/US-26, not this contract. The contract's job is just to make sure frontend never has to guess or duplicate the number itself
 - return `409` rather than silently reprocessing when a step has already been decided
 - represent all money values as decimal strings, never floating-point numbers
-- return consistent error responses per the format above
+- return consistent ProblemDetails error responses (status, title, detail) per the format above
+- throw the matching custom exception (ApprovalStepNotFoundException, ApprovalStepAccessDeniedException, ApprovalStepAlreadyDecidedException) rather than returning ad-hoc error objects. The global exception handler converts these to the responses shown above automatically
 
 **Out of scope for this contract (belongs to other tickets):**
 - Creating approval steps when a payment is first submitted (US-21/US-22)

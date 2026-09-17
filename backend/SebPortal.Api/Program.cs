@@ -3,6 +3,7 @@ using SebPortal.Api.Data;
 using SebPortal.Api.Repositories;
 using SebPortal.Api.Services;
 using SebPortal.Api.Auth;
+using SebPortal.Api.Middleware;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -22,6 +23,9 @@ builder.Services.AddDbContext<SebDbContext>(options =>
         options.UseNpgsql(connectionString);
     }
 });
+
+builder.Services.AddExceptionHandler<AppExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 // Add services to the container.
 builder.Services.AddScoped<AuthService>();
@@ -79,6 +83,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.UseExceptionHandler();
 
 app.UseCors("AllowFrontend");
 

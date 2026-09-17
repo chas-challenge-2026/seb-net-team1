@@ -1,4 +1,5 @@
 using SebPortal.Api.DTOs;
+using SebPortal.Api.Exceptions;
 using SebPortal.Api.Models;
 using SebPortal.Api.Repositories;
 
@@ -26,7 +27,11 @@ public class PaymentService(PaymentRepository paymentRepository)
 
         if (account is null)
         {
-            throw new InvalidOperationException("Account could not be found or the the tenant might be wrong");
+            // AccountNotFoundException on purpose here, not an access-denied exception:
+            // GetAccountAsync filters by (id AND tenantId) in one query, so we genuinely
+            // can't tell "doesn't exist" apart from "belongs to another tenant". Returning
+            // the same NotFound response for both avoids leaking that distinction across tenants.
+            throw new AccountNotFoundException(fromAccountId);
         }
 
         // 2. Create the payment
@@ -50,7 +55,18 @@ public class PaymentService(PaymentRepository paymentRepository)
 
             if (!result.WasSuccessful)
             {
-                throw new InvalidOperationException(result.ErrorMessage);
+                throw result.FailureReason switch
+                {
+                    CompletePaymentFailureReason.InvalidAmount =>
+                        new InvalidPaymentAmountException(payment.Amount),
+                    CompletePaymentFailureReason.InsufficientFunds =>
+                        new InsufficientFundsException(payment.Amount, account.Balance),
+                    CompletePaymentFailureReason.AlreadyCompleted =>
+                        new PaymentAlreadyCompletedException(payment.Id, payment.Status),
+                    CompletePaymentFailureReason.WrongAccount =>
+                        new PaymentAccountMismatchException(payment.FromAccountId, account.Id),
+                    _ => new InvalidOperationException(result.ErrorMessage)
+                };
             }
         }
 
@@ -99,7 +115,8 @@ public class PaymentService(PaymentRepository paymentRepository)
             return new CompletePaymentResult
             {
                 WasSuccessful = false,
-                ErrorMessage = "The payment does not belong to the provided account."
+                ErrorMessage = "The payment does not belong to the provided account.",
+                FailureReason = CompletePaymentFailureReason.WrongAccount
             };
         }
         if (payment.Status == PaymentStatuses.Completed)
@@ -107,7 +124,8 @@ public class PaymentService(PaymentRepository paymentRepository)
             return new CompletePaymentResult
             {
                 WasSuccessful = false,
-                ErrorMessage = "This payment has already been completed."
+                ErrorMessage = "This payment has already been completed.",
+                FailureReason = CompletePaymentFailureReason.AlreadyCompleted
             };
         }
         if (payment.Amount <= 0)
@@ -115,7 +133,8 @@ public class PaymentService(PaymentRepository paymentRepository)
             return new CompletePaymentResult
             {
                 WasSuccessful = false,
-                ErrorMessage = "The payment Amount is less than or equal to 0."
+                ErrorMessage = "The payment Amount is less than or equal to 0.",
+                FailureReason = CompletePaymentFailureReason.InvalidAmount
             };
         }
         if (account.Balance < payment.Amount)
@@ -123,7 +142,8 @@ public class PaymentService(PaymentRepository paymentRepository)
             return new CompletePaymentResult
             {
                 WasSuccessful = false,
-                ErrorMessage = "The account has insufficient funds."
+                ErrorMessage = "The account has insufficient funds.",
+                FailureReason = CompletePaymentFailureReason.InsufficientFunds
             };
         }
 
