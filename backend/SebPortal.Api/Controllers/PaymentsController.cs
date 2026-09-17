@@ -49,14 +49,13 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
         }
 
         // bör ändras sen men för att se att allt funkar --- är det inget vi vill ha tar vi ba bort raderna
-        var tenantId = 1;
-        var createdById = 1;
+        var createdById = userId.Value;
         var requiresApproval = true;
         var currency = "SEK";
 
 
         var payment = await paymentService.CreatePaymentAsync(
-            tenantId,
+            tenantId.Value,
             request.FromAccountId,
             request.ToIban,
             request.Amount,
