@@ -1,3 +1,6 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.Controllers;
 using SebPortal.Api.DTOs;
@@ -11,6 +14,32 @@ namespace SebPortal.Api.Tests;
 public class PaymentsControllerTests
 {
     /// <summary>
+    /// Adds a test user to the controller context so the controller can read
+    /// user and tenant claims in the same way it does after JWT authentication.
+    /// </summary>
+    private static void SetAuthenticatedUser(
+        PaymentsController controller,
+        int userId = 1,
+        int tenantId = 1,
+        string role = "initiator")
+    {
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    new[]
+                    {
+                        new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                        new Claim("tenantId", tenantId.ToString()),
+                        new Claim(ClaimTypes.Role, role)
+                    },
+                    "TestAuth"))
+            }
+        };
+    }
+
+    /// <summary>
     /// Verifies that a valid payment request returns 201 Created with a response
     /// matching the payment API contract.
     /// </summary>
@@ -18,6 +47,7 @@ public class PaymentsControllerTests
     public void CreatePayment_WhenRequestIsValid_ReturnsCreated()
     {
         var controller = new PaymentsController(new PaymentService());
+        SetAuthenticatedUser(controller);
 
         var request = new CreatePaymentRequestDto
         {
@@ -49,6 +79,7 @@ public class PaymentsControllerTests
     public void CreatePayment_WhenAmountIsInvalid_ReturnsBadRequest()
     {
         var controller = new PaymentsController(new PaymentService());
+        SetAuthenticatedUser(controller);
 
         var request = new CreatePaymentRequestDto
         {
@@ -70,6 +101,7 @@ public class PaymentsControllerTests
     public void CreatePayment_WhenToIbanIsMissing_ReturnsBadRequest()
     {
         var controller = new PaymentsController(new PaymentService());
+        SetAuthenticatedUser(controller);
 
         var request = new CreatePaymentRequestDto
         {
@@ -91,6 +123,7 @@ public class PaymentsControllerTests
     public void CreatePayment_WhenFromAccountIdIsInvalid_ReturnsBadRequest()
     {
         var controller = new PaymentsController(new PaymentService());
+        SetAuthenticatedUser(controller);
 
         var request = new CreatePaymentRequestDto
         {
