@@ -3,6 +3,7 @@ using SebPortal.Api.Data;
 using SebPortal.Api.Repositories;
 using SebPortal.Api.Services;
 using SebPortal.Api.Auth;
+using SebPortal.Api.Middleware;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
