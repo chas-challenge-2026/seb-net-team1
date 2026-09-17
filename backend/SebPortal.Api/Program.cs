@@ -23,6 +23,9 @@ builder.Services.AddDbContext<SebDbContext>(options =>
     }
 });
 
+builder.Services.AddExceptionHandler<AppExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 // Add services to the container.
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<JwtTokenService>();
@@ -79,6 +82,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.UseExceptionHandler();
 
 app.UseCors("AllowFrontend");
 
