@@ -27,11 +27,12 @@ public class JwtTokenService
     /// Generates a signed JWT string for an authenticated user containing identity and role claims.
     /// </summary>
     /// <param name="userId">Unique identifier of the user (stored in 'sub' claim).</param>
+    /// <param name="tenantId">The tenant/company identifier the authenticated user belongs to.</param>
     /// <param name="email">User's email address (stored in 'email' claim).</param>
     /// <param name="role">User's authorization role, e.g. "initiator", "attestant", "admin" (stored in Role claim).</param>
     /// <param name="name">Full name or display name of the user (stored in Name claim).</param>
     /// <returns>A serialized, signed JWT string.</returns>
-    public string GenerateToken(int userId, string email, string role, string name)
+    public string GenerateToken(int userId, int tenantId, string email, string role, string name)
     {
         // 1. Retrieve JWT configuration settings
         // - Key: Secret key used to cryptographically sign the token. Minimum 256 bits (32 bytes) for HMAC-SHA256.
@@ -57,6 +58,8 @@ public class JwtTokenService
         {
             // 'sub' (Subject): Standard JWT claim representing the unique user identifier
             new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+
+            new Claim("tenantId", tenantId.ToString()),
 
             // Standard JWT claim representing the user's email address
             new Claim(JwtRegisteredClaimNames.Email, email),

@@ -1,9 +1,10 @@
+using SebPortal.Api.Auth;
 using SebPortal.Api.DTOs;
 using SebPortal.Api.Repositories;
 
 namespace SebPortal.Api.Services;
 
-public class AuthService(UserRepository userRepository, PasswordHasher passwordHasher)
+public class AuthService(UserRepository userRepository, PasswordHasher passwordHasher, JwtTokenService jwtTokenService)
 {
     /// <summary>
     /// Performs a login request using the provided LoginRequest
@@ -20,7 +21,13 @@ public class AuthService(UserRepository userRepository, PasswordHasher passwordH
 
         var response = new LoginResponse
         {
-            AccessToken = "mock-jwt-token",
+            AccessToken = jwtTokenService.GenerateToken(
+                user.Id,
+                user.TenantId,
+                user.Email,
+                user.Role,
+                user.Name),
+
             User = new AuthenticatedUserDto
             {
                 Id = user.Id,
