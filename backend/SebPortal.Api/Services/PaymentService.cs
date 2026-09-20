@@ -53,23 +53,7 @@ public class PaymentService(PaymentRepository paymentRepository, IOptions<Paymen
 
         if (!requiresApproval)
         {
-            var result = CompletePayment(payment, account);
-
-            if (!result.WasSuccessful)
-            {
-                throw result.FailureReason switch
-                {
-                    CompletePaymentFailureReason.InvalidAmount =>
-                        new InvalidPaymentAmountException(payment.Amount),
-                    CompletePaymentFailureReason.InsufficientFunds =>
-                        new InsufficientFundsException(payment.Amount, account.Balance),
-                    CompletePaymentFailureReason.AlreadyCompleted =>
-                        new PaymentAlreadyCompletedException(payment.Id, payment.Status),
-                    CompletePaymentFailureReason.WrongAccount =>
-                        new PaymentAccountMismatchException(payment.FromAccountId, account.Id),
-                    _ => new InvalidOperationException(result.ErrorMessage)
-                };
-            }
+            CompletePaymentOrThrow(payment, account);
         }
 
         // 4. Persist the payment together with any balance and transaction changes.
@@ -145,4 +129,45 @@ public class PaymentService(PaymentRepository paymentRepository, IOptions<Paymen
             WasSuccessful = true
         };
     }
+
+    /// <summary>
+    /// Completes a payment and turns a failed attempt into the matching custom
+    /// exception, so the global exception handler can answer with the right status
+    /// code. Used both when a small payment skips approval and when the last
+    /// attestant approves a large one (US-26).
+    /// </summary>
+    public void CompletePaymentOrThrow(Payment payment, Account account)
+    {
+        var result = CompletePayment(payment, account);
+
+        if (result.WasSuccessful)
+        {
+            return;
+        }
+
+        throw result.FailureReason switch
+        {
+            CompletePaymentFailureReason.InvalidAmount =>
+                new InvalidPaymentAmountException(payment.Amount),
+            CompletePaymentFailureReason.InsufficientFunds =>
+                new InsufficientFundsException(payment.Amount, account.Balance),
+            CompletePaymentFailureReason.AlreadyCompleted =>
+                new PaymentAlreadyCompletedException(payment.Id, payment.Status),
+            CompletePaymentFailureReason.WrongAccount =>
+                new PaymentAccountMismatchException(payment.FromAccountId, account.Id),
+            _ => new InvalidOperationException(result.ErrorMessage)
+        };
+    }
+
+    /// <summary>
+    /// Whether a payment of this amount needs a second attestant. Reads the one
+    /// configured threshold so payment creation, the approval flow and the
+    /// frontend badge can never disagree again (BUG-006).
+    /// </summary>
+    public bool RequiresDoubleApproval(decimal amount) =>
+        amount > paymentRules.Value.DoubleApprovalThreshold;
+
+    /// <summary>How many approval steps a payment of this amount requires.</summary>
+    public int RequiredApprovalSteps(decimal amount) =>
+        RequiresDoubleApproval(amount) ? 2 : 1;
 }

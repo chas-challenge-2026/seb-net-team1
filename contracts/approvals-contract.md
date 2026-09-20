@@ -210,6 +210,19 @@ Backend should use this contract to:
 
 ---
 
+## Implementation Notes (US-25 / US-26)
+
+Implemented in `backend/SebPortal.Api` as `ApprovalsController` → `ApprovalService` → `ApprovalRepository`. The controller reads the caller's id, tenant and role from the JWT only, and never accepts any of them from the request. Four things are worth knowing on top of the contract above:
+
+- **The double approval threshold now lives in configuration**, `PaymentRules:DoubleApprovalThreshold` (200 000 SEK in `appsettings.json`), next to the existing `ApprovalThreshold`. `requiresDoubleApproval` and `totalSteps` are both derived from it. This is the consolidation BUG-006 called for: payment creation, the approval flow and the frontend badge all read the same value, and changing the rule means changing one setting.
+- **Admins see the whole tenant's pending list**, attestants only steps assigned to them. This carries over v1's behaviour and matches the `403` rule above, which already exempts `admin`.
+- **A step in another tenant answers `404`, not `403`**, even for an admin. Answering `403` would confirm that the id exists somewhere, which leaks across tenants. v1 let an admin decide steps in any tenant at all.
+- **Every decision is audited to the database** as `APPROVE_PAYMENT`, `APPROVE_PAYMENT_STEP` (a step approved while others remain) or `REJECT_PAYMENT`. v1 wrote partial approvals to `/tmp/audit.log` only, so they never reached the audit log UI.
+
+The final approval completes the payment through the same `PaymentService.CompletePaymentOrThrow` a direct payment uses, so status, balance, execution timestamp and transaction history stay consistent between the two paths. If a payment ever reaches its last approval with fewer approvals than the threshold requires, the service creates the missing step (assigned to an attestant who has neither decided nor created the payment) instead of completing early or leaving the payment stuck.
+
+---
+
 ## Important
 
 This contract is a first version and can be changed if frontend or backend needs adjustments.
