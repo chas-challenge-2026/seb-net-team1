@@ -28,5 +28,5 @@ test-csv:
 
 test-iban:
 	mkdir -p tests/binary
-	$(CC) $(CFLAGS) $(CFLAGS_IBAN) tests/test_libiban.c tests/binary/libiban.o -o tests/binary/test_libiban
+	$(CC) $(CFLAGS) $(CFLAGS_IBAN) $(SRCS2) tests/test_libiban.c -o tests/binary/test_libiban
 	./tests/binary/test_libiban

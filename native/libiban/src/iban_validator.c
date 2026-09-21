@@ -6,6 +6,8 @@
 
 #define MIN_IBAN 14 // Smallest IBAN, but smallest country code is NO with 15.
 #define MAX_IBAN 35 // Largest IBAN.
+#define BIC_LEN 8 // BIC without a branch code
+#define BIC_LEN_BRANCH 11 // BIC with a branch code
 
 static int fail(int* error_out, int code) {
     if(error_out != NULL)
@@ -96,6 +98,31 @@ IBAN_API int validate_iban(const char* iban, int* error_out)
     // Calculate MOD97
     if(iban_mod97(iban) != 1)
         return fail(error_out, 4);
+
+    return 1;
+}
+
+IBAN_API int validate_bic(const char* bic)
+{
+    if(bic == NULL)
+        return 0;
+
+    // Only scan far enough to tell the length is wrong
+    int len = 0;
+    while(len <= BIC_LEN_BRANCH && bic[len] != '\0')
+        len++;
+    if(len != BIC_LEN && len != BIC_LEN_BRANCH)
+        return 0;
+
+    // 4-5 is A-Z only, rest is A-Z and 0-9
+    for(int i = 0; i < len; i++) {
+        bool country_code = (i == 4 || i == 5);
+        if(bic[i] >= 'A' && bic[i] <= 'Z')
+            continue;
+        if(!country_code && bic[i] >= '0' && bic[i] <= '9')
+            continue;
+        return 0;
+    }
 
     return 1;
 }

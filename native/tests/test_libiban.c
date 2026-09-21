@@ -273,6 +273,79 @@ int test_mod97() {
     return 0;
 }
 
+// BICs without a branch code (8 characters) and with one (11 characters). ESSESESS is used in the mock payments.
+#define BIC_SHORT "ESSESESS"
+#define BIC_LONG "DEUTDEFF500"
+
+int test_valid_bic() {
+    TEST_ASSERT(validate_bic("ESSESESS") == 1, "validator rejected the mock BIC ESSESESS");
+    TEST_ASSERT(validate_bic("SWEDSESS") == 1, "validator rejected the mock BIC SWEDSESS");
+    TEST_ASSERT(validate_bic("DEUTDEFF") == 1, "validator rejected the BIC DEUTDEFF");
+    TEST_ASSERT(validate_bic("CHASUS33") == 1, "validator rejected a BIC with digits in the location code");
+    TEST_ASSERT(validate_bic("DEUTDEFF500") == 1, "validator rejected a BIC with a branch code");
+    TEST_ASSERT(validate_bic("DEUTDEFFXXX") == 1, "validator rejected a BIC with the primary office branch code XXX");
+    // ISO 9362:2014 allows digits in the bank code, older rules only allowed letters
+    TEST_ASSERT(validate_bic("1234SESS") == 1, "validator rejected a BIC with digits in the bank code");
+    return 0;
+}
+
+int test_bic_invalid_length() {
+    const char tooLong[] = BIC_LONG BIC_LONG BIC_LONG BIC_LONG;
+    TEST_ASSERT(validate_bic("") == 0, "validator accepted an empty BIC");
+    TEST_ASSERT(validate_bic("ESSESES") == 0, "validator accepted a 7 character BIC");
+    TEST_ASSERT(validate_bic("ESSESESS1") == 0, "validator accepted a 9 character BIC");
+    TEST_ASSERT(validate_bic("ESSESESS12") == 0, "validator accepted a 10 character BIC");
+    TEST_ASSERT(validate_bic("ESSESESS1234") == 0, "validator accepted a 12 character BIC");
+    TEST_ASSERT(validate_bic(tooLong) == 0, "validator accepted a 44 character BIC");
+    return 0;
+}
+
+int test_bic_country_code() {
+    TEST_ASSERT(validate_bic("ESSE1ESS") == 0, "validator accepted a digit as the first country code character");
+    TEST_ASSERT(validate_bic("ESSES1SS") == 0, "validator accepted a digit as the second country code character");
+    TEST_ASSERT(validate_bic("DEUT12FF500") == 0, "validator accepted a country code of digits in a BIC with a branch code");
+    return 0;
+}
+
+int test_bic_invalid_characters() {
+    const char* bics[] = { BIC_SHORT, BIC_LONG };
+    const char badChars[] = { '-', 'a', ' ', '.', '\t', '\xC3' };
+    char buf[32];
+    TEST_ASSERT(validate_bic("essesess") == 0, "validator accepted a lowercase BIC");
+    TEST_ASSERT(validate_bic("deutdeff500") == 0, "validator accepted a lowercase BIC with a branch code");
+    TEST_ASSERT(validate_bic(" ESSESESS") == 0, "validator accepted a BIC with a leading space");
+    for(int b = 0; b < 2; b++) {
+        int len = (int)strlen(bics[b]);
+        for(int c = 0; c < (int)sizeof(badChars); c++) {
+            for(int i = 0; i < len; i++) {
+                replace_char(bics[b], i, badChars[c], buf);
+                TEST_ASSERT(validate_bic(buf) == 0, "validator accepted an invalid character at index %d in '%s'", i, buf);
+            }
+        }
+    }
+    return 0;
+}
+
+int test_bic_digits() {
+    const char* bics[] = { BIC_SHORT, BIC_LONG };
+    char buf[32];
+    // Digits are fine everywhere except in the country code
+    for(int b = 0; b < 2; b++) {
+        int len = (int)strlen(bics[b]);
+        for(int i = 0; i < len; i++) {
+            replace_char(bics[b], i, '5', buf);
+            int expected = (i == 4 || i == 5) ? 0 : 1;
+            TEST_ASSERT(validate_bic(buf) == expected, "'%s' should return %d for validate_bic", buf, expected);
+        }
+    }
+    return 0;
+}
+
+int test_bic_null() {
+    TEST_ASSERT(validate_bic(NULL) == 0, "validator accepted a NULL BIC");
+    return 0;
+}
+
 int main() {
     printf("Running libiban tests...\n");
 
@@ -289,6 +362,12 @@ int main() {
     RUN_TEST(test_error_precedence);
     RUN_TEST(test_null_error_out);
     RUN_TEST(test_mod97);
+    RUN_TEST(test_valid_bic);
+    RUN_TEST(test_bic_invalid_length);
+    RUN_TEST(test_bic_country_code);
+    RUN_TEST(test_bic_invalid_characters);
+    RUN_TEST(test_bic_digits);
+    RUN_TEST(test_bic_null);
 
     if(tests_failed > 0)
         return 1;
