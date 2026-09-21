@@ -1,0 +1,10 @@
+#pragma once
+
+// Returns 1 if the IBAN is valid (format + MOD97), otherwise 0. Spaces in the IBAN are ignored.
+// error_out may be NULL. If 0 is returned it is set to the error code:
+// 1 = too short/long, 2 = invalid country code, 3 = invalid character, 4 = MOD97 failure
+int validate_iban(const char* iban, int* error_out);
+
+// Returns the MOD97 remainder of the IBAN, 1 means the check digits are correct.
+// Expects an IBAN that has already passed the character check.
+int iban_mod97(const char* iban);
