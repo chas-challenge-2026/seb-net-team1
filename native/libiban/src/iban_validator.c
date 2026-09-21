@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "iban_registry.h"
+#include "iban_validator.h"
 
 #define MIN_IBAN 14 // Smallest IBAN, but smallest country code is NO with 15.
 #define MAX_IBAN 35 // Largest IBAN.
@@ -19,7 +20,7 @@ static int mod97_feed(int rem, char c)
     return (rem * 100 + (c - 'A' + 10)) % 97;
 }
 
-int iban_mod97(const char* iban)
+IBAN_API int iban_mod97(const char* iban)
 {
     int rem = 0;
     int pos = 0;
@@ -43,7 +44,7 @@ int iban_mod97(const char* iban)
     return rem;
 }
 
-int validate_iban(const char* iban, int* error_out)
+IBAN_API int validate_iban(const char* iban, int* error_out)
 {
     // Extract length
     const char* search = iban;

@@ -8,3 +8,5 @@ int validate_iban(const char* iban, int* error_out);
 // Returns the MOD97 remainder of the IBAN, 1 means the check digits are correct.
 // Expects an IBAN that has already passed the character check.
 int iban_mod97(const char* iban);
+
+#define IBAN_API __attribute__((visibility("default")))
