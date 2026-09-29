@@ -22,4 +22,12 @@ public static class ClaimsPrincipalExtensions
             ? tenantId
             : null;
     }
+
+    /// <summary>
+    /// The role claim issued by JwtTokenService ("initiator", "attestant", "admin").
+    /// Used for the rules that depend on the role rather than just on being
+    /// authenticated, e.g. whether an admin may decide another attestant's step.
+    /// </summary>
+    public static string? GetRole(this ClaimsPrincipal user) =>
+        user.FindFirst(ClaimTypes.Role)?.Value;
 }
