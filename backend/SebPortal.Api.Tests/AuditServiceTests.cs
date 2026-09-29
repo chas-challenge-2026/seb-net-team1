@@ -226,6 +226,50 @@ public class AuditServiceTests
     }
 
     [Fact]
+    public async Task GetAuditLogAsync_ExactlyLimitEntries_HasNoNextCursor()
+    {
+        // Boundary: exactly as many entries as the page size. There is nothing
+        // left after this page, so NextCursor must be null, not "maybe more".
+        using var db = CreateContext();
+        SeedTenant(db, 1, "Runö Bygg AB");
+        db.SaveChanges();
+
+        var service = CreateService(db);
+        for (var i = 1; i <= 3; i++)
+        {
+            await AppendAndSaveAsync(service, db, 1, 5, "CREATE_PAYMENT", "payment", i, $"Entry {i}");
+        }
+
+        var page = await service.GetAuditLogAsync(1, limit: 3, cursor: null);
+
+        Assert.Equal(3, page.Entries.Count);
+        Assert.Null(page.NextCursor);
+    }
+
+    [Fact]
+    public async Task GetAuditLogAsync_OneMoreThanLimit_HasNextCursor()
+    {
+        // Boundary one step over the one above: one entry more than the page
+        // size. This is the line GetAuditLogAsync actually tests internally
+        // (rows.Count > limit), so it needs a test sitting exactly on it, not
+        // one comfortably on either side of it.
+        using var db = CreateContext();
+        SeedTenant(db, 1, "Runö Bygg AB");
+        db.SaveChanges();
+
+        var service = CreateService(db);
+        for (var i = 1; i <= 4; i++)
+        {
+            await AppendAndSaveAsync(service, db, 1, 5, "CREATE_PAYMENT", "payment", i, $"Entry {i}");
+        }
+
+        var page = await service.GetAuditLogAsync(1, limit: 3, cursor: null);
+
+        Assert.Equal(3, page.Entries.Count); // still only 3 returned, the 4th only proves there's more
+        Assert.NotNull(page.NextCursor);
+    }
+
+    [Fact]
     public async Task GetAuditLogAsync_LastPage_HasNoNextCursor()
     {
         using var db = CreateContext();

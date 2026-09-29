@@ -94,11 +94,5 @@ public class ApprovalRepository(SebDbContext dbContext)
     public void AddApprovalStep(ApprovalStep step) =>
         dbContext.ApprovalSteps.Add(step);
 
-    // AddAuditEntry removed: audit entries are now signed and chained (see
-    // AuditService and audit-log-signing-spec.md), so they go through
-    // AuditService.AppendEntryAsync instead of a plain dbContext.Add here. A
-    // second, unsigned write path would leave some entries with no Signature at
-    // all, or entries that never joined the chain.
-
     public Task SaveChangesAsync() => dbContext.SaveChangesAsync();
 }
