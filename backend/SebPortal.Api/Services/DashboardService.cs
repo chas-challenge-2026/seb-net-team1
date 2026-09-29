@@ -22,7 +22,7 @@ public class DashboardService(DashboardRepository dashboardRepository)
         var recentPayments = await dashboardRepository.GetRecentPaymentsAsync(tenantId, RecentPaymentsCount);
 
         var pendingApprovals = new List<PaymentSummaryDto>();
-        if (user.Role == "admin") // changed so that only Admin can see the pendingApprovals
+        if (user.Role is UserRoles.Attestant or UserRoles.Admin)
         {
             var pending = await dashboardRepository.GetPendingApprovalsAsync(userId, tenantId);
             pendingApprovals = pending.Select(ToPaymentSummaryDto).ToList();
