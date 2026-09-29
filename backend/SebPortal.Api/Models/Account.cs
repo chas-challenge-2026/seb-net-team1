@@ -9,6 +9,13 @@ public class Account
     public decimal Balance { get; set; }
     public string Currency { get; set; } = "SEK";
 
+    /// <summary>
+    /// Optimistic concurrency token, mapped to PostgreSQL's xmin system column.
+    /// Two requests that both read the same balance cannot both write it back:
+    /// the second SaveChanges fails instead of silently overwriting the first.
+    /// </summary>
+    public uint Version { get; set; }
+
     public Tenant? Tenant { get; set; }
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
 }

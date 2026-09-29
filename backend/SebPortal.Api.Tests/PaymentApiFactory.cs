@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using SebPortal.Api.Data;
 
 namespace SebPortal.Api.Tests;
@@ -24,6 +25,9 @@ public class PaymentApiFactory : WebApplicationFactory<Program>
 
             services.AddDbContext<SebDbContext>(options =>
                 options.UseInMemoryDatabase(_databaseName));
+
+            // No background e-mail delivery during tests.
+            services.RemoveAll<IHostedService>();
         });
     }
 }

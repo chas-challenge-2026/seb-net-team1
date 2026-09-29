@@ -38,7 +38,10 @@ No request body, no query parameters.
       "accountName": "Företagskonto",
       "iban": "SE3550000000054910000003",
       "balance": "245000.50",
-      "currency": "SEK"
+      "availableBalance": "170000.50",
+      "reservedAmount": "75000.00",
+      "currency": "SEK",
+      "pendingPaymentCount": 1
     }
   ],
   "recentPayments": [
@@ -62,7 +65,17 @@ No request body, no query parameters.
       "status": "pending_approval",
       "createdAt": "2026-08-31T14:00:00Z"
     }
-  ]
+  ],
+  "stats": {
+    "totalBalance": "3840000.00",
+    "availableBalance": "3515000.00",
+    "pendingApprovalCount": 3,
+    "myPendingApprovalCount": 2,
+    "paymentsThisMonthCount": 7,
+    "completedThisMonthCount": 5,
+    "completedThisMonthAmount": "84250.50",
+    "rejectedThisMonthCount": 1
+  }
 }
 ```
 
@@ -88,7 +101,17 @@ No request body, no query parameters.
 | `recentPayments[].reference` | string | Payment reference/note |
 | `recentPayments[].status` | string | One of: `completed`, `pending_approval`, `rejected` |
 | `recentPayments[].createdAt` | string (ISO 8601) | When the payment was created |
-| `pendingApprovals[]` | array | Same shape as `recentPayments[]`. Only populated for `attestant`/`admin` roles. Empty array otherwise |
+| `accounts[].availableBalance` | string | Balance minus money reserved by the account's payments waiting for attest |
+| `accounts[].reservedAmount` | string | Sum of the account's payments waiting for attest |
+| `accounts[].pendingPaymentCount` | number | How many of the account's payments wait for attest |
+| `pendingApprovals[]` | array | Same shape as `recentPayments[]`. Payments waiting for the logged-in attestant's decision (for admins also unassigned steps), never the user's own payments. Empty for `initiator` |
+| `stats.totalBalance` | string | Sum of all account balances |
+| `stats.availableBalance` | string | Sum of all available balances |
+| `stats.pendingApprovalCount` | number | Payments waiting for attest in the whole tenant |
+| `stats.myPendingApprovalCount` | number | Approval steps waiting for the logged-in user (the length of `pendingApprovals`) |
+| `stats.paymentsThisMonthCount` | number | Payments created this calendar month (UTC) |
+| `stats.completedThisMonthCount` / `completedThisMonthAmount` | number / string | Of those, completed |
+| `stats.rejectedThisMonthCount` | number | Of those, rejected |
 
 ### Status values
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.Controllers;
 using SebPortal.Api.DTOs;
+using SebPortal.Api.Exceptions;
 using SebPortal.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using SebPortal.Api.Data;
@@ -25,17 +26,6 @@ public class PaymentsControllerTests
             .Options;
 
         return new SebDbContext(options);
-    }
-
-    private static PaymentService CreatePaymentService(SebDbContext db)
-    {
-        var repository = new PaymentRepository(db);
-        var paymentRules = Microsoft.Extensions.Options.Options.Create(new PaymentRulesOptions
-        {
-            ApprovalThreshold = 50000m
-        });
-
-        return new PaymentService(repository, paymentRules);
     }
 
     /// <summary>
@@ -86,15 +76,14 @@ public class PaymentsControllerTests
 
         await db.SaveChangesAsync();
 
-        var service = CreatePaymentService(db);
-        var controller = new PaymentsController(service);
+        var controller = TestServices.PaymentsController(db);
 
         SetAuthenticatedUser(controller);
 
         var request = new CreatePaymentRequestDto
         {
             FromAccountId = 1,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 12500m,
             Reference = "Faktura #2001"
         };
@@ -109,7 +98,7 @@ public class PaymentsControllerTests
         Assert.Equal(1, response.Id);
         Assert.Equal("completed", response.Status);
         Assert.Equal(1, response.FromAccountId);
-        Assert.Equal("SE4550000000054910000099", response.ToIban);
+        Assert.Equal("SE6250000000054910000099", response.ToIban);
         Assert.Equal("12500.00", response.Amount);
         Assert.Equal("SEK", response.Currency);
         Assert.Equal("Faktura #2001", response.Reference);
@@ -125,24 +114,21 @@ public class PaymentsControllerTests
         // Arrange
         using var db = CreateContext();
 
-        var service = CreatePaymentService(db);
-        var controller = new PaymentsController(service);
+        var controller = TestServices.PaymentsController(db);
 
         SetAuthenticatedUser(controller);
 
         var request = new CreatePaymentRequestDto
         {
             FromAccountId = 1,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 0m,
             Reference = "Faktura #2001"
         };
 
-        // Act
-        var result = await controller.CreatePayment(request);
-
-        // Assert
-        Assert.IsType<BadRequestObjectResult>(result);
+        // Act & Assert: the exception becomes a 400 ProblemDetails in AppExceptionHandler
+        var exception = await Assert.ThrowsAsync<InvalidPaymentAmountException>(() => controller.CreatePayment(request));
+        Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
     }
 
     /// <summary>
@@ -154,8 +140,7 @@ public class PaymentsControllerTests
         // Arrange
         using var db = CreateContext();
 
-        var service = CreatePaymentService(db);
-        var controller = new PaymentsController(service);
+        var controller = TestServices.PaymentsController(db);
 
         SetAuthenticatedUser(controller);
 
@@ -167,11 +152,9 @@ public class PaymentsControllerTests
             Reference = "Faktura #2001"
         };
 
-        // Act
-        var result = await controller.CreatePayment(request);
-
-        // Assert
-        Assert.IsType<BadRequestObjectResult>(result);
+        // Act & Assert: the exception becomes a 400 ProblemDetails in AppExceptionHandler
+        var exception = await Assert.ThrowsAsync<InvalidIbanException>(() => controller.CreatePayment(request));
+        Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
     }
 
     /// <summary>
@@ -183,23 +166,20 @@ public class PaymentsControllerTests
         // Arrange
         using var db = CreateContext();
 
-        var service = CreatePaymentService(db);
-        var controller = new PaymentsController(service);
+        var controller = TestServices.PaymentsController(db);
 
         SetAuthenticatedUser(controller);
 
         var request = new CreatePaymentRequestDto
         {
             FromAccountId = 0,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 12500m,
             Reference = "Faktura #2001"
         };
 
-        // Act
-        var result = await controller.CreatePayment(request);
-
-        // Assert
-        Assert.IsType<BadRequestObjectResult>(result);
+        // Act & Assert: the exception becomes a 400 ProblemDetails in AppExceptionHandler
+        var exception = await Assert.ThrowsAsync<MissingSourceAccountException>(() => controller.CreatePayment(request));
+        Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
     }
 }

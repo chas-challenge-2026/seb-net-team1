@@ -38,17 +38,7 @@ public class ApprovalsControllerTests
 
     private static ApprovalsController CreateController(SebDbContext db)
     {
-        var paymentRules = Microsoft.Extensions.Options.Options.Create(
-            new PaymentRulesOptions
-            {
-                ApprovalThreshold = 50000m,
-                DoubleApprovalThreshold = 200000m
-            });
-
-        var paymentService = new PaymentService(new PaymentRepository(db), paymentRules);
-
-        return new ApprovalsController(
-            new ApprovalService(new ApprovalRepository(db), paymentService));
+        return new ApprovalsController(TestServices.ApprovalService(db));
     }
 
     /// <summary>

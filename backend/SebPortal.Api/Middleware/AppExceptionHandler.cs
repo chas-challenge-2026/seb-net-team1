@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using SebPortal.Api.Exceptions;
 using System.Net;
 
@@ -30,37 +31,60 @@ public class AppExceptionHandler(
         Exception exception,
         CancellationToken cancellationToken)
     {
+        // A concurrency conflict that a service did not translate itself (xmin tokens
+        // on accounts, payments and approval steps) is still a 409, not a 500.
+        if (exception is DbUpdateConcurrencyException concurrencyException)
+        {
+            exception = new ConcurrencyConflictException(concurrencyException.Message);
+        }
+
         var (statusCode, detail) = exception switch
         {
             AppException appException => (appException.StatusCode, appException.UserMessage),
+            BadHttpRequestException badRequest => (badRequest.StatusCode, "Ogiltig förfrågan."),
             _ => (StatusCodes.Status500InternalServerError, "Ett oväntat fel uppstod. Försök igen senare.")
         };
 
         if (exception is AppException appEx)
         {
             logger.LogWarning(
-                exception,
-                "Handled {ExceptionType}: {TechnicalMessage}",
+                "Handled {ExceptionType} ({StatusCode}) on {Path}: {TechnicalMessage}",
                 appEx.GetType().Name,
+                statusCode,
+                httpContext.Request.Path,
                 appEx.Message);
         }
-        else
+        else if (statusCode >= 500)
         {
             logger.LogError(exception, "Unhandled exception on {Path}", httpContext.Request.Path);
         }
+        else
+        {
+            logger.LogWarning(exception, "Bad request on {Path}", httpContext.Request.Path);
+        }
 
         httpContext.Response.StatusCode = statusCode;
+
+        var problem = new ProblemDetails
+        {
+            Status = statusCode,
+            Title = ((HttpStatusCode)statusCode).ToString(),
+            Detail = detail
+        };
+
+        if (exception is AppException { Extensions: { } extensions })
+        {
+            foreach (var (key, value) in extensions)
+            {
+                problem.Extensions[key] = value;
+            }
+        }
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
             HttpContext = httpContext,
             Exception = exception,
-            ProblemDetails = new ProblemDetails
-            {
-                Status = statusCode,
-                Title = ((HttpStatusCode)statusCode).ToString(),
-                Detail = detail
-            }
+            ProblemDetails = problem
         });
     }
 }

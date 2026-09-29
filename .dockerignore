@@ -23,3 +23,7 @@ Thumbs.db
 # Docker itself
 Dockerfile
 docker-compose*.yml
+
+# Native build output (the image compiles its own)
+native/*.so
+native/tests/binary/

@@ -40,16 +40,7 @@ public class ApprovalServiceTests
         decimal approvalThreshold = 50000m,
         decimal doubleApprovalThreshold = 200000m)
     {
-        var paymentRules = Microsoft.Extensions.Options.Options.Create(
-            new PaymentRulesOptions
-            {
-                ApprovalThreshold = approvalThreshold,
-                DoubleApprovalThreshold = doubleApprovalThreshold
-            });
-
-        var paymentService = new PaymentService(new PaymentRepository(db), paymentRules);
-
-        return new ApprovalService(new ApprovalRepository(db), paymentService);
+        return TestServices.ApprovalService(db, approvalThreshold, doubleApprovalThreshold);
     }
 
     /// <summary>

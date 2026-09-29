@@ -9,19 +9,20 @@
 # En automatisk kontroll (.github/workflows/infra-guard.yml) ger rött X
 # på push som bryter mot regel 1-3.
 # =====================================================================
-version: "3.9"
 name: seb
 
 services:
   db:
-    image: postgres:12
+    # v2: PostgreSQL 16 (v1 ran 12). The schema is created by the API's EF Core
+    # migrations at startup, so no seed.sql is mounted anymore. Switching version
+    # needs a database reset once, see DRIFT.md.
+    image: postgres:16
     environment:
       POSTGRES_DB: seb
       POSTGRES_USER: seb
-      POSTGRES_PASSWORD: seb123
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-seb123}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./seed.sql:/docker-entrypoint-initdb.d/seed.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U seb -d seb"]
       interval: 5s
@@ -47,7 +48,12 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: "http://+:8081"
-      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=seb;Username=seb;Password=seb123"
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=seb;Username=seb;Password=${POSTGRES_PASSWORD:-seb123}"
+      # Secrets come from the environment of the host running compose. When they
+      # are not set the API generates its own (see DRIFT.md, "Hemligheter").
+      Jwt__Key: ${JWT_KEY:-}
+      Audit__SigningKey: ${AUDIT_SIGNING_KEY:-}
+      App__PublicUrl: ${PUBLIC_URL:-http://localhost:8081}
     depends_on:
       db:
         condition: service_healthy

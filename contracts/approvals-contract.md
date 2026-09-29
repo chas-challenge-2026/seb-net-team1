@@ -2,6 +2,17 @@
 
 **Related tickets:** This contract defines the shape only (US-03, Sprint 1). The real implementation is US-25 (`Skapa approval API utifrån v1 ApprovalInbox`) and US-26 (`Flytta attestlogik till ApprovalService`), Sprint 4. Frontend build-out is US-27. The permission fix noted below is US-28. Whoever picks up those tickets should follow this contract, not redefine it. Update this doc in the same PR if anything changes.
 
+### Approval rules (implemented)
+
+- **Who gets the step.** Step 1 is assigned when the payment is created, to an active attestant (preferred) or admin who is not the creator. For payments above the double approval threshold, step 2 is created when step 1 is approved, assigned to someone who is neither the creator nor the step 1 approver. When nobody qualifies, the step is left unassigned and every eligible admin is notified.
+- **Inbox.** Attestants see the steps assigned to them. Admins see every pending step in the tenant, including unassigned ones, except on payments they created themselves.
+- **Four-eyes principle.** Nobody can decide a step on a payment they created (`403`), and one person can only approve one step of a payment (`403`). When an admin decides a step assigned to someone else, the step is recorded as decided by the admin.
+- **Completion.** The last approval completes the payment: balance, transaction and status are written together, guarded by optimistic locking. A rejection rejects the payment and closes any other open step.
+- **Notifications.** The assigned attestant is notified when a step is waiting for them, and the creator when the payment is completed or rejected (see [notifications-contract.md](notifications-contract.md)).
+- **Audit.** `APPROVE_PAYMENT_STEP` (a step approved, more remain), `APPROVE_PAYMENT` (final approval, payment completed) and `REJECT_PAYMENT` are written to the audit log in the same transaction as the decision.
+
+---
+
 ### GET `/api/approvals`
 
 Returns the logged-in attestant's pending approvals and their recently handled approvals.
@@ -43,7 +54,12 @@ No request body, no query parameters for MVP.
   "recentlyHandled": [
     {
       "paymentId": 40,
+      "approvalStepId": 498,
+      "stepNumber": 1,
       "amount": "8000.00",
+      "currency": "SEK",
+      "reference": "Faktura #1990",
+      "toIban": "SE3550000000054910000003",
       "status": "approved",
       "decidedAt": "2026-08-29T14:00:00Z",
       "comment": ""
@@ -69,6 +85,11 @@ No request body, no query parameters for MVP.
 | `pending[].totalSteps` | number | Total approval steps required for this payment |
 | `pending[].requiresDoubleApproval` | boolean | Whether this payment needs a second attestant. Backend-computed. Frontend must not infer this from the amount itself |
 | `recentlyHandled[].paymentId` | number | Payment id |
+| `recentlyHandled[].approvalStepId` | number | The step this attestant decided |
+| `recentlyHandled[].stepNumber` | number | Which step it was |
+| `recentlyHandled[].currency` | string | Currency code |
+| `recentlyHandled[].reference` | string | Payment reference |
+| `recentlyHandled[].toIban` | string | Recipient IBAN |
 | `recentlyHandled[].amount` | string | Payment amount, as a decimal string |
 | `recentlyHandled[].status` | string | `approved` or `rejected` |
 | `recentlyHandled[].decidedAt` | string (ISO 8601) | When this attestant made their decision |
@@ -142,7 +163,7 @@ Returned when `action` is missing or not one of `approve`/`reject`, or `comment`
 
 ### `403 Forbidden`
 
-Returned when the approval step is not assigned to the logged-in attestant (and the user isn't `admin`).
+Returned when the approval step is not assigned to the logged-in attestant (and the user isn't `admin`), when the caller created the payment (`Du kan inte attestera en betalning som du själv har skapat.`), or when the caller already approved another step of the same payment.
 
 ```json
 {
@@ -166,7 +187,7 @@ Returned when the approval step doesn't exist.
 
 ### `409 Conflict`
 
-Returned when the approval step has already been decided.
+Returned when the approval step has already been decided, the payment is no longer pending, or someone else changed the payment or account at the same moment. A final approval that the account can no longer cover returns `400` (`Kontot har inte tillräckligt saldo för denna betalning.`) and changes nothing.
 
 ```json
 {

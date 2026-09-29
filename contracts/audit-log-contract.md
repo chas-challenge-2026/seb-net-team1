@@ -22,6 +22,11 @@ No request body.
 |---|---|---|---|
 | `limit` | number | No | Max number of entries to return. Default `50`. |
 | `cursor` | string | No | Pagination cursor for fetching older entries. Omit for the first page. |
+| `action` | string | No | Only entries with this action, e.g. `CREATE_PAYMENT` |
+| `entityType` | string | No | Only entries about this kind of entity: `payment`, `user` or `batch` |
+| `entityId` | number | No | Only entries about this entity id (combine with `entityType`) |
+
+Actions: `LOGIN`, `LOGOUT`, `CREATE_PAYMENT`, `APPROVE_PAYMENT_STEP`, `APPROVE_PAYMENT`, `REJECT_PAYMENT`, `BATCH_UPLOAD`, `USER_CREATED`, `USER_UPDATED`, `PASSWORD_CHANGED`, `PASSWORD_RESET`.
 
 ---
 
@@ -77,6 +82,18 @@ Returned when the JWT is missing, invalid, or expired.
 
 ---
 
+### GET `/api/audit-log/verify`
+
+Role `admin`. Recomputes the tenant's whole audit chain and reports the first entry that does not match.
+
+```json
+{ "valid": true, "checkedCount": 57, "firstInvalidEntryId": null, "verifiedAt": "2026-09-29T16:19:33Z" }
+```
+
+**How the chain works.** Every entry stores `chain_index` (its position in the tenant's chain), `previous_hash` (the previous entry's hash, 64 zeros for the first) and `hash` = HMAC-SHA256 over the entry's content and `previous_hash`, with a key from `Audit__SigningKey`. Editing, deleting, inserting or reordering a row in the database breaks the chain from that row onwards, and without the key a valid hash cannot be recomputed. Entries are signed in the same transaction as the business change they describe, under a per-tenant advisory lock so concurrent writers cannot fork the chain. The `/health` endpoint reports the chain status as well.
+
+---
+
 ## Frontend Notes
 
 Frontend can use this contract to:
@@ -90,8 +107,8 @@ Frontend can use this contract to:
 
 Backend should use this contract to:
 - implement `GET /api/audit-log`
-- return only entries belonging to the logged-in user's tenant. v1 had no tenant filtering on audit entries at all, so any logged-in user could see every tenant's activity if they guessed the URL. Fixing this likely needs a schema change (linking entries to a tenant, not just a user), which belongs to the data model work in US-06, not this contract
-- write every auditable action to one place. v1 wrote some actions to the database and others only to a local file, so entries like batch payments and partial approvals never showed up in this endpoint at all (BUG-008). This contract assumes a single source of truth going forward. Whoever implements the write side of audit logging should make sure nothing is file-only anymore
+- return only entries belonging to the logged-in user's tenant. v1 had no tenant filtering on audit entries at all, so any logged-in user could see every tenant's activity if they guessed the URL. **Implemented:** every entry has its own `tenant_id`
+- write every auditable action to one place. v1 wrote some actions to the database and others only to a local file, so entries like batch payments and partial approvals never showed up in this endpoint at all (BUG-008). **Implemented:** the database is the only destination, for every action listed above
 - respect `limit`/`cursor` and return `nextCursor` accordingly. v1 hardcoded a limit of 200 with no way to page further
 - return consistent ProblemDetails error responses (status, title, detail) per the format above
 

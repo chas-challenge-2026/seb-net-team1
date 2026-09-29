@@ -39,7 +39,7 @@ public class PaymentsAuthorizationIntegrationTests
         var request = new CreatePaymentRequestDto
         {
             FromAccountId = 1,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 125.50m,
             Reference = "Integration test"
         };
@@ -86,7 +86,7 @@ public class PaymentsAuthorizationIntegrationTests
         var request = new CreatePaymentRequestDto
         {
             FromAccountId = 1,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 125.50m,
             Reference = "Integration test"
         };

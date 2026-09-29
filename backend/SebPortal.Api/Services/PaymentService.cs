@@ -1,65 +1,253 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using SebPortal.Api.Auditing;
+using SebPortal.Api.Data;
 using SebPortal.Api.Exceptions;
 using SebPortal.Api.Models;
-using SebPortal.Api.Repositories;
-using Microsoft.Extensions.Options;
 using SebPortal.Api.Options;
+using SebPortal.Api.Repositories;
+using SebPortal.Api.Validation;
 
 namespace SebPortal.Api.Services;
 
-public class PaymentService(PaymentRepository paymentRepository, IOptions<PaymentRulesOptions> paymentRules)
-{
-    /// <summary>
-    /// Creates a payment, validates the source account and tenant,
-    /// and uses the configured approval threshold to either complete the payment
-    /// immediately or leave it pending approval.
-    /// </summary>
-    public async Task<Payment> CreatePaymentAsync(
-        int tenantId,
-        int fromAccountId,
-        string toIban,
-        decimal amount,
-        string currency,
-        string? reference,
-        int? createdById)
-    {
-        // 1. Look for the right account or tenant
-        var account = await paymentRepository.GetAccountAsync(fromAccountId, tenantId);
+/// <summary>Everything needed to create one payment. Tenant and user always come from the JWT.</summary>
+public sealed record CreatePaymentCommand(
+    int TenantId,
+    int UserId,
+    int FromAccountId,
+    string? ToIban,
+    decimal Amount,
+    string? Reference,
+    string? IdempotencyKey = null,
+    string Source = PaymentSources.Manual);
 
-        if (account is null)
+/// <summary>The created payment, and whether it was an idempotent replay of an earlier request.</summary>
+public sealed record PaymentCreationResult(Payment Payment, bool Replayed);
+
+public class PaymentService(
+    PaymentRepository paymentRepository,
+    IOptions<PaymentRulesOptions> paymentRules,
+    IIbanValidator ibanValidator,
+    ApprovalAssignmentService approvalAssignment,
+    UnitOfWork unitOfWork)
+{
+    public const int MaxReferenceLength = 100;
+    public const int MaxIdempotencyKeyLength = 64;
+    public const decimal MaxAmount = 999_999_999.99m;
+
+    /// <summary>Attempts before a concurrency conflict on the account is reported as 409.</summary>
+    private const int MaxConcurrencyAttempts = 3;
+
+    /// <summary>
+    /// Creates a payment. Validates the input, the source account (must belong to the
+    /// caller's tenant) and the available balance, then either completes the payment
+    /// directly (at or below the approval threshold) or creates the first approval
+    /// step and notifies the attestant. The payment, its balance change, approval
+    /// step, audit entry and notification are committed together.
+    /// </summary>
+    public async Task<PaymentCreationResult> CreatePaymentAsync(CreatePaymentCommand command)
+    {
+        var idempotencyKey = NormalizeIdempotencyKey(command.IdempotencyKey);
+
+        if (idempotencyKey is not null)
         {
+            var existing = await paymentRepository.FindByIdempotencyKeyAsync(command.TenantId, command.UserId, idempotencyKey);
+            if (existing is not null)
+            {
+                return new PaymentCreationResult(existing, Replayed: true);
+            }
+        }
+
+        if (command.FromAccountId <= 0)
+        {
+            throw new MissingSourceAccountException();
+        }
+
+        var toIban = ValidatePaymentInput(command.ToIban, command.Amount, command.Reference, out var reference);
+
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                var payment = await CreateOnceAsync(command, toIban, reference, idempotencyKey);
+                return new PaymentCreationResult(payment, Replayed: false);
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < MaxConcurrencyAttempts)
+            {
+                // Another payment changed the same account between our read and our
+                // write (xmin mismatch). Start over with fresh data: the balance check
+                // runs again, so the account can never be overdrawn.
+                paymentRepository.ResetTracking();
+            }
+            catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException && idempotencyKey is not null)
+            {
+                // Two requests with the same key raced; the unique index let only one win.
+                paymentRepository.ResetTracking();
+                var winner = await paymentRepository.FindByIdempotencyKeyAsync(command.TenantId, command.UserId, idempotencyKey);
+                if (winner is not null)
+                {
+                    return new PaymentCreationResult(winner, Replayed: true);
+                }
+                throw;
+            }
+        }
+    }
+
+    private Task<Payment> CreateOnceAsync(CreatePaymentCommand command, string toIban, string? reference, string? idempotencyKey) =>
+        unitOfWork.RunAsync(command.TenantId, async () =>
+        {
+            // Read and check the balance inside the transaction, after the tenant lock,
+            // so the check sees every payment committed before it.
+            //
             // AccountNotFoundException on purpose here, not an access-denied exception:
             // GetAccountAsync filters by (id AND tenantId) in one query, so we genuinely
             // can't tell "doesn't exist" apart from "belongs to another tenant". Returning
             // the same NotFound response for both avoids leaking that distinction across tenants.
-            throw new AccountNotFoundException(fromAccountId);
+            var account = await paymentRepository.GetAccountAsync(command.FromAccountId, command.TenantId)
+                ?? throw new AccountNotFoundException(command.FromAccountId);
+
+            if (string.Equals(account.Iban, toIban, StringComparison.Ordinal))
+            {
+                throw new SameAccountPaymentException(toIban);
+            }
+
+            var reserved = await paymentRepository.GetReservedAmountAsync(account.Id);
+            EnsureAvailableBalance(account, reserved, command.Amount);
+
+            var payment = NewPayment(command.TenantId, command.UserId, account.Id, toIban, command.Amount,
+                reference, idempotencyKey, command.Source);
+
+            ApprovalStep? firstStep = null;
+            if (RequiresApproval(command.Amount))
+            {
+                firstStep = await approvalAssignment.CreateNextStepAsync(payment, []);
+            }
+            else
+            {
+                CompletePaymentOrThrow(payment, account);
+            }
+
+            // The payment, the balance change (guarded by the account's xmin) and the
+            // first approval step are written in one statement batch.
+            paymentRepository.AddPayment(payment);
+            await paymentRepository.SaveChangesAsync();
+
+            paymentRepository.AddAuditEntry(CreatedAuditEntry(payment));
+
+            if (firstStep is not null)
+            {
+                await approvalAssignment.NotifyAsync(payment, firstStep, [firstStep], RequiredApprovalSteps(payment.Amount));
+            }
+
+            await paymentRepository.SaveChangesAsync();
+            return payment;
+        });
+
+    /// <summary>
+    /// Validates the parts of a payment that do not need the database and returns the
+    /// normalized IBAN. Shared with batch uploads so both paths apply the same rules.
+    /// </summary>
+    public string ValidatePaymentInput(string? toIban, decimal amount, string? reference, out string? normalizedReference)
+    {
+        if (amount <= 0)
+        {
+            throw new InvalidPaymentAmountException(amount);
         }
 
-        // 2. Create the payment
-        var payment = new Payment
+        if (decimal.Round(amount, 2) != amount)
         {
-            TenantId = tenantId,
-            FromAccountId = fromAccountId,
-            ToIban = toIban,
-            Amount = amount,
-            Currency = currency,
-            Reference = reference,
-            CreatedById = createdById,
-            CreatedAt = DateTime.UtcNow,
-            Status = PaymentStatuses.PendingApproval
-        };
-
-        // 3. Determine the payment flow from the configured approval threshold.
-        var requiresApproval = amount > paymentRules.Value.ApprovalThreshold;
-
-        if (!requiresApproval)
-        {
-            CompletePaymentOrThrow(payment, account);
+            throw new InvalidPaymentAmountPrecisionException(amount);
         }
 
-        // 4. Persist the payment together with any balance and transaction changes.
-        await paymentRepository.AddPaymentAsync(payment);
+        if (amount > MaxAmount)
+        {
+            throw new PaymentAmountTooLargeException(amount, MaxAmount);
+        }
 
-        return payment;
+        normalizedReference = NormalizeReference(reference);
+
+        var iban = ibanValidator.Validate(toIban);
+        if (!iban.IsValid)
+        {
+            throw new InvalidIbanException(iban.Normalized, iban.Message);
+        }
+
+        return iban.Normalized;
+    }
+
+    public static string? NormalizeReference(string? reference)
+    {
+        var trimmed = reference?.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            return null;
+        }
+
+        if (trimmed.Length > MaxReferenceLength)
+        {
+            throw new InvalidPaymentReferenceException(MaxReferenceLength);
+        }
+
+        return trimmed;
+    }
+
+    public static void EnsureAvailableBalance(Account account, decimal reserved, decimal amount)
+    {
+        var available = account.Balance - reserved;
+        if (amount > available)
+        {
+            throw new InsufficientFundsException(amount, available);
+        }
+    }
+
+    internal static Payment NewPayment(int tenantId, int userId, int accountId, string toIban, decimal amount,
+        string? reference, string? idempotencyKey, string source) => new()
+    {
+        TenantId = tenantId,
+        FromAccountId = accountId,
+        ToIban = toIban,
+        Amount = amount,
+        Currency = "SEK",
+        Reference = reference,
+        CreatedById = userId,
+        CreatedAt = DateTime.UtcNow,
+        Status = PaymentStatuses.PendingApproval,
+        Source = source,
+        IdempotencyKey = idempotencyKey
+    };
+
+    internal static AuditEntry CreatedAuditEntry(Payment payment)
+    {
+        var outcome = payment.Status == PaymentStatuses.Completed
+            ? "genomförd direkt"
+            : "skickad för attest";
+        var via = payment.Source == PaymentSources.Batch ? " via batchfil" : string.Empty;
+
+        return Audit.Entry(
+            payment.TenantId,
+            payment.CreatedById,
+            AuditActions.CreatePayment,
+            AuditEntityTypes.Payment,
+            payment.Id,
+            $"Betalning #{payment.Id} på {Money.Display(payment.Amount)} {payment.Currency} till {payment.ToIban} " +
+            $"skapad{via} och {outcome}." +
+            (payment.Reference is null ? string.Empty : $" Referens: {payment.Reference}."));
+    }
+
+    private static string? NormalizeIdempotencyKey(string? key)
+    {
+        var trimmed = key?.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            return null;
+        }
+
+        if (trimmed.Length > MaxIdempotencyKeyLength)
+        {
+            throw new IdempotencyKeyTooLongException(MaxIdempotencyKeyLength);
+        }
+
+        return trimmed;
     }
 
     /// <summary>
@@ -111,6 +299,9 @@ public class PaymentService(PaymentRepository paymentRepository, IOptions<Paymen
             };
         }
 
+        // The balance change is saved with the payment in one SaveChanges, guarded by
+        // the account's xmin concurrency token: two payments that read the same balance
+        // cannot both be written (US-24, fixes BUG-009).
         account.Balance -= payment.Amount;
         payment.Status = PaymentStatuses.Completed;
         payment.ExecutedAt = DateTime.UtcNow;
@@ -118,10 +309,11 @@ public class PaymentService(PaymentRepository paymentRepository, IOptions<Paymen
         account.Transactions.Add(new Transaction
         {
             AccountId = account.Id,
+            Payment = payment,
             Amount = -payment.Amount,
             Date = payment.ExecutedAt.Value,
-            Description = payment.Reference,
-            TransactionType = "payment"
+            Description = payment.Reference ?? $"Betalning till {payment.ToIban}",
+            TransactionType = TransactionTypes.Payment
         });
 
         return new CompletePaymentResult
@@ -158,6 +350,10 @@ public class PaymentService(PaymentRepository paymentRepository, IOptions<Paymen
             _ => new InvalidOperationException(result.ErrorMessage)
         };
     }
+
+    /// <summary>Payments above the configured threshold need attest instead of completing directly.</summary>
+    public bool RequiresApproval(decimal amount) =>
+        amount > paymentRules.Value.ApprovalThreshold;
 
     /// <summary>
     /// Whether a payment of this amount needs a second attestant. Reads the one

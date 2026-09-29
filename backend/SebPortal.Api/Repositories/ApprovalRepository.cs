@@ -17,15 +17,17 @@ public class ApprovalRepository(SebDbContext dbContext)
     /// </summary>
     public Task<List<ApprovalStep>> GetPendingStepsForAttestantAsync(int userId, int tenantId) =>
         PendingStepsQuery(tenantId)
-            .Where(step => step.AttestantId == userId)
+            .Where(step => step.AttestantId == userId && step.Payment!.CreatedById != userId)
             .ToListAsync();
 
     /// <summary>
-    /// Every pending step in a tenant. Admins see the whole tenant's inbox,
-    /// attestants only their own steps.
+    /// Every pending step in a tenant that the admin may decide: everything except
+    /// the admin's own payments (four-eyes principle). Attestants only see their own steps.
     /// </summary>
-    public Task<List<ApprovalStep>> GetPendingStepsForTenantAsync(int tenantId) =>
-        PendingStepsQuery(tenantId).ToListAsync();
+    public Task<List<ApprovalStep>> GetPendingStepsForTenantAsync(int tenantId, int? excludeCreatedById = null) =>
+        PendingStepsQuery(tenantId)
+            .Where(step => excludeCreatedById == null || step.Payment!.CreatedById != excludeCreatedById)
+            .ToListAsync();
 
     private IQueryable<ApprovalStep> PendingStepsQuery(int tenantId) =>
         dbContext.ApprovalSteps
@@ -48,6 +50,7 @@ public class ApprovalRepository(SebDbContext dbContext)
             .Where(step =>
                 step.AttestantId == userId &&
                 step.Status != ApprovalStatuses.Pending &&
+                step.DecidedAt != null &&
                 step.Payment != null &&
                 step.Payment.TenantId == tenantId)
             .OrderByDescending(step => step.DecidedAt)
@@ -55,13 +58,13 @@ public class ApprovalRepository(SebDbContext dbContext)
             .ToListAsync();
 
     /// <summary>
-    /// One step with everything needed to decide it: the payment and the account
-    /// the money would leave (including its transactions, so completing the payment
-    /// can append one).
+    /// One step with everything needed to decide it: the payment, its creator and the
+    /// account the money would leave.
     /// </summary>
     public Task<ApprovalStep?> GetStepWithPaymentAsync(int approvalStepId) =>
         dbContext.ApprovalSteps
-            .Include(step => step.Payment!).ThenInclude(payment => payment.FromAccount!).ThenInclude(account => account.Transactions)
+            .Include(step => step.Payment!).ThenInclude(payment => payment.FromAccount)
+            .Include(step => step.Payment!).ThenInclude(payment => payment.CreatedBy)
             .FirstOrDefaultAsync(step => step.Id == approvalStepId);
 
     /// <summary>All steps belonging to one payment, ordered by step number.</summary>
@@ -72,24 +75,41 @@ public class ApprovalRepository(SebDbContext dbContext)
             .ToListAsync();
 
     /// <summary>
-    /// Finds an attestant (or admin) in the tenant who can take the next approval
-    /// step, skipping anyone who must not decide it themselves. Returns null when
-    /// the tenant has nobody left, in which case the step is left unassigned and
-    /// only an admin can pick it up.
+    /// Finds an active attestant (or admin) in the tenant who can take the next
+    /// approval step, skipping anyone who must not decide it themselves. Attestants
+    /// are preferred over admins. Returns null when the tenant has nobody left, in
+    /// which case the step is left unassigned and only an admin can pick it up.
     /// </summary>
     public async Task<int?> FindNextAttestantIdAsync(int tenantId, IReadOnlyCollection<int> excludedUserIds)
     {
         var candidates = await dbContext.Users
             .Where(user =>
                 user.TenantId == tenantId &&
+                user.IsActive &&
                 (user.Role == UserRoles.Attestant || user.Role == UserRoles.Admin) &&
                 !excludedUserIds.Contains(user.Id))
-            .OrderBy(user => user.Id)
-            .Select(user => (int?)user.Id)
-            .FirstOrDefaultAsync();
+            .Select(user => new { user.Id, user.Role })
+            .ToListAsync();
 
-        return candidates;
+        return candidates
+            .OrderBy(user => user.Role == UserRoles.Attestant ? 0 : 1)
+            .ThenBy(user => user.Id)
+            .Select(user => (int?)user.Id)
+            .FirstOrDefault();
     }
+
+    public Task<User?> GetUserAsync(int userId) =>
+        dbContext.Users.FirstOrDefaultAsync(user => user.Id == userId);
+
+    public Task<List<int>> GetActiveAdminIdsAsync(int tenantId, IReadOnlyCollection<int> excludedUserIds) =>
+        dbContext.Users
+            .Where(user =>
+                user.TenantId == tenantId &&
+                user.IsActive &&
+                user.Role == UserRoles.Admin &&
+                !excludedUserIds.Contains(user.Id))
+            .Select(user => user.Id)
+            .ToListAsync();
 
     public void AddApprovalStep(ApprovalStep step) =>
         dbContext.ApprovalSteps.Add(step);

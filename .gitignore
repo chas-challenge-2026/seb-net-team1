@@ -18,3 +18,7 @@ Thumbs.db
 
 ## Docker volumes (local)
 pgdata/
+
+## Native build output
+native/*.so
+native/tests/binary/

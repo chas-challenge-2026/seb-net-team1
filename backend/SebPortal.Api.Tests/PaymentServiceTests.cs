@@ -28,16 +28,7 @@ public class PaymentServiceTests
         decimal approvalThreshold = 50000m,
         decimal doubleApprovalThreshold = 200000m)
     {
-        var repository = new PaymentRepository(db);
-
-        var paymentRules = Microsoft.Extensions.Options.Options.Create(
-            new PaymentRulesOptions
-            {
-                ApprovalThreshold = approvalThreshold,
-                DoubleApprovalThreshold = doubleApprovalThreshold
-            });
-
-        return new PaymentService(repository, paymentRules);
+        return TestServices.PaymentService(db, approvalThreshold, doubleApprovalThreshold);
     }
 
     /// <summary>
@@ -191,14 +182,13 @@ public class PaymentServiceTests
         var service = CreatePaymentService(db);
 
         await Assert.ThrowsAsync<AccountNotFoundException>(() =>
-            service.CreatePaymentAsync(
-                tenantId: 1,
-                fromAccountId: 1,
-                toIban: "SE4550000000054910000099",
-                amount: 250m,
-                currency: "SEK",
-                reference: "Testbetalning",
-                createdById: 1));
+            service.CreatePaymentAsync(new CreatePaymentCommand(
+                TenantId: 1,
+                UserId: 1,
+                FromAccountId: 1,
+                ToIban: "SE6250000000054910000099",
+                Amount: 250m,
+                Reference: "Testbetalning")));
     }
     [Fact]
     public async Task CreatePaymentAsync_CreatesPendingPayment_WhenApprovalIsRequired()
@@ -219,14 +209,13 @@ public class PaymentServiceTests
 
         var service = CreatePaymentService(db);
 
-        var result = await service.CreatePaymentAsync(
-            tenantId: 1,
-            fromAccountId: 1,
-            toIban: "SE4550000000054910000099",
-            amount: 50001m,
-            currency: "SEK",
-            reference: "Testbetalning",
-            createdById: 1);
+        var result = (await service.CreatePaymentAsync(new CreatePaymentCommand(
+                TenantId: 1,
+                UserId: 1,
+                FromAccountId: 1,
+                ToIban: "SE6250000000054910000099",
+                Amount: 50001m,
+                Reference: "Testbetalning"))).Payment;
 
         Assert.NotNull(result);
         Assert.Equal(PaymentStatuses.PendingApproval, result.Status);
@@ -258,14 +247,13 @@ public class PaymentServiceTests
 
         var service = CreatePaymentService(db);
 
-        var result = await service.CreatePaymentAsync(
-            tenantId: 1,
-            fromAccountId: 1,
-            toIban: "SE4550000000054910000099",
-            amount: amount,
-            currency: "SEK",
-            reference: "Direktbetalning",
-            createdById: 1);
+        var result = (await service.CreatePaymentAsync(new CreatePaymentCommand(
+                TenantId: 1,
+                UserId: 1,
+                FromAccountId: 1,
+                ToIban: "SE6250000000054910000099",
+                Amount: amount,
+                Reference: "Direktbetalning"))).Payment;
 
         Assert.NotNull(result);
         Assert.Equal(PaymentStatuses.Completed, result.Status);
@@ -303,14 +291,13 @@ public class PaymentServiceTests
         var service = CreatePaymentService(db);
 
         await Assert.ThrowsAsync<InsufficientFundsException>(() =>
-            service.CreatePaymentAsync(
-                tenantId: 1,
-                fromAccountId: 1,
-                toIban: "SE4550000000054910000099",
-                amount: 250m,
-                currency: "SEK",
-                reference: "Testbetalning",
-                createdById: 1));
+            service.CreatePaymentAsync(new CreatePaymentCommand(
+                TenantId: 1,
+                UserId: 1,
+                FromAccountId: 1,
+                ToIban: "SE6250000000054910000099",
+                Amount: 250m,
+                Reference: "Testbetalning")));
 
         Assert.Empty(db.Payments);
 

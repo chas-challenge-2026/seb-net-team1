@@ -7,5 +7,6 @@ public class DashboardResponse
     public List<AccountDto> Accounts { get; set; } = [];
     public List<PaymentSummaryDto> RecentPayments { get; set; } = [];
     public List<PaymentSummaryDto> PendingApprovals { get; set; } = [];
+    public DashboardStatsDto Stats { get; set; } = new();
     public string? NextCursor { get; set; }
 }

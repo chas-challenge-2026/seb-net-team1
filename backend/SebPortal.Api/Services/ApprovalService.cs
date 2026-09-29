@@ -1,4 +1,4 @@
-using System.Globalization;
+using SebPortal.Api.Auditing;
 using SebPortal.Api.DTOs;
 using SebPortal.Api.Exceptions;
 using SebPortal.Api.Models;
@@ -15,7 +15,9 @@ namespace SebPortal.Api.Services;
 /// </summary>
 public class ApprovalService(
     ApprovalRepository approvalRepository,
-    PaymentService paymentService)
+    PaymentService paymentService,
+    ApprovalAssignmentService approvalAssignment,
+    NotificationService notificationService)
 {
     public const string ApproveAction = "approve";
     public const string RejectAction = "reject";
@@ -31,11 +33,11 @@ public class ApprovalService(
     /// </summary>
     /// <param name="tenantId">Tenant from the JWT.</param>
     /// <param name="userId">User from the JWT. Never a client supplied id (BUG-011).</param>
-    /// <param name="role">Role from the JWT. Admins see the whole tenant's pending steps.</param>
+    /// <param name="role">Role from the JWT. Admins see the whole tenant's pending steps, except their own payments.</param>
     public async Task<ApprovalInboxResponse> GetInboxAsync(int tenantId, int userId, string? role)
     {
         var pendingSteps = IsAdmin(role)
-            ? await approvalRepository.GetPendingStepsForTenantAsync(tenantId)
+            ? await approvalRepository.GetPendingStepsForTenantAsync(tenantId, excludeCreatedById: userId)
             : await approvalRepository.GetPendingStepsForAttestantAsync(userId, tenantId);
 
         var handledSteps = await approvalRepository.GetHandledStepsForAttestantAsync(
@@ -80,6 +82,12 @@ public class ApprovalService(
             throw new ApprovalStepNotFoundException(approvalStepId);
         }
 
+        // Four-eyes principle: not even an admin attests their own payment.
+        if (payment.CreatedById == userId)
+        {
+            throw new OwnPaymentApprovalException(payment.Id, userId);
+        }
+
         // Fixes BUG-011 (IDOR): the step must actually be assigned to the caller.
         // v1 trusted the approvalStepId from a hidden form field, so any attestant
         // could decide someone else's step. Admins may still act on any step inside
@@ -99,13 +107,29 @@ public class ApprovalService(
             throw new PaymentAlreadyCompletedException(payment.Id, payment.Status);
         }
 
+        var steps = await approvalRepository.GetStepsForPaymentAsync(payment.Id);
+
+        // One person can only approve one of the steps, otherwise double approval
+        // means nothing (v1 assigned both steps to the same attestant).
+        if (steps.Any(s => s.Id != step.Id && s.AttestantId == userId && s.Status == ApprovalStatuses.Approved))
+        {
+            throw new ApprovalStepAccessDeniedException(approvalStepId, userId);
+        }
+
+        // Record who actually decided. When an admin takes over someone else's step
+        // this also keeps them out of the next step.
+        step.AttestantId = userId;
+
+        var decidedBy = await approvalRepository.GetUserAsync(userId);
+        var decidedByName = decidedBy?.Name ?? "en attestant";
+
         if (action == ApproveAction)
         {
-            await ApproveAsync(step, payment, userId, comment);
+            await ApproveAsync(step, payment, steps, userId, comment);
         }
         else
         {
-            await RejectAsync(step, payment, userId, comment);
+            Reject(step, payment, steps, userId, decidedByName, comment);
         }
 
         await approvalRepository.SaveChangesAsync();
@@ -119,37 +143,40 @@ public class ApprovalService(
         };
     }
 
-    private async Task ApproveAsync(ApprovalStep step, Payment payment, int userId, string? comment)
+    private async Task ApproveAsync(ApprovalStep step, Payment payment, List<ApprovalStep> steps, int userId, string? comment)
     {
         step.Status = ApprovalStatuses.Approved;
         step.DecidedAt = DateTime.UtcNow;
         step.Comment = comment;
 
-        // Tracked by the same DbContext, so this list already reflects the change above.
-        var steps = await approvalRepository.GetStepsForPaymentAsync(payment.Id);
-
         var requiredSteps = paymentService.RequiredApprovalSteps(payment.Amount);
         var approvedSteps = steps.Count(s => s.Status == ApprovalStatuses.Approved);
         var pendingSteps = steps.Count(s => s.Status == ApprovalStatuses.Pending);
 
-        // Safety net for a payment that was created with fewer steps than the double
-        // approval rule requires (BUG-006). We never complete a payment on fewer
-        // approvals than the rule asks for, and we never leave it stuck either: the
-        // missing step is created and assigned so someone can still act on it.
+        // Double approval is sequential: step 2 is created when step 1 is approved, and
+        // this is also the safety net for a payment created with fewer steps than the
+        // rule requires (BUG-006). We never complete a payment on fewer approvals than
+        // the rule asks for, and we never leave it stuck either: the missing step is
+        // created and assigned so someone can still act on it.
         if (pendingSteps == 0 && approvedSteps < requiredSteps)
         {
-            await AddMissingApprovalStepAsync(payment, steps);
+            var nextStep = await approvalAssignment.CreateNextStepAsync(payment, steps);
+            approvalRepository.AddApprovalStep(nextStep);
+            await approvalAssignment.NotifyAsync(payment, nextStep, [.. steps, nextStep], requiredSteps);
             pendingSteps = 1;
         }
 
         if (pendingSteps > 0)
         {
-            approvalRepository.AddAuditEntry(CreateAuditEntry(
+            approvalRepository.AddAuditEntry(Audit.Entry(
+                payment.TenantId,
                 userId,
-                "APPROVE_PAYMENT_STEP",
+                AuditActions.ApprovePaymentStep,
+                AuditEntityTypes.Payment,
                 payment.Id,
-                $"Atteststeg {step.StepNumber} godkänt för betalning #{payment.Id}. " +
-                $"{pendingSteps} steg kvar."));
+                $"Atteststeg {step.StepNumber} godkänt för betalning #{payment.Id} " +
+                $"({Money.Display(payment.Amount)} {payment.Currency}). {pendingSteps} steg kvar." +
+                (comment is null ? string.Empty : $" Kommentar: {comment}")));
 
             return;
         }
@@ -163,15 +190,20 @@ public class ApprovalService(
 
         paymentService.CompletePaymentOrThrow(payment, account);
 
-        approvalRepository.AddAuditEntry(CreateAuditEntry(
+        approvalRepository.AddAuditEntry(Audit.Entry(
+            payment.TenantId,
             userId,
-            "APPROVE_PAYMENT",
+            AuditActions.ApprovePayment,
+            AuditEntityTypes.Payment,
             payment.Id,
-            $"Betalning godkänd och genomförd: {FormatAmount(payment.Amount)} " +
-            $"{payment.Currency} till {payment.ToIban}."));
+            $"Betalning #{payment.Id} godkänd och genomförd: {Money.Display(payment.Amount)} " +
+            $"{payment.Currency} till {payment.ToIban}." +
+            (comment is null ? string.Empty : $" Kommentar: {comment}")));
+
+        notificationService.PaymentCompleted(payment);
     }
 
-    private async Task RejectAsync(ApprovalStep step, Payment payment, int userId, string? comment)
+    private void Reject(ApprovalStep step, Payment payment, List<ApprovalStep> steps, int userId, string decidedByName, string? comment)
     {
         var decidedAt = DateTime.UtcNow;
 
@@ -183,48 +215,22 @@ public class ApprovalService(
 
         // One rejection stops the payment, so no other attestant should be left
         // with a step they can still act on.
-        var steps = await approvalRepository.GetStepsForPaymentAsync(payment.Id);
-
         foreach (var remaining in steps.Where(s => s.Status == ApprovalStatuses.Pending))
         {
             remaining.Status = ApprovalStatuses.Rejected;
             remaining.DecidedAt = decidedAt;
         }
 
-        approvalRepository.AddAuditEntry(CreateAuditEntry(
+        approvalRepository.AddAuditEntry(Audit.Entry(
+            payment.TenantId,
             userId,
-            "REJECT_PAYMENT",
+            AuditActions.RejectPayment,
+            AuditEntityTypes.Payment,
             payment.Id,
-            $"Betalning avvisad: {FormatAmount(payment.Amount)} {payment.Currency}." +
-            (comment is null ? "" : $" Kommentar: {comment}")));
-    }
+            $"Betalning #{payment.Id} avvisad: {Money.Display(payment.Amount)} {payment.Currency}." +
+            (comment is null ? string.Empty : $" Kommentar: {comment}")));
 
-    /// <summary>
-    /// Adds the approval step a payment still needs, assigned to someone who has
-    /// not already decided it and who did not create it. When the tenant has no one
-    /// left, the step is created unassigned so an admin can pick it up. v1 fell back
-    /// to the current user, which let one person approve the same payment twice.
-    /// </summary>
-    private async Task AddMissingApprovalStepAsync(Payment payment, List<ApprovalStep> steps)
-    {
-        var excludedUserIds = steps
-            .Select(s => s.AttestantId)
-            .Append(payment.CreatedById)
-            .Where(id => id.HasValue)
-            .Select(id => id!.Value)
-            .Distinct()
-            .ToList();
-
-        var nextAttestantId = await approvalRepository.FindNextAttestantIdAsync(
-            payment.TenantId, excludedUserIds);
-
-        approvalRepository.AddApprovalStep(new ApprovalStep
-        {
-            PaymentId = payment.Id,
-            AttestantId = nextAttestantId,
-            StepNumber = steps.Count + 1,
-            Status = ApprovalStatuses.Pending
-        });
+        notificationService.PaymentRejected(payment, decidedByName, comment);
     }
 
     private static string NormalizeAction(string? action)
@@ -256,17 +262,6 @@ public class ApprovalService(
     private static bool IsAdmin(string? role) =>
         string.Equals(role, UserRoles.Admin, StringComparison.OrdinalIgnoreCase);
 
-    private static AuditEntry CreateAuditEntry(int userId, string action, int paymentId, string description) =>
-        new()
-        {
-            UserId = userId,
-            Action = action,
-            EntityType = "payment",
-            EntityId = paymentId,
-            Description = description,
-            CreatedAt = DateTime.UtcNow
-        };
-
     private PendingApprovalDto ToPendingApprovalDto(ApprovalStep step)
     {
         var payment = step.Payment!;
@@ -277,7 +272,7 @@ public class ApprovalService(
             PaymentId = payment.Id,
             ApprovalStepId = step.Id,
             ToIban = payment.ToIban,
-            Amount = FormatAmount(payment.Amount),
+            Amount = Money.Format(payment.Amount),
             Currency = payment.Currency,
             Reference = payment.Reference ?? "",
             CreatedAt = payment.CreatedAt,
@@ -292,13 +287,14 @@ public class ApprovalService(
     private static HandledApprovalDto ToHandledApprovalDto(ApprovalStep step) => new()
     {
         PaymentId = step.PaymentId,
-        Amount = FormatAmount(step.Payment?.Amount ?? 0m),
+        ApprovalStepId = step.Id,
+        StepNumber = step.StepNumber,
+        Amount = Money.Format(step.Payment?.Amount ?? 0m),
+        Currency = step.Payment?.Currency ?? "SEK",
+        Reference = step.Payment?.Reference ?? "",
+        ToIban = step.Payment?.ToIban ?? "",
         Status = step.Status,
         DecidedAt = step.DecidedAt,
         Comment = step.Comment ?? ""
     };
-
-    /// <summary>Money always crosses the API as a decimal string, never as a float.</summary>
-    private static string FormatAmount(decimal amount) =>
-        amount.ToString("F2", CultureInfo.InvariantCulture);
 }

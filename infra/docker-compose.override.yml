@@ -1,7 +1,19 @@
+# Local development only: host ports and a local mail catcher.
+# The deploy environment does not use this file.
 services:
   app:
     ports:
       - "8081:8081"
+    environment:
+      # Notification e-mails go to Mailpit, open http://localhost:8025 to read them.
+      Smtp__Host: mailpit
+      Smtp__Port: "1025"
+      Smtp__Security: none
   db:
     ports:
       - "5433:5432"
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+      - "1025:1025"

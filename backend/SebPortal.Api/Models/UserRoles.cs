@@ -13,4 +13,10 @@ public static class UserRoles
 
     /// <summary>Roles allowed to view the approval inbox and decide approval steps.</summary>
     public const string ApproverRoles = $"{Attestant},{Admin}";
+
+    /// <summary>
+    /// Roles allowed to create payments (single and batch). Attestants approve
+    /// payments but do not create them (segregation of duties).
+    /// </summary>
+    public const string CreatorRoles = $"{Initiator},{Admin}";
 }
