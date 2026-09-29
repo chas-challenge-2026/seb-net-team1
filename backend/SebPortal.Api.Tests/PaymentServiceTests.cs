@@ -25,14 +25,16 @@ public class PaymentServiceTests
 
     private static PaymentService CreatePaymentService(
         SebDbContext db,
-        decimal approvalThreshold = 50000m)
+        decimal approvalThreshold = 50000m,
+        decimal doubleApprovalThreshold = 200000m)
     {
         var repository = new PaymentRepository(db);
 
         var paymentRules = Microsoft.Extensions.Options.Options.Create(
             new PaymentRulesOptions
             {
-                ApprovalThreshold = approvalThreshold
+                ApprovalThreshold = approvalThreshold,
+                DoubleApprovalThreshold = doubleApprovalThreshold
             });
 
         return new PaymentService(repository, paymentRules);
@@ -319,5 +321,140 @@ public class PaymentServiceTests
         Assert.Equal(100m, account.Balance);
 
         Assert.Empty(account.Transactions);
+    }
+
+    /// <summary>
+    /// CompletePaymentOrThrow is the shared entry point used both when a small
+    /// payment skips approval and when the last attestant approves a large one
+    /// (US-26). On success it behaves exactly like CompletePayment.
+    /// </summary>
+    [Fact]
+    public void CompletePaymentOrThrow_WhenPaymentCanBeCompleted_CompletesIt()
+    {
+        using var db = CreateContext();
+        var service = CreatePaymentService(db);
+
+        var account = new Account { Id = 1, Balance = 1000m };
+
+        var payment = new Payment
+        {
+            Id = 10,
+            FromAccountId = 1,
+            Amount = 250m,
+            Status = PaymentStatuses.PendingApproval
+        };
+
+        service.CompletePaymentOrThrow(payment, account);
+
+        Assert.Equal(PaymentStatuses.Completed, payment.Status);
+        Assert.Equal(750m, account.Balance);
+        Assert.NotNull(payment.ExecutedAt);
+    }
+
+    /// <summary>
+    /// Each failure reason has to surface as its own exception type, so the global
+    /// exception handler can answer with the right status code instead of a 500.
+    /// </summary>
+    [Fact]
+    public void CompletePaymentOrThrow_WithoutSufficientFunds_ThrowsAndLeavesEverythingUntouched()
+    {
+        using var db = CreateContext();
+        var service = CreatePaymentService(db);
+
+        var account = new Account { Id = 1, Balance = 100m };
+
+        var payment = new Payment
+        {
+            Id = 10,
+            FromAccountId = 1,
+            Amount = 250m,
+            Status = PaymentStatuses.PendingApproval
+        };
+
+        Assert.Throws<InsufficientFundsException>(() =>
+            service.CompletePaymentOrThrow(payment, account));
+
+        Assert.Equal(PaymentStatuses.PendingApproval, payment.Status);
+        Assert.Equal(100m, account.Balance);
+        Assert.Null(payment.ExecutedAt);
+        Assert.Empty(account.Transactions);
+    }
+
+    [Fact]
+    public void CompletePaymentOrThrow_WhenPaymentIsAlreadyCompleted_ThrowsAlreadyCompleted()
+    {
+        using var db = CreateContext();
+        var service = CreatePaymentService(db);
+
+        var account = new Account { Id = 1, Balance = 1000m };
+
+        var payment = new Payment
+        {
+            Id = 10,
+            FromAccountId = 1,
+            Amount = 250m,
+            Status = PaymentStatuses.Completed
+        };
+
+        Assert.Throws<PaymentAlreadyCompletedException>(() =>
+            service.CompletePaymentOrThrow(payment, account));
+
+        Assert.Equal(1000m, account.Balance);
+    }
+
+    [Fact]
+    public void CompletePaymentOrThrow_WhenPaymentBelongsToAnotherAccount_ThrowsAccountMismatch()
+    {
+        using var db = CreateContext();
+        var service = CreatePaymentService(db);
+
+        var account = new Account { Id = 2, Balance = 1000m };
+
+        var payment = new Payment
+        {
+            Id = 10,
+            FromAccountId = 1,
+            Amount = 250m,
+            Status = PaymentStatuses.PendingApproval
+        };
+
+        Assert.Throws<PaymentAccountMismatchException>(() =>
+            service.CompletePaymentOrThrow(payment, account));
+
+        Assert.Equal(1000m, account.Balance);
+    }
+
+    /// <summary>
+    /// The double approval rule reads one configured threshold and nothing else.
+    /// v1 kept the same rule in two files with two different values, so a payment
+    /// between them could never finish (BUG-006). The threshold itself is not
+    /// "above": an amount exactly at it still needs a single attestant only.
+    /// </summary>
+    [Theory]
+    [InlineData(199999, false)]
+    [InlineData(200000, false)]
+    [InlineData(200001, true)]
+    [InlineData(300000, true)]
+    public void RequiresDoubleApproval_FollowsTheConfiguredThreshold(decimal amount, bool expected)
+    {
+        using var db = CreateContext();
+        var service = CreatePaymentService(db, doubleApprovalThreshold: 200000m);
+
+        Assert.Equal(expected, service.RequiresDoubleApproval(amount));
+        Assert.Equal(expected ? 2 : 1, service.RequiredApprovalSteps(amount));
+    }
+
+    /// <summary>
+    /// Changing the configured value is all it takes to change the rule: the same
+    /// 300 000 SEK payment needs two attestants at one setting and one at another.
+    /// </summary>
+    [Fact]
+    public void RequiresDoubleApproval_WithARaisedThreshold_NeedsOneAttestantOnly()
+    {
+        using var db = CreateContext();
+        var service = CreatePaymentService(db, doubleApprovalThreshold: 500000m);
+
+        Assert.False(service.RequiresDoubleApproval(300000m));
+        Assert.Equal(1, service.RequiredApprovalSteps(300000m));
     }
 }

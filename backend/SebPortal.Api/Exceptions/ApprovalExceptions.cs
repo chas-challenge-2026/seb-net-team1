@@ -19,3 +19,13 @@ public class ApprovalStepAccessDeniedException(int approvalStepId, int attempted
     : ForbiddenException(
         userMessage: "Du har inte behörighet till detta atteststeg.",
         technicalMessage: $"User {attemptedByUserId} attempted to decide ApprovalStep {approvalStepId}, which is not assigned to them.");
+
+public class InvalidApprovalActionException(string? attemptedAction)
+    : BadRequestException(
+        userMessage: "Ogiltig åtgärd.",
+        technicalMessage: $"Approval action '{attemptedAction}' is not one of 'approve' or 'reject'.");
+
+public class ApprovalCommentTooLongException(int length, int maxLength)
+    : BadRequestException(
+        userMessage: $"Kommentaren får vara högst {maxLength} tecken.",
+        technicalMessage: $"Approval comment length {length} exceeds the maximum of {maxLength}.");
