@@ -50,13 +50,17 @@ CREATE TABLE approval_steps (
 
 CREATE TABLE audit_entries (
     id SERIAL PRIMARY KEY,
+    tenant_id INT NOT NULL REFERENCES tenants(id),
     user_id INT,
     action VARCHAR(100),
     entity_type VARCHAR(50),
     entity_id INT,
     description TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    signature TEXT NOT NULL,
+    previous_signature TEXT NOT NULL
 );
+CREATE INDEX idx_audit_entries_tenant_id_id ON audit_entries (tenant_id, id);
 
 -- Seed: tenant Malmö Bygg AB
 INSERT INTO tenants (name) VALUES ('Malmö Bygg AB');
@@ -80,6 +84,6 @@ INSERT INTO payments (tenant_id, from_account_id, to_iban, amount, reference, st
 INSERT INTO approval_steps (payment_id, attestant_id, step_number, status) VALUES
 (2, 2, 1, 'pending');
 
-INSERT INTO audit_entries (user_id, action, entity_type, entity_id, description) VALUES
-(1, 'CREATE_PAYMENT', 'payment', 1, 'Skapade betalning 15000 SEK till SE8550000000054910000003'),
-(1, 'CREATE_PAYMENT', 'payment', 2, 'Skapade betalning 75000 SEK till SE8550000000054910000004');
+INSERT INTO audit_entries (tenant_id, user_id, action, entity_type, entity_id, description, signature, previous_signature) VALUES
+(1, 1, 'CREATE_PAYMENT', 'payment', 1, 'Skapade betalning 15000 SEK till SE8550000000054910000003', 'SEED-UNSIGNED', 'GENESIS'),
+(1, 1, 'CREATE_PAYMENT', 'payment', 2, 'Skapade betalning 75000 SEK till SE8550000000054910000004', 'SEED-UNSIGNED', 'SEED-UNSIGNED');

@@ -15,7 +15,8 @@ namespace SebPortal.Api.Services;
 /// </summary>
 public class ApprovalService(
     ApprovalRepository approvalRepository,
-    PaymentService paymentService)
+    PaymentService paymentService,
+    AuditService auditService)
 {
     public const string ApproveAction = "approve";
     public const string RejectAction = "reject";
@@ -63,60 +64,73 @@ public class ApprovalService(
         int userId,
         string? role)
     {
-        var action = NormalizeAction(request.Action);
-        var comment = NormalizeComment(request.Comment);
+        // Held for the whole decision, not just the audit-entry write: the "latest
+        // signature" for this tenant has to still be latest when SaveChangesAsync
+        // actually commits below, not just when the entry object gets built.
+        var tenantLock = auditService.GetTenantLock(tenantId);
+        await tenantLock.WaitAsync();
 
-        var step = await approvalRepository.GetStepWithPaymentAsync(approvalStepId)
-            ?? throw new ApprovalStepNotFoundException(approvalStepId);
-
-        var payment = step.Payment
-            ?? throw new PaymentNotFoundException(step.PaymentId);
-
-        // A step in another tenant is reported as "not found", not as "forbidden".
-        // Answering 403 would confirm that the id exists, which is a cross tenant
-        // information leak. v1 let an admin decide steps in any tenant at all.
-        if (payment.TenantId != tenantId)
+        try
         {
-            throw new ApprovalStepNotFoundException(approvalStepId);
+            var action = NormalizeAction(request.Action);
+            var comment = NormalizeComment(request.Comment);
+
+            var step = await approvalRepository.GetStepWithPaymentAsync(approvalStepId)
+                ?? throw new ApprovalStepNotFoundException(approvalStepId);
+
+            var payment = step.Payment
+                ?? throw new PaymentNotFoundException(step.PaymentId);
+
+            // A step in another tenant is reported as "not found", not as "forbidden".
+            // Answering 403 would confirm that the id exists, which is a cross tenant
+            // information leak. v1 let an admin decide steps in any tenant at all.
+            if (payment.TenantId != tenantId)
+            {
+                throw new ApprovalStepNotFoundException(approvalStepId);
+            }
+
+            // Fixes BUG-011 (IDOR): the step must actually be assigned to the caller.
+            // v1 trusted the approvalStepId from a hidden form field, so any attestant
+            // could decide someone else's step. Admins may still act on any step inside
+            // their own tenant.
+            if (step.AttestantId != userId && !IsAdmin(role))
+            {
+                throw new ApprovalStepAccessDeniedException(approvalStepId, userId);
+            }
+
+            if (step.Status != ApprovalStatuses.Pending)
+            {
+                throw new ApprovalStepAlreadyDecidedException(approvalStepId, step.Status);
+            }
+
+            if (payment.Status != PaymentStatuses.PendingApproval)
+            {
+                throw new PaymentAlreadyCompletedException(payment.Id, payment.Status);
+            }
+
+            if (action == ApproveAction)
+            {
+                await ApproveAsync(step, payment, userId, comment);
+            }
+            else
+            {
+                await RejectAsync(step, payment, userId, comment);
+            }
+
+            await approvalRepository.SaveChangesAsync();
+
+            return new ApprovalDecisionResponseDto
+            {
+                PaymentId = payment.Id,
+                ApprovalStepId = step.Id,
+                StepStatus = step.Status,
+                PaymentStatus = payment.Status
+            };
         }
-
-        // Fixes BUG-011 (IDOR): the step must actually be assigned to the caller.
-        // v1 trusted the approvalStepId from a hidden form field, so any attestant
-        // could decide someone else's step. Admins may still act on any step inside
-        // their own tenant.
-        if (step.AttestantId != userId && !IsAdmin(role))
+        finally
         {
-            throw new ApprovalStepAccessDeniedException(approvalStepId, userId);
+            tenantLock.Release();
         }
-
-        if (step.Status != ApprovalStatuses.Pending)
-        {
-            throw new ApprovalStepAlreadyDecidedException(approvalStepId, step.Status);
-        }
-
-        if (payment.Status != PaymentStatuses.PendingApproval)
-        {
-            throw new PaymentAlreadyCompletedException(payment.Id, payment.Status);
-        }
-
-        if (action == ApproveAction)
-        {
-            await ApproveAsync(step, payment, userId, comment);
-        }
-        else
-        {
-            await RejectAsync(step, payment, userId, comment);
-        }
-
-        await approvalRepository.SaveChangesAsync();
-
-        return new ApprovalDecisionResponseDto
-        {
-            PaymentId = payment.Id,
-            ApprovalStepId = step.Id,
-            StepStatus = step.Status,
-            PaymentStatus = payment.Status
-        };
     }
 
     private async Task ApproveAsync(ApprovalStep step, Payment payment, int userId, string? comment)
@@ -144,12 +158,14 @@ public class ApprovalService(
 
         if (pendingSteps > 0)
         {
-            approvalRepository.AddAuditEntry(CreateAuditEntry(
+            await auditService.AppendEntryAsync(
+                payment.TenantId,
                 userId,
                 "APPROVE_PAYMENT_STEP",
+                "payment",
                 payment.Id,
                 $"Atteststeg {step.StepNumber} godkänt för betalning #{payment.Id}. " +
-                $"{pendingSteps} steg kvar."));
+                $"{pendingSteps} steg kvar.");
 
             return;
         }
@@ -163,12 +179,14 @@ public class ApprovalService(
 
         paymentService.CompletePaymentOrThrow(payment, account);
 
-        approvalRepository.AddAuditEntry(CreateAuditEntry(
+        await auditService.AppendEntryAsync(
+            payment.TenantId,
             userId,
             "APPROVE_PAYMENT",
+            "payment",
             payment.Id,
             $"Betalning godkänd och genomförd: {FormatAmount(payment.Amount)} " +
-            $"{payment.Currency} till {payment.ToIban}."));
+            $"{payment.Currency} till {payment.ToIban}.");
     }
 
     private async Task RejectAsync(ApprovalStep step, Payment payment, int userId, string? comment)
@@ -191,12 +209,14 @@ public class ApprovalService(
             remaining.DecidedAt = decidedAt;
         }
 
-        approvalRepository.AddAuditEntry(CreateAuditEntry(
+        await auditService.AppendEntryAsync(
+            payment.TenantId,
             userId,
             "REJECT_PAYMENT",
+            "payment",
             payment.Id,
             $"Betalning avvisad: {FormatAmount(payment.Amount)} {payment.Currency}." +
-            (comment is null ? "" : $" Kommentar: {comment}")));
+            (comment is null ? "" : $" Kommentar: {comment}"));
     }
 
     /// <summary>
@@ -255,17 +275,6 @@ public class ApprovalService(
 
     private static bool IsAdmin(string? role) =>
         string.Equals(role, UserRoles.Admin, StringComparison.OrdinalIgnoreCase);
-
-    private static AuditEntry CreateAuditEntry(int userId, string action, int paymentId, string description) =>
-        new()
-        {
-            UserId = userId,
-            Action = action,
-            EntityType = "payment",
-            EntityId = paymentId,
-            Description = description,
-            CreatedAt = DateTime.UtcNow
-        };
 
     private PendingApprovalDto ToPendingApprovalDto(ApprovalStep step)
     {

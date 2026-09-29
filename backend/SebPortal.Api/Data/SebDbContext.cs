@@ -135,6 +135,7 @@ public class SebDbContext : DbContext
             entity.ToTable("audit_entries");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.Action).HasColumnName("action").HasMaxLength(100);
             entity.Property(e => e.EntityType).HasColumnName("entity_type").HasMaxLength(50);
@@ -142,10 +143,29 @@ public class SebDbContext : DbContext
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
 
+            // No HasMaxLength: the current placeholder signer copies the entry's
+            // own text as its "signature" (see UnsignedPlaceholderAuditSigner),
+            // so it can be long. Matches the "signature TEXT" column in seed.sql.
+            entity.Property(e => e.Signature).HasColumnName("signature");
+            entity.Property(e => e.PreviousSignature).HasColumnName("previous_signature");
+
+            // Set directly from the JWT, not derived by joining through User: UserId
+            // can be null for system-generated entries, which would otherwise leave
+            // those entries with no tenant at all.
+            entity.HasOne<Tenant>()
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             entity.HasOne(e => e.User)
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // Supports both GetLatestSignatureAsync (latest row for a tenant) and
+            // the paginated read (a tenant's rows ordered by id), the same
+            // (tenant_id, id) shape serves both.
+            entity.HasIndex(e => new { e.TenantId, e.Id });
         });
 
         // Transactions
