@@ -16,6 +16,9 @@ This reduces misunderstandings such as:
 
 ## Auth
 
+The JWT signing key stays in the backend; the frontend receives only an access token after login.
+For local setup without Docker, see [Create and save a JWT signing key](../README.md#jwt-nyckel-för-lokal-körning-utan-docker).
+
 ### POST `/api/auth/login`
 
 Logs in a user and returns a JWT access token plus basic user information.
