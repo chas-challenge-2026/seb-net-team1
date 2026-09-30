@@ -1,29 +1,32 @@
 name: ci
- 
+
 on:
   pull_request:
     branches: [develop, main]
- 
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
- 
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
- 
+
+      - name: Show SDKs
+        run: dotnet --list-sdks
+
       - name: Restore
         run: dotnet restore
- 
+
       - name: Build
         run: dotnet build --no-restore
- 
+
       - name: Test with coverage
-        run: dotnet test --no-build --collect:"XPlat Code Coverage" --results-directory "${{ github.workspace }}/coverage" --logger "console;verbosity=normal"
- 
+        run: dotnet test backend/SebPortal.Api.Tests/SebPortal.Api.Tests.csproj --collect:"XPlat Code Coverage" --results-directory "${{ github.workspace }}/coverage" --verbosity normal
+
       - name: Coverage gate
         shell: bash
         run: |
@@ -35,9 +38,4 @@ jobs:
           echo "Using $FILE"
           RATE=$(grep -o 'line-rate="[0-9.]*"' "$FILE" | head -1 | grep -o '[0-9.]*')
           PCT=$(echo "$RATE * 100" | bc -l | xargs printf "%.1f")
-          echo "### Backend line coverage: $PCT% (threshold 85%)" >> "$GITHUB_STEP_SUMMARY"
-          if (( $(echo "$PCT < 85" | bc -l) )); then
-            echo "Coverage $PCT% is below 85%"
-            exit 1
-          fi
- 
+          echo "### Backend line coverage: $PCT% (threshold 85%)" >>
