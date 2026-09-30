@@ -1,29 +1,29 @@
 name: ci
-
+ 
 on:
   pull_request:
     branches: [develop, main]
-
+ 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+ 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-
+ 
       - name: Restore
         run: dotnet restore
-
+ 
       - name: Build
         run: dotnet build --no-restore
-
+ 
       - name: Test with coverage
-        run: dotnet test backend/SebPortal.Api.Tests --no-build --collect:"XPlat Code Coverage" --results-directory "${{ github.workspace }}/coverage"
-
+        run: dotnet test --no-build --collect:"XPlat Code Coverage" --results-directory "${{ github.workspace }}/coverage" --logger "console;verbosity=normal"
+ 
       - name: Coverage gate
         shell: bash
         run: |
@@ -40,3 +40,4 @@ jobs:
             echo "Coverage $PCT% is below 85%"
             exit 1
           fi
+ 
