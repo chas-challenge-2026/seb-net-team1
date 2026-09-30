@@ -16,14 +16,14 @@ services:
   db:
     image: postgres:12
     environment:
-      POSTGRES_DB: seb
-      POSTGRES_USER: seb
-      POSTGRES_PASSWORD: seb123
+      POSTGRES_DB: "${POSTGRES_DB:?Set POSTGRES_DB in infra/.env}"
+      POSTGRES_USER: "${POSTGRES_USER:?Set POSTGRES_USER in infra/.env}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in infra/.env}"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./seed.sql:/docker-entrypoint-initdb.d/seed.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U seb -d seb"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -48,7 +48,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: "http://+:8081"
       Jwt__Key: "${JWT_KEY:?Set JWT_KEY in infra/.env before starting Docker}"
-      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=seb;Username=seb;Password=seb123"
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${POSTGRES_DB:?Set POSTGRES_DB in infra/.env};Username=${POSTGRES_USER:?Set POSTGRES_USER in infra/.env};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in infra/.env}"
     depends_on:
       db:
         condition: service_healthy
