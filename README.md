@@ -14,7 +14,8 @@ cd ChasChallenge
 git checkout 3-seb
 ```
 
-**Första gången:** skapa JWT-nyckeln enligt [JWT-nyckel för Docker](#jwt-nyckel-för-docker) nedan.
+**Första gången:** skapa [JWT-nyckeln](#jwt-nyckel-för-docker) och fyll i
+[databasuppgifterna](#databasuppgifter) i `infra/.env` enligt instruktionerna nedan.
 Starta sedan Docker Desktop och kör från projektets rot:
 
 ```bash
@@ -59,6 +60,7 @@ if (Test-Path -LiteralPath infra/.env) {
 
 Filen ligger utanför Git och Docker-imagen men innehåller nyckeln i klartext
 på datorn. Behåll samma nyckel mellan starter. User Secrets behövs inte för Docker.
+Lägg även in [databasuppgifterna](#databasuppgifter) i samma fil innan ni startar Docker.
 
 ### 2. Starta Docker
 
@@ -100,7 +102,47 @@ fetch('/api/dashboard')
 att API:t nekar åtkomst, precis som det ska. Den röda 401-raden är förväntad.
 Dashboardens befintliga anrop till mockservern på port `3001` är en separat koppling.
 
-Detta gäller lokal Docker-körning. I stage/prod måste driftmiljön tillhandahålla `JWT_KEY`.
+Detta gäller lokal Docker-körning. I stage/prod måste driftmiljön tillhandahålla
+`JWT_KEY`, `POSTGRES_DB`, `POSTGRES_USER` och `POSTGRES_PASSWORD`.
+
+---
+
+## Databasuppgifter
+
+Jag har flyttat databasuppgifterna för `SebPortal.Api` från `appsettings` och
+Docker Compose till lokal konfiguration. Det gamla projektet `backend/SebPortal`
+ingår inte i denna ändring.
+
+### Med Docker
+
+Öppna `infra/.env`, behåll `JWT_KEY` och lägg till dessa tre rader med era egna värden:
+
+```dotenv
+POSTGRES_DB=<databasnamn>
+POSTGRES_USER=<databasanvändare>
+POSTGRES_PASSWORD=<databaslösenord>
+```
+
+Ersätt hela platshållarna, inklusive `<` och `>`. För en befintlig databas ska
+värdena matcha den databas ni redan använder. Att redigera `.env` ändrar inte
+lösenordet i en befintlig Postgres-databas. För en ny databas väljer ni egna
+värden och ett långt slumpmässigt lösenord med bokstäver och siffror.
+
+Compose skickar samma uppgifter till databasen och API:t. Filen är undantagen
+från Git och Docker-bygget. Kör `docker compose up --build` från `infra` efter
+ändringen. Behåll databasvolymen; ni behöver inte köra `docker compose down -v`.
+
+### Utan Docker för API:t
+
+Spara anslutningen i User Secrets. Ersätt platshållarna med databasens värden
+och kör från projektets rot:
+
+```powershell
+dotnet user-secrets set 'ConnectionStrings:DefaultConnection' 'Host=localhost;Port=5433;Database=<databasnamn>;Username=<databasanvändare>;Password=<databaslösenord>' --project backend/SebPortal.Api
+```
+
+Port `5433` är databasens lokala Docker-port. Starta om backend efteråt.
+JWT-nyckeln för denna körning konfigureras enligt avsnittet nedan.
 
 ---
 
