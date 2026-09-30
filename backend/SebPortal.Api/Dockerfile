@@ -4,7 +4,8 @@ WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
-RUN npm run build
+# Relative API URLs use the same address as the frontend in Docker.
+RUN VITE_API_URL= npm run build
 
 # Stage 2: build the backend
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS backend-build
