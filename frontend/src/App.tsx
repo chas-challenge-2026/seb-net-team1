@@ -1,10 +1,29 @@
-import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Login from "./pages/Login";
 import "./styles/global.css";
 import Dashboard from "./pages/Dashboard";
 import NewPayment from "./pages/NewPayment";
 
+const pageTitles: Record<string, string> = {
+  "/": "Logga in",
+  "/dashboard": "Översikt",
+  "/new-payment": "Betalningar",
+  "/accounts": "Konton",
+  "/approval-inbox": "Godkännanden",
+  "/batch-upload": "Batchfiler",
+  "/reports": "Rapporter",
+  "/audit-log": "Audit-logg",
+  "/settings": "Inställningar",
+};
+
 function App() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    document.title = `${pageTitles[pathname] ?? "Cash Management"} | SEB`;
+  }, [pathname]);
+
   return (
     <Routes>
       <Route path="/" element={<Login />} />
