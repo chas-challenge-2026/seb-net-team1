@@ -22,12 +22,17 @@ jobs:
         run: dotnet build --no-restore
 
       - name: Test with coverage
-        run: dotnet test backend/SebPortal.Api.Tests --no-build --collect:"XPlat Code Coverage" --results-directory coverage
+        run: dotnet test backend/SebPortal.Api.Tests --no-build --collect:"XPlat Code Coverage" --results-directory "${{ github.workspace }}/coverage"
 
       - name: Coverage gate
         shell: bash
         run: |
-          FILE=$(find coverage -name coverage.cobertura.xml | head -1)
+          FILE=$(find "${{ github.workspace }}" -name coverage.cobertura.xml | head -1)
+          if [ -z "$FILE" ]; then
+            echo "No coverage.cobertura.xml found anywhere in the workspace"
+            exit 1
+          fi
+          echo "Using $FILE"
           RATE=$(grep -o 'line-rate="[0-9.]*"' "$FILE" | head -1 | grep -o '[0-9.]*')
           PCT=$(echo "$RATE * 100" | bc -l | xargs printf "%.1f")
           echo "### Backend line coverage: $PCT% (threshold 85%)" >> "$GITHUB_STEP_SUMMARY"
