@@ -6,7 +6,9 @@ Denna guide riktar sig särskilt till teamets driftansvariga, men alla i teamet 
 
 Krav: Docker Desktop (Windows/Mac) eller Docker Engine (Linux). På Windows behöver Docker Desktop WSL2, se vanliga fel nedan.
 
-Första gången: skapa `infra/.env` med JWT-nyckeln enligt [README](README.md#jwt-nyckel-för-docker).
+Första gången: skapa `infra/.env` med [JWT-nyckeln](README.md#jwt-nyckel-för-docker)
+och [databasuppgifterna](README.md#databasuppgifter). För en befintlig databas måste
+uppgifterna matcha den befintliga databasen; en ändring i `.env` byter inte dess lösenord.
 
 ```bash
 cd infra
@@ -27,7 +29,7 @@ Appen svarar sedan på http://localhost:PORT. Vilken port som gäller för ert c
 
 ## Så funkar deploy
 
-- Driftmiljön måste tillhandahålla `JWT_KEY` när Docker Compose körs. Den lokala `infra/.env` följer inte med i Git eller Docker-imagen.
+- Driftmiljön måste tillhandahålla `JWT_KEY`, `POSTGRES_DB`, `POSTGRES_USER` och `POSTGRES_PASSWORD` när Docker Compose körs. Den lokala `infra/.env` följer inte med i Git eller Docker-imagen.
 
 - Push till `develop` bygger om er stage-miljö, push till `main` bygger om prod. Adresserna står i README.
 - Grön bock eller rött X på committen i GitHub visar hur deployen gick. Vid rött X: klicka på markeringen och läs byggloggen.
