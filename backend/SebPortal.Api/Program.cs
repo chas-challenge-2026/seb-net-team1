@@ -11,7 +11,11 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "ThisIsADevelopmentSecretKeyWithAtLeast32BytesLength!";
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    throw new InvalidOperationException("Jwt:Key is missing. Configure it in User Secrets for local development.");
+}
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SebPortal.Api";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SebPortal.Client";
 
