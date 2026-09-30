@@ -1,5 +1,6 @@
 import { useState } from "react";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
+import DashboardPromoBanner from "../components/dashboard/DashboardPromoBanner";
 import Sidebar from "../components/dashboard/Sidebar";
 import DashboardSummary from "../components/dashboard/DashboardSummary";
 import AccountOverview from "../components/dashboard/AccountOverview";
@@ -40,27 +41,26 @@ function Dashboard() {
         <DashboardHeader user={user} />
 
         <div className="dashboard-content">
-          
           <DashboardSummary />
 
-         
-          <section className="dashboard-overview-grid">
-            <AccountOverview />
-            <PaymentStatus />
-          </section>
+          <section className="dashboard-panels" aria-label="Dashboardöversikt">
+            <div className="dashboard-column">
+              <AccountOverview />
+              <PendingApprovals />
+              <RecentActivity />
+            </div>
 
-         
-          <section className="dashboard-lower-grid">
-            <PendingApprovals />
-            <UpcomingPayments />
-          </section>
-
-          
-          <section className="dashboard-lower-grid">
-            <RecentActivity />
-            <QuickActions />
+            <div className="dashboard-column">
+              <PaymentStatus />
+              <UpcomingPayments />
+              <QuickActions />
+            </div>
           </section>
         </div>
+
+        <footer className="dashboard-footer">
+          <DashboardPromoBanner />
+        </footer>
       </main>
     </div>
   );
