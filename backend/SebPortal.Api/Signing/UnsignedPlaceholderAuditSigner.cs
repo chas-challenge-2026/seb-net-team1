@@ -1,11 +1,14 @@
 namespace SebPortal.Api.Signing;
 
 /// <summary>
-/// NOT real tamper-evidence, deliberately. This does no scrambling or hashing
-/// at all, it just stores the text itself as its own "signature". Any change to
-/// the text is then an obvious mismatch, which is in my opinion enough to test
-/// AuditService's chaining, locking, and pagination without needing to touch
-/// any cryptography at all.
+/// NOT real tamper-evidence!!!  This does no scrambling or hashing
+/// at all. It returns the same fixed marker for every entry, so nothing here can
+/// be mistaken for a working signature.
+///
+/// Why not return the text itself: each entry's text contains the previous
+/// entry's signature, so a signature that is the whole text makes every entry
+/// roughly twice as long as the one before it. Entry number 24 for a tenant
+/// then exceeds the JSON size limit and throws.
 ///
 /// Its only job is to unblock everything that doesn't need real signing yet,
 /// while Emil's part is still being built.
@@ -13,7 +16,9 @@ namespace SebPortal.Api.Signing;
 /// </summary>
 public class UnsignedPlaceholderAuditSigner : IAuditSigner
 {
-    public string Sign(string canonicalJson) => canonicalJson;
+    public const string Marker = "UNSIGNED";
 
-    public bool Verify(string canonicalJson, string signature) => canonicalJson == signature;
+    public string Sign(string canonicalJson) => Marker;
+
+    public bool Verify(string canonicalJson, string signature) => signature == Marker;
 }

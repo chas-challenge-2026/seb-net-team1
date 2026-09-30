@@ -6,6 +6,7 @@ using SebPortal.Api.Models;
 using SebPortal.Api.Options;
 using SebPortal.Api.Repositories;
 using SebPortal.Api.Services;
+using SebPortal.Api.Signing;
 
 namespace SebPortal.Api.Tests;
 
@@ -49,7 +50,10 @@ public class ApprovalServiceTests
 
         var paymentService = new PaymentService(new PaymentRepository(db), paymentRules);
 
-        return new ApprovalService(new ApprovalRepository(db), paymentService);
+        var auditService = new AuditService(
+            new AuditRepository(db), new AuditLockProvider(), new UnsignedPlaceholderAuditSigner());
+
+        return new ApprovalService(new ApprovalRepository(db), paymentService, auditService);
     }
 
     /// <summary>
