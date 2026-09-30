@@ -79,7 +79,26 @@ public class AuditServiceTests
         Assert.Equal(2, entries.Count);
         Assert.Equal("GENESIS", entries[0].PreviousSignature);
         Assert.Equal(entries[0].Signature, entries[1].PreviousSignature);
-        Assert.NotEqual(entries[0].Signature, entries[1].Signature);
+    }
+
+    [Fact]
+    public async Task AppendEntryAsync_ManyEntriesForOneTenant_KeepsEverySignatureShort()
+    {
+        // Regression test: when the placeholder returned the text itself, each
+        // signature roughly doubled the next one, and entry 24 threw.
+        using var db = CreateContext();
+        SeedTenant(db, 1, "Runö Bygg AB");
+        db.SaveChanges();
+
+        var service = CreateService(db);
+        for (var i = 1; i <= 30; i++)
+        {
+            await AppendAndSaveAsync(service, db, 1, 5, "CREATE_PAYMENT", "payment", i, $"Entry {i}");
+        }
+
+        var entries = db.AuditEntries.ToList();
+        Assert.Equal(30, entries.Count);
+        Assert.All(entries, e => Assert.Equal(UnsignedPlaceholderAuditSigner.Marker, e.Signature));
     }
 
     [Fact]
@@ -115,29 +134,28 @@ public class AuditServiceTests
         Assert.True(signer.Verify(canonicalJson, entry.Signature));
     }
 
+    // The placeholder cannot detect tampering, it never looks at the text.
+    // A test that edits an entry after signing and expects Verify to fail belongs
+    // with Emil's real signer. This one only checks what the placeholder promises.
     [Fact]
-    public void Verify_FailsWhenTheSignedContentChangesAfterSigning()
+    public void Verify_OnlyAcceptsTheUnsignedMarker()
     {
         var signer = CreateSigner();
+        var json = AuditSigningFormat.Build(
+            new AuditEntry
+            {
+                TenantId = 1,
+                UserId = 5,
+                Action = "CREATE_PAYMENT",
+                EntityType = "payment",
+                EntityId = 1,
+                Description = "Test",
+                CreatedAt = DateTime.UtcNow
+            },
+            "GENESIS");
 
-        var entry = new AuditEntry
-        {
-            TenantId = 1,
-            UserId = 5,
-            Action = "CREATE_PAYMENT",
-            EntityType = "payment",
-            EntityId = 1,
-            Description = "Original description",
-            CreatedAt = DateTime.UtcNow,
-            PreviousSignature = "GENESIS"
-        };
-        var originalJson = AuditSigningFormat.Build(entry, "GENESIS");
-        var signature = signer.Sign(originalJson);
-
-        entry.Description = "Edited after the fact"; // simulates someone tampering with the row
-        var tamperedJson = AuditSigningFormat.Build(entry, "GENESIS");
-
-        Assert.False(signer.Verify(tamperedJson, signature));
+        Assert.True(signer.Verify(json, UnsignedPlaceholderAuditSigner.Marker));
+        Assert.False(signer.Verify(json, "something else"));
     }
 
     [Fact]
