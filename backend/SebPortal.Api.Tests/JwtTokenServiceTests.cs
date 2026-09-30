@@ -107,22 +107,20 @@ public class JwtTokenServiceTests
         Assert.Equal("sara@malmobygg.se", principal.FindFirst(ClaimTypes.Email)?.Value ?? principal.FindFirst(JwtRegisteredClaimNames.Email)?.Value);
     }
 
-    [Fact]
-    public void GenerateToken_WorksWithDefaultFallbackConfiguration()
+    // Verifies that no JWT token is created when the key is missing, empty, or contains only whitespace.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GenerateToken_RejectsMissingOrBlankKey(string? key)
     {
-        // Arrange - empty configuration to trigger fallbacks
-        var emptyConfig = new ConfigurationBuilder().Build();
+        var emptyConfig = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:Key"] = key })
+            .Build();
         var service = new JwtTokenService(emptyConfig);
 
-        // Act
-        var tokenString = service.GenerateToken(1, 1, "test@seb.se", "initiator", "Test User");
-
-        // Assert
-        Assert.False(string.IsNullOrWhiteSpace(tokenString));
-
-        var handler = new JwtSecurityTokenHandler();
-        var jwtToken = handler.ReadJwtToken(tokenString);
-        Assert.Equal("SebPortal.Api", jwtToken.Issuer);
-        Assert.Contains("SebPortal.Client", jwtToken.Audiences);
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            service.GenerateToken(1, 1, "test@seb.se", "initiator", "Test User"));
+        Assert.Contains("Jwt:Key", exception.Message);
     }
 }
