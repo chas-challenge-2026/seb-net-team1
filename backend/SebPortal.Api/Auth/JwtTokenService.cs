@@ -38,7 +38,11 @@ public class JwtTokenService
         // - Key: Secret key used to cryptographically sign the token. Minimum 256 bits (32 bytes) for HMAC-SHA256.
         // - Issuer: Who created and signed the token (our API).
         // - Audience: Who the token is intended for (our client/frontend).
-        var keyString = _configuration["Jwt:Key"] ?? "ThisIsADevelopmentSecretKeyWithAtLeast32BytesLength!";
+        var keyString = _configuration["Jwt:Key"];
+        if (string.IsNullOrWhiteSpace(keyString))
+        {
+            throw new InvalidOperationException("Jwt:Key is missing. Configure it in User Secrets for local development.");
+        }
         var issuer = _configuration["Jwt:Issuer"] ?? "SebPortal.Api";
         var audience = _configuration["Jwt:Audience"] ?? "SebPortal.Client";
 
