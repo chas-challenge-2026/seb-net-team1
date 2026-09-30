@@ -24,6 +24,26 @@ jobs:
       - name: Test with coverage
         run: dotnet test backend/SebPortal.Api.Tests/SebPortal.Api.Tests.csproj --collect:"XPlat Code Coverage" --results-directory "${{ github.workspace }}/coverage"
 
+      - name: Coverage report
+        if: always()
+        shell: bash
+        run: |
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          FILE=$(find "${{ github.workspace }}" -name coverage.cobertura.xml -print -quit)
+          if [ -n "$FILE" ]; then
+            dotnet tool install -g dotnet-reportgenerator-globaltool
+            reportgenerator -reports:"$FILE" -targetdir:"${{ github.workspace }}/coverage-report" -reporttypes:"Html;MarkdownSummaryGithub"
+            cat "${{ github.workspace }}/coverage-report/SummaryGithub.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-report
+          if-no-files-found: ignore
+
       - name: Coverage gate
         shell: bash
         run: |
