@@ -1,4 +1,3 @@
-
 name: ci
 
 on:
@@ -22,5 +21,17 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
 
-      - name: Test
-        run: dotnet test --no-build
+      - name: Test with coverage
+        run: dotnet test backend/SebPortal.Api.Tests --no-build --collect:"XPlat Code Coverage" --results-directory coverage
+
+      - name: Coverage gate
+        shell: bash
+        run: |
+          FILE=$(find coverage -name coverage.cobertura.xml | head -1)
+          RATE=$(grep -o 'line-rate="[0-9.]*"' "$FILE" | head -1 | grep -o '[0-9.]*')
+          PCT=$(echo "$RATE * 100" | bc -l | xargs printf "%.1f")
+          echo "### Backend line coverage: $PCT% (threshold 85%)" >> "$GITHUB_STEP_SUMMARY"
+          if (( $(echo "$PCT < 85" | bc -l) )); then
+            echo "Coverage $PCT% is below 85%"
+            exit 1
+          fi
