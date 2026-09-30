@@ -47,6 +47,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: "http://+:8081"
+      Jwt__Key: "${JWT_KEY:?Set JWT_KEY in infra/.env before starting Docker}"
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=seb;Username=seb;Password=seb123"
     depends_on:
       db:
