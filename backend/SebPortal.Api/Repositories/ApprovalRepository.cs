@@ -94,12 +94,5 @@ public class ApprovalRepository(SebDbContext dbContext)
     public void AddApprovalStep(ApprovalStep step) =>
         dbContext.ApprovalSteps.Add(step);
 
-    /// <summary>
-    /// Audit entries always go to the database, never to a file. v1 wrote partial
-    /// approvals to /tmp/audit.log only, so they never showed up in the audit log UI.
-    /// </summary>
-    public void AddAuditEntry(AuditEntry entry) =>
-        dbContext.AuditEntries.Add(entry);
-
     public Task SaveChangesAsync() => dbContext.SaveChangesAsync();
 }
