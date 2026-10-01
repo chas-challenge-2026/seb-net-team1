@@ -92,7 +92,8 @@ inte sina gamla testlösenord ändrade automatiskt; de måste hanteras separat.
 
 Jag har kopplat JWT till Docker och testat att API:t accepterar giltiga token
 och nekar åtkomst utan token. För att köra på era datorer behöver ni skapa en
-egen signeringsnyckel. Själva JWT-token får ni automatiskt när ni loggar in.
+egen signeringsnyckel. Vid inloggning sparar backend JWT i en **HttpOnly-cookie**.
+Webbläsaren skickar den automatiskt till API:t; JavaScript kan inte läsa den.
 
 ### 1. Skapa och spara er nyckel
 
@@ -143,19 +144,23 @@ Efter inloggningen: öppna webbläsarens utvecklarverktyg med **F12**, välj
 statuskoderna, inte själva token.
 
 ```javascript
-fetch('/api/dashboard', {
-  headers: {
-    Authorization: 'Bearer ' + localStorage.getItem('accessToken')
-  }
-}).then(r => console.log('Med token:', r.status));
+fetch('/api/dashboard', { credentials: 'include' })
+  .then(r => console.log('Med cookie:', r.status));
 
-fetch('/api/dashboard')
-  .then(r => console.log('Utan token:', r.status));
+fetch('/api/dashboard', { credentials: 'omit' })
+  .then(r => console.log('Utan cookie:', r.status));
 ```
 
-**Med token: 200** betyder att token accepteras. **Utan token: 401** betyder
+**Med cookie: 200** betyder att token accepteras. **Utan cookie: 401** betyder
 att API:t nekar åtkomst, precis som det ska. Den röda 401-raden är förväntad.
+Tryck sedan **Logga ut** och kör anropet med cookie igen: nu ska även det ge **401**.
+Gamla `accessToken` i `localStorage` tas bort när den nya frontenden startar.
+Inloggning, utloggning och ändringar via cookie skyddas också med CSRF-token;
+frontendens `apiRequest` sköter det automatiskt.
 Dashboardens befintliga anrop till mockservern på port `3001` är en separat koppling.
+
+Cookien gäller i två timmar. Lokal Docker och Development tillåter HTTP;
+stage/prod kräver HTTPS och [betrodd proxykonfiguration](DRIFT.md#cookies-och-https).
 
 Detta gäller lokal Docker-körning. I stage/prod måste driftmiljön tillhandahålla
 `JWT_KEY`, `POSTGRES_DB`, `POSTGRES_USER` och `POSTGRES_PASSWORD`.
@@ -227,7 +232,7 @@ $jwtKey = [Convert]::ToBase64String($bytes)
 Varje utvecklare gör steg 1–2 en gång på sin dator. Nyckeln sparas utanför
 projektet och Git. User Secrets är okrypterad lagring för lokal utveckling.
 Behåll nyckeln mellan starter; byter du den slutar gamla token fungera efter omstart.
-Frontend får bara JWT-token vid inloggning, aldrig själva signeringsnyckeln.
+JWT skickas bara i en HttpOnly-cookie vid inloggning; signeringsnyckeln stannar i backend.
 
 ### 3. Starta om backend
 
@@ -242,10 +247,14 @@ För Docker används i stället [JWT-nyckel för Docker](#jwt-nyckel-för-docker
 
 ### 4. Testa inloggningen
 
-Med databasen igång och konfigurerad: öppna [Swagger](http://localhost:5010/swagger),
-välj **POST `/api/Auth/login`**, tryck **Try it out**, fyll i ett testkontos mejl
-och lösenord och tryck **Execute**. **200 OK** och ett `accessToken` visar att
-inloggningen och skapandet av token fungerar.
+Med databasen igång: starta frontend med `npm run dev` från `frontend` och öppna
+adressen som visas i terminalen. Logga in med ert testkonto. Frontendens lokala
+`VITE_API_URL` ska vara `http://localhost:5010`.
+
+Kontrollera i **F12 → Network** att `/api/auth/login` ger **200**, att svaret
+innehåller `user` och att backend sätter cookien `SebPortal.Auth` med `HttpOnly`.
+Anrop till backend använder `credentials: 'include'`. API-flödet och CSRF-headern
+beskrivs i [API-kontraktet](contracts/API.md#browser-authentication).
 
 ---
 
