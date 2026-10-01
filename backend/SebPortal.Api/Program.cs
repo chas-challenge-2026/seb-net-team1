@@ -5,21 +5,15 @@ using SebPortal.Api.Services;
 using SebPortal.Api.Auth;
 using SebPortal.Api.Middleware;
 using SebPortal.Api.Options;
-using System.Text;
 using System.Net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var jwtKey = builder.Configuration["Jwt:Key"];
-if (string.IsNullOrWhiteSpace(jwtKey))
-{
-    throw new InvalidOperationException("Jwt:Key is missing. Configure it in User Secrets for local development.");
-}
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "SebPortal.Api";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "SebPortal.Client";
+// Both signing and validation use the same keys until the API is restarted.
+var jwtConfiguration = JwtConfiguration.FromConfiguration(builder.Configuration);
+builder.Services.AddSingleton(jwtConfiguration);
 
 // Add database context
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -87,17 +81,7 @@ builder.Services
                 return Task.CompletedTask;
             }
         };
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateIssuer = true,
-            ValidIssuer = jwtIssuer,
-            ValidateAudience = true,
-            ValidAudience = jwtAudience,
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero
-        };
+        options.TokenValidationParameters = jwtConfiguration.CreateValidationParameters();
     });
 
 builder.Services.AddAuthorization();
