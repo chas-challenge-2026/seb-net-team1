@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import {LuArrowRight, LuCircleCheck, LuFilePlus, LuShieldCheck } from "react-icons/lu";
+import {LuCircleCheck, LuFilePlus, LuShieldCheck } from "react-icons/lu";
 import Card from "../shared/Card";
 
 interface AuditEntry {
@@ -54,10 +54,6 @@ export default function RecentActivity() {
 			<div className="dashboard-section__header">
 				<h2>Senaste aktivitet</h2>
 
-				<button className="dashboard-section__link">
-					Visa alla
-					<LuArrowRight />
-				</button>
 			</div>
 
 			<div className="recent-activity__list">

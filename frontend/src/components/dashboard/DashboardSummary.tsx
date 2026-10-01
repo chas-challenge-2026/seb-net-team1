@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {LuWalletCards,LuCircleCheck,LuArrowUpRight,LuTriangleAlert,} from "react-icons/lu";
-import Card from "../shared/Card";
+import { Link } from "react-router-dom";
 
 interface Account {
     id: number;
@@ -79,7 +79,7 @@ export default function DashboardSummary() {
 
 return (
     <section className="dashboard-summary">
-      <Card className="summary-card">
+      <Link to="/accounts" className="card summary-card" aria-label="Visa konton">
         <div className="summary-card__icon">
 			<LuWalletCards />
 		</div>
@@ -92,9 +92,13 @@ return (
         <span className="summary-card__description">
           Alla företagets konton
         </span>
-      </Card>
+      </Link>
 
-      <Card className="summary-card">
+      <Link
+        to="/approval-inbox"
+        className="card summary-card"
+        aria-label="Visa väntande godkännanden"
+      >
         <div className="summary-card__icon">
           <LuCircleCheck />
         </div>
@@ -110,9 +114,9 @@ return (
         <span className="summary-card__description">
           Betalningar kräver godkännande
         </span>
-      </Card>
+      </Link>
 
-      <Card className="summary-card">
+      <Link to="/audit-log" className="card summary-card" aria-label="Visa betalningar">
         <div className="summary-card__icon">
           <LuArrowUpRight />
         </div>
@@ -128,9 +132,9 @@ return (
         <span className="summary-card__description">
           Totalt registrerade betalningar
         </span>
-      </Card>
+      </Link>
 
-      <Card className="summary-card">
+      <Link to="/reports" className="card summary-card" aria-label="Visa rapporter">
         <div className="summary-card__icon">
           <LuTriangleAlert />
         </div>
@@ -146,7 +150,7 @@ return (
         <span className="summary-card__description">
           Fel i IBAN eller BIC
         </span>
-      </Card>
+      </Link>
     </section>
   );
 }

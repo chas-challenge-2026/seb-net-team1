@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {LuArrowRight, LuCircleCheck, LuClock3, LuCircleX, LuCircleAlert,} from "react-icons/lu";
+import { Link } from "react-router-dom";
 import Card from "../shared/Card";
 import StatusBadge from "../shared/StatusBadge";
 
@@ -45,10 +46,10 @@ export default function PaymentStatus() {
       <div className="dashboard-section__header">
         <h2>Betalningsstatus</h2>
 
-        <button className="dashboard-section__link">
+        <Link to="/reports" className="dashboard-section__link">
           Visa rapport
           <LuArrowRight />
-        </button>
+        </Link>
       </div>
 
       <div className="payment-status__list">

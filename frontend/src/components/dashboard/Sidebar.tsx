@@ -1,7 +1,7 @@
 import "../../styles/dashboard.css";
 import logo from "../../assets/seb_logo_white.png";
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "../../api/usersApi";
 import {
   FiHome,
@@ -35,6 +35,10 @@ export default function DashboardSidebar({
     const overviewClassName = `dashboard-sidebar-link${pathname === "/dashboard" ? " active" : ""}`;
     const paymentsClassName = `dashboard-sidebar-link${pathname === "/new-payment" ? " active" : ""}`;
     const accountsClassName = `dashboard-sidebar-link${pathname === "/accounts" ? " active" : ""}`;
+    const approvalsClassName = `dashboard-sidebar-link${pathname === "/approval-inbox" ? " active" : ""}`;
+    const batchFilesClassName = `dashboard-sidebar-link${pathname === "/batch-upload" ? " active" : ""}`;
+    const reportsClassName = `dashboard-sidebar-link${pathname === "/reports" ? " active" : ""}`;
+    const auditLogClassName = `dashboard-sidebar-link${pathname === "/audit-log" ? " active" : ""}`;
 
     async function handleLogout() {
       setIsLoggingOut(true);
@@ -86,44 +90,44 @@ export default function DashboardSidebar({
       {/* Navigation */}
       <nav className="dashboard-sidebar-nav">
 
-        <a href="/dashboard" className={overviewClassName}>
+        <Link to="/dashboard" className={overviewClassName}>
           <FiHome />
           <span>Översikt</span>
-        </a>
+        </Link>
 
-        <a href="/new-payment" className={paymentsClassName}>
+        <Link to="/new-payment" className={paymentsClassName}>
           <FiCreditCard />
           <span>Betalningar</span>
-        </a>
+        </Link>
 
-        <a href="#" className="dashboard-sidebar-link">
+        <Link to="/approval-inbox" className={approvalsClassName}>
           <FiCheckSquare />
           <span>Godkännanden</span>
 
           <span className="dashboard-sidebar-badge">
             12 {/* Exempel siffra, implementera riktig data senare*/}
           </span>
-        </a>
+        </Link>
 
-        <a href="/accounts" className={accountsClassName}>
+        <Link to="/accounts" className={accountsClassName}>
           <FiBriefcase />
           <span>Konton</span>
-        </a>
+        </Link>
 
-        <a href="#" className="dashboard-sidebar-link">
+        <Link to="/batch-upload" className={batchFilesClassName}>
           <FiFileText />
           <span>Batchfiler</span>
-        </a>
+        </Link>
 
-        <a href="#" className="dashboard-sidebar-link">
+        <Link to="/reports" className={reportsClassName}>
           <FiBarChart2 />
           <span>Rapporter</span>
-        </a>
+        </Link>
 
-        <a href="#" className="dashboard-sidebar-link">
+        <Link to="/audit-log" className={auditLogClassName}>
           <FiActivity />
           <span>Audit-logg</span>
-        </a>
+        </Link>
 
         <a href="#" className="dashboard-sidebar-link">
           <FiSettings />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { LuArrowRight, LuCircleCheck, LuClock3 } from "react-icons/lu";
+import { Link } from "react-router-dom";
 import Card from "../shared/Card";
 import StatusBadge from "../shared/StatusBadge";
 
@@ -98,10 +99,10 @@ export default function PendingApprovals() {
 			<div className="dashboard-section__header">
 				<h2>Väntar på godkännande</h2>
 
-				<button className="dashboard-section__link">
+				<Link to="/approval-inbox" className="dashboard-section__link">
 					Visa alla
 					<LuArrowRight />
-				</button>
+				</Link>
 			</div>
 
 			<div className="pending-approvals__list">

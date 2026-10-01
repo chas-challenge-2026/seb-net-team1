@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import {LuArrowRight,LuList,LuPlus,LuUpload,LuUserRoundPlus } from "react-icons/lu";
+import { Link } from "react-router-dom";
 import Card from "../shared/Card";
 
 interface QuickAction {
@@ -7,6 +8,7 @@ interface QuickAction {
 	description: string;
 	icon: ReactNode;
 	variant: "green" | "blue" | "yellow" | "purple";
+	to: string;
 }
 
 export default function QuickActions() {
@@ -16,24 +18,28 @@ export default function QuickActions() {
 			description: "Skapa en ny betalning",
 			icon: <LuPlus />,
 			variant: "green",
+			to: "/new-payment",
 		},
 		{
 			label: "Ladda upp fil",
 			description: "Ladda upp batchfil",
 			icon: <LuUpload />,
 			variant: "blue",
+			to: "/batch-upload",
 		},
 		{
 			label: "Godkänn betalningar",
 			description: "Se och godkänn betalningar",
 			icon: <LuUserRoundPlus />,
 			variant: "yellow",
+			to: "/approval-inbox",
 		},
 		{
 			label: "Visa alla betalningar",
 			description: "Gå till betalningsöversikten",
 			icon: <LuList />,
 			variant: "purple",
+			to: "/audit-log",
 		},
 	];
 
@@ -42,21 +48,14 @@ export default function QuickActions() {
 			<div className="dashboard-section__header">
 				<h2>Snabbåtgärder</h2>
 
-				<button
-					className="dashboard-section__link"
-					type="button"
-				>
-					Visa alla
-					<LuArrowRight />
-				</button>
 			</div>
 
 			<div className="quick-actions__grid">
 				{actions.map((action) => (
-					<button
+					<Link
 						className={`quick-actions__item quick-actions__item--${action.variant}`}
+						to={action.to}
 						key={action.label}
-						type="button"
 					>
 						<span className="quick-actions__icon">
 							{action.icon}
@@ -73,7 +72,7 @@ export default function QuickActions() {
 						</span>
 
 						<LuArrowRight className="quick-actions__arrow" />
-					</button>
+					</Link>
 				))}
 			</div>
 		</Card>
