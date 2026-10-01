@@ -6,7 +6,9 @@ using SebPortal.Api.Auth;
 using SebPortal.Api.Middleware;
 using SebPortal.Api.Options;
 using System.Text;
+using System.Net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,6 +34,26 @@ builder.Services.AddDbContext<SebDbContext>(options =>
 builder.Services.AddExceptionHandler<AppExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// Only configured proxies (and the framework's loopback defaults) may supply the HTTPS scheme.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
+    foreach (var address in builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
+    {
+        options.KnownProxies.Add(IPAddress.Parse(address));
+    }
+});
+
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+    options.Cookie.Name = "SebPortal.Csrf";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.Path = "/api";
+    options.Cookie.SecurePolicy = AuthCookie.SecurePolicy(builder.Configuration);
+});
+
 // Register configurable payment business rules.
 builder.Services.Configure<PaymentRulesOptions>(
     builder.Configuration.GetSection(PaymentRulesOptions.SectionName));
@@ -53,6 +75,18 @@ builder.Services
     .AddJwtBearer(options =>
     {
         options.MapInboundClaims = false;
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                // An explicit header takes precedence, including an invalid one.
+                if (!context.Request.Headers.ContainsKey("Authorization"))
+                {
+                    context.Token = context.Request.Cookies[AuthCookie.Name];
+                }
+                return Task.CompletedTask;
+            }
+        };
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
@@ -68,7 +102,7 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<CookieAntiforgeryFilter>());
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -82,11 +116,14 @@ builder.Services.AddCors(options =>
                 "http://localhost:5174"
             )
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
