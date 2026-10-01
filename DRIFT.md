@@ -39,6 +39,28 @@ Appen svarar sedan på http://localhost:PORT. Vilken port som gäller för ert c
 - Bygget tar några minuter. Vid deadline pushar alla team samtidigt och kön blir längre: pusha i god tid.
 - Arbetsflöde: testa alltid på `develop` innan ni mergar till `main`.
 
+## Cookies och HTTPS
+
+JWT lagras i `SebPortal.Auth`, en HttpOnly-cookie med `SameSite=Strict` och
+två timmars giltighet. Inloggning, utloggning och ändringar med cookie kräver
+CSRF-token. Frontend och API ska ligga på samma publika adress i Docker.
+
+Stage/prod använder `Secure` som standard. Bara lokal Development och
+`docker-compose.override.yml` sätter `Auth:AllowInsecureCookies=true` för HTTP.
+Använd inte den inställningen i drift.
+
+När HTTPS avslutas i plattformens reverse proxy måste den skicka
+`X-Forwarded-Proto: https`. Driftansvarig behöver ange proxyns faktiska interna
+IP-adress som `ReverseProxy__KnownProxies__0` i **appcontainerns** miljö
+(fler adresser får index 1, 2, …). Lägg inställningen i driftens Compose-overlay
+eller motsvarande containerkonfiguration; en variabel bara i Compose-terminalen
+skickas inte automatiskt in i containern. Utan konfiguration betros bara loopback.
+Betro inte alla avsändare. Kontrollera detta med plattformsansvarig inför deploy;
+den lokala Docker-kontrollen verifierar inte driftens proxy.
+
+Kontrollera efter deploy att `/api/auth/csrf` ger 200 över HTTPS, att inloggningen
+sätter `Secure` och `HttpOnly`, och att dashboard ger 401 efter utloggning.
+
 ## Plattformskontraktet - fyra regler
 
 Er deploy-miljö kräver att:
