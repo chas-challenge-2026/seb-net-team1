@@ -48,6 +48,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: "http://+:8081"
       Jwt__Key: "${JWT_KEY:?Set JWT_KEY in infra/.env before starting Docker}"
+      Jwt__PreviousKey: "${JWT_PREVIOUS_KEY:-}"
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${POSTGRES_DB:?Set POSTGRES_DB in infra/.env};Username=${POSTGRES_USER:?Set POSTGRES_USER in infra/.env};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in infra/.env}"
     depends_on:
       db:
