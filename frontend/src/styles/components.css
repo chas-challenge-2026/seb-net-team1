@@ -787,6 +787,18 @@ input[type='date'].input__control {
   gap: var(--space-2);
 }
 
+@media (max-width: 560px) {
+  .page-header__actions {
+    width: 100%;
+  }
+
+  .page-header__actions > .btn {
+    flex: 1 1 auto;
+    padding: 0 var(--space-3);
+    font-size: var(--text-sm);
+  }
+}
+
 /* ================================================================ Stat cards */
 
 .stat-grid {

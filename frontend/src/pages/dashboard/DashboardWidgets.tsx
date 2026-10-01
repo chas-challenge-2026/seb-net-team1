@@ -20,13 +20,12 @@ import { Badge } from '../../components/ui/Badge';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { IbanText } from '../../components/ui/IbanText';
 import { Money } from '../../components/ui/Money';
 import { Skeleton, SkeletonRows } from '../../components/ui/Skeleton';
 import { PaymentStatusBadge } from '../../components/ui/StatusBadge';
 import { useNow } from '../../hooks/useNow';
 import { formatDate, formatRelativeTime, formatTime } from '../../utils/date';
-import { maskIban } from '../../utils/iban';
+import { formatIban, maskIban } from '../../utils/iban';
 
 function SectionLink({ to, children }: { to: '/accounts' | '/payments' | '/audit-log' | '/approvals'; children: string }) {
   return (
@@ -137,8 +136,8 @@ export function RecentPayments({ payments, loading }: { payments: PaymentSummary
                       >
                         {payment.reference || 'Utan referens'}
                       </Link>
-                      <span className="cell-secondary">
-                        Till <IbanText iban={payment.toIban} />
+                      <span className="cell-secondary" title={formatIban(payment.toIban)}>
+                        Till {maskIban(payment.toIban)}
                       </span>
                     </td>
                     <td className="num nowrap">
