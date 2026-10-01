@@ -7,8 +7,8 @@ namespace SebPortal.Api.Auth;
 
 /// <summary>
 /// Service responsible for issuing signed JSON Web Tokens (JWT) for authenticated users.
-/// JWTs are stateless tokens passed in the Authorization header (Bearer scheme) by clients
-/// to verify their identity and permissions on subsequent API requests.
+/// Browsers send JWTs in an HttpOnly cookie. Explicit Bearer headers are also accepted
+/// for clients that already hold a token.
 /// </summary>
 public class JwtTokenService
 {
