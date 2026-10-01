@@ -116,6 +116,8 @@ if (Test-Path -LiteralPath infra/.env) {
 
 Filen ligger utanför Git och Docker-imagen men innehåller nyckeln i klartext
 på datorn. Behåll samma nyckel mellan starter. User Secrets behövs inte för Docker.
+För ett planerat byte, följ [nyckelrotation](docs/jwt-key-rotation.md). Då används
+`JWT_PREVIOUS_KEY` tillfälligt så att redan utfärdade token fortsätter fungera.
 Lägg även in [databasuppgifterna](#databasuppgifter) i samma fil innan ni startar Docker.
 
 ### 2. Starta Docker
@@ -231,7 +233,8 @@ $jwtKey = [Convert]::ToBase64String($bytes)
 
 Varje utvecklare gör steg 1–2 en gång på sin dator. Nyckeln sparas utanför
 projektet och Git. User Secrets är okrypterad lagring för lokal utveckling.
-Behåll nyckeln mellan starter; byter du den slutar gamla token fungera efter omstart.
+Behåll nyckeln mellan starter. Vid byte behöver gamla nyckeln finnas kvar som
+`Jwt:PreviousKey` under övergången enligt [nyckelrotation](docs/jwt-key-rotation.md).
 JWT skickas bara i en HttpOnly-cookie vid inloggning; signeringsnyckeln stannar i backend.
 
 ### 3. Starta om backend
