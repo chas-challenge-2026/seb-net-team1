@@ -15,7 +15,7 @@ cd infra
 docker compose up --build
 ```
 
-Appen svarar sedan på http://localhost:PORT. Vilken port som gäller för ert case står i `infra/docker-compose.override.yml`. Inloggningsuppgifter till seed-datan står i README.
+Appen svarar sedan på http://localhost:PORT. Vilken port som gäller för ert case står i `infra/docker-compose.override.yml`. Aktivera [lokala testkonton](README.md#lokala-testkonton) enligt README; lösenordet väljs lokalt.
 
 - Stoppa: Ctrl+C, eller `docker compose down`
 - Börja om med tom databas: `docker compose down -v` och sedan `up --build` igen
@@ -30,6 +30,8 @@ Appen svarar sedan på http://localhost:PORT. Vilken port som gäller för ert c
 ## Så funkar deploy
 
 - Driftmiljön måste tillhandahålla `JWT_KEY`, `POSTGRES_DB`, `POSTGRES_USER` och `POSTGRES_PASSWORD` när Docker Compose körs. Den lokala `infra/.env` följer inte med i Git eller Docker-imagen.
+
+- `SEED_TEST_PASSWORD` och lösenordsscriptet används bara av den lokala Compose-override-filen. Grundkonfigurationen skapar nya testkonton utan användbara lösenord. Befintliga testkonton i stage/prod behöver granskas separat; seed körs inte igen på en befintlig databas.
 
 - Push till `develop` bygger om er stage-miljö, push till `main` bygger om prod. Adresserna står i README.
 - Grön bock eller rött X på committen i GitHub visar hur deployen gick. Vid rött X: klicka på markeringen och läs byggloggen.
