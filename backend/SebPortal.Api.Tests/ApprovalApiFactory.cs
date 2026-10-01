@@ -17,6 +17,9 @@ public class ApprovalApiFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseSetting("Jwt:Key", "IntegrationTestSigningKeyOnly-NotForProduction-1234567890");
+        builder.UseSetting("Jwt:PreviousKey", "");
+
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<SebDbContext>();
