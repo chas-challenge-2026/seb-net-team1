@@ -1,7 +1,8 @@
 import "../../styles/dashboard.css";
 import logo from "../../assets/seb_logo_white.png";
-import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { getMockRows } from "../../api/mockApi";
 import { logout } from "../../api/usersApi";
 import {
   FiHome,
@@ -33,8 +34,17 @@ export default function DashboardSidebar({
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [logoutError, setLogoutError] = useState("");
     const overviewClassName = `dashboard-sidebar-link${pathname === "/dashboard" ? " active" : ""}`;
-    const paymentsClassName = `dashboard-sidebar-link${pathname === "/new-payment" ? " active" : ""}`;
+    const paymentsClassName = `dashboard-sidebar-link${(pathname === "/new-payment" || pathname === "/payments") ? " active" : ""}`;
     const accountsClassName = `dashboard-sidebar-link${pathname === "/accounts" ? " active" : ""}`;
+
+    const [pendingCount, setPendingCount] = useState<number | null>(null);
+    useEffect(() => {
+      const controller = new AbortController();
+      getMockRows<{ status: string }>("approvalSteps", controller.signal)
+        .then(steps => setPendingCount(steps.filter(step => step.status === "pending").length))
+        .catch(() => {});
+      return () => controller.abort();
+    }, []);
 
     async function handleLogout() {
       setIsLoggingOut(true);
@@ -86,49 +96,49 @@ export default function DashboardSidebar({
       {/* Navigation */}
       <nav className="dashboard-sidebar-nav">
 
-        <a href="/dashboard" className={overviewClassName}>
+        <NavLink to="/dashboard" className={overviewClassName}>
           <FiHome />
           <span>Översikt</span>
-        </a>
+        </NavLink>
 
-        <a href="/new-payment" className={paymentsClassName}>
+        <NavLink to="/payments" className={paymentsClassName}>
           <FiCreditCard />
           <span>Betalningar</span>
-        </a>
+        </NavLink>
 
-        <a href="#" className="dashboard-sidebar-link">
+        <NavLink to="/approvals" onClick={onClose} className={({ isActive }) => `dashboard-sidebar-link${isActive ? " active" : ""}`}>
           <FiCheckSquare />
           <span>Godkännanden</span>
 
           <span className="dashboard-sidebar-badge">
-            12 {/* Exempel siffra, implementera riktig data senare*/}
+            {pendingCount ?? "—"}
           </span>
-        </a>
+        </NavLink>
 
-        <a href="/accounts" className={accountsClassName}>
+        <NavLink to="/accounts" className={accountsClassName}>
           <FiBriefcase />
           <span>Konton</span>
-        </a>
+        </NavLink>
 
-        <a href="#" className="dashboard-sidebar-link">
+        <NavLink to="/batch-files" onClick={onClose} className={({ isActive }) => `dashboard-sidebar-link${isActive ? " active" : ""}`}>
           <FiFileText />
           <span>Batchfiler</span>
-        </a>
+        </NavLink>
 
-        <a href="#" className="dashboard-sidebar-link">
+        <NavLink to="/reports" onClick={onClose} className={({ isActive }) => `dashboard-sidebar-link${isActive ? " active" : ""}`}>
           <FiBarChart2 />
           <span>Rapporter</span>
-        </a>
+        </NavLink>
 
-        <a href="#" className="dashboard-sidebar-link">
+        <NavLink to="/audit-log" onClick={onClose} className={({ isActive }) => `dashboard-sidebar-link${isActive ? " active" : ""}`}>
           <FiActivity />
           <span>Audit-logg</span>
-        </a>
+        </NavLink>
 
-        <a href="#" className="dashboard-sidebar-link">
+        <NavLink to="/settings" onClick={onClose} className={({ isActive }) => `dashboard-sidebar-link${isActive ? " active" : ""}`}>
           <FiSettings />
           <span>Inställningar</span>
-        </a>
+        </NavLink>
 
       </nav>
 

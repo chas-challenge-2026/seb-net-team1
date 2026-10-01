@@ -3,7 +3,7 @@ import type {
   CreatePaymentResponse,
   PaymentStatus,
 } from "../types/Payment";
-import { buildApiUrl } from "./apiConfig";
+import { buildMockUrl } from "./mockApi";
 
 const PAYMENTS_ENDPOINT = "/payments";
 const MOCK_DEFAULT_STATUS: PaymentStatus = "completed";
@@ -31,7 +31,7 @@ export async function createPayment(
     createdAt: new Date().toISOString(),
   };
 
-  const response = await fetch(buildApiUrl(PAYMENTS_ENDPOINT), {
+  const response = await fetch(buildMockUrl(PAYMENTS_ENDPOINT), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
