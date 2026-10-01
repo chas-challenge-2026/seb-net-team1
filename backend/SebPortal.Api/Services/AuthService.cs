@@ -4,13 +4,13 @@ using SebPortal.Api.Repositories;
 
 namespace SebPortal.Api.Services;
 
-public class AuthService(UserRepository userRepository, PasswordHasher passwordHasher, JwtTokenService jwtTokenService)
+public class AuthService(UserRepository userRepository, PasswordHasher passwordHasher)
 {
     /// <summary>
     /// Performs a login request using the provided LoginRequest
     /// </summary>
-    /// <returns>A LoginResponse upon success, otherwise null</returns>
-    public LoginResponse? Login(LoginRequest request)
+    /// <returns>The authenticated user upon success, otherwise null</returns>
+    public AuthenticatedUserDto? Login(LoginRequest request)
     {
         var user = userRepository.GetByEmail(request.Email!);
 
@@ -19,25 +19,13 @@ public class AuthService(UserRepository userRepository, PasswordHasher passwordH
             return null;
         }
 
-        var response = new LoginResponse
+        return new AuthenticatedUserDto
         {
-            AccessToken = jwtTokenService.GenerateToken(
-                user.Id,
-                user.TenantId,
-                user.Email,
-                user.Role,
-                user.Name),
-
-            User = new AuthenticatedUserDto
-            {
-                Id = user.Id,
-                Name = user.Name,
-                Email = user.Email,
-                Role = user.Role,
-                TenantId = user.TenantId
-            }
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            TenantId = user.TenantId
         };
-
-        return response;
     }
 }
