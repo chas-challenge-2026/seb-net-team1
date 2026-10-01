@@ -378,6 +378,7 @@ public sealed class CookieAuthenticationApiFactory : WebApplicationFactory<Progr
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("Jwt:Key", _signingKey);
+        builder.UseSetting("Jwt:PreviousKey", "");
         builder.UseSetting("Jwt:Issuer", "CookieAuthenticationTests");
         builder.UseSetting("Jwt:Audience", "CookieAuthenticationTests");
         builder.UseSetting("Auth:AllowInsecureCookies", "false");
