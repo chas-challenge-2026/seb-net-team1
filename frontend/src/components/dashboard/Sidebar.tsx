@@ -1,6 +1,8 @@
 import "../../styles/dashboard.css";
 import logo from "../../assets/seb_logo_white.png";
-import { useLocation } from "react-router-dom";
+import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { logout } from "../../api/usersApi";
 import {
   FiHome,
   FiCreditCard,
@@ -27,9 +29,27 @@ export default function DashboardSidebar({
   onClose,
 }: SidebarProps){
     const { pathname } = useLocation();
+    const navigate = useNavigate();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [logoutError, setLogoutError] = useState("");
     const overviewClassName = `dashboard-sidebar-link${pathname === "/dashboard" ? " active" : ""}`;
     const paymentsClassName = `dashboard-sidebar-link${pathname === "/new-payment" ? " active" : ""}`;
     const accountsClassName = `dashboard-sidebar-link${pathname === "/accounts" ? " active" : ""}`;
+
+    async function handleLogout() {
+      setIsLoggingOut(true);
+      setLogoutError("");
+
+      try {
+        await logout();
+        localStorage.removeItem("user");
+        navigate("/", { replace: true });
+      } catch {
+        setLogoutError("Kunde inte logga ut. Försök igen.");
+      } finally {
+        setIsLoggingOut(false);
+      }
+    }
 
     return (
       <>
@@ -134,11 +154,16 @@ export default function DashboardSidebar({
           type="button"
           className="dashboard-sidebar-logout"
           aria-label="Logga ut"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          aria-busy={isLoggingOut}
         >
           <FiLogOut />
         </button>
 
       </div>
+
+      {logoutError && <p role="alert">{logoutError}</p>}
 
         </aside>
       </>
