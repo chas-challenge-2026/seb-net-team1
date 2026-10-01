@@ -30,7 +30,7 @@ public class JwtTokenServiceTests
     public void GenerateToken_ReturnsNonEmptyString()
     {
         // Arrange
-        var service = new JwtTokenService(_configuration);
+        var service = new JwtTokenService(JwtConfiguration.FromConfiguration(_configuration));
 
         // Act
         var token = service.GenerateToken(
@@ -48,7 +48,7 @@ public class JwtTokenServiceTests
     public void GenerateToken_ProducesValidJwtWithExpectedClaims()
     {
         // Arrange
-        var service = new JwtTokenService(_configuration);
+        var service = new JwtTokenService(JwtConfiguration.FromConfiguration(_configuration));
         var expectedUserId = 42;
         var expectedTenantId = 1;
         var expectedEmail = "johan@malmobygg.se";
@@ -82,7 +82,7 @@ public class JwtTokenServiceTests
     public void GenerateToken_CanBeValidatedWithConfiguredSecretKey()
     {
         // Arrange
-        var service = new JwtTokenService(_configuration);
+        var service = new JwtTokenService(JwtConfiguration.FromConfiguration(_configuration));
         var tokenString = service.GenerateToken(1, 1, "sara@malmobygg.se", "admin", "Sara Ek");
 
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -117,10 +117,11 @@ public class JwtTokenServiceTests
         var emptyConfig = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:Key"] = key })
             .Build();
-        var service = new JwtTokenService(emptyConfig);
-
         var exception = Assert.Throws<InvalidOperationException>(() =>
-            service.GenerateToken(1, 1, "test@seb.se", "initiator", "Test User"));
+        {
+            var service = new JwtTokenService(JwtConfiguration.FromConfiguration(emptyConfig));
+            service.GenerateToken(1, 1, "test@seb.se", "initiator", "Test User");
+        });
         Assert.Contains("Jwt:Key", exception.Message);
     }
 }
