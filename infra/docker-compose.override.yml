@@ -1,5 +1,7 @@
 services:
   app:
+    environment:
+      Auth__AllowInsecureCookies: "true"
     ports:
       - "8081:8081"
   db:
