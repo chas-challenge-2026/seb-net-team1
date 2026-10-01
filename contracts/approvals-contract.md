@@ -134,7 +134,9 @@ Returned when `action` is missing or not one of `approve`/`reject`, or `comment`
 
 ```json
 {
-  "message": "Ogiltig åtgärd."
+  "status": 400,
+  "title": "BadRequest",
+  "detail": "Ogiltig åtgärd."
 }
 ```
 
@@ -144,7 +146,9 @@ Returned when the approval step is not assigned to the logged-in attestant (and 
 
 ```json
 {
-  "message": "Du har inte behörighet till detta atteststeg."
+  "status": 403,
+  "title": "Forbidden",
+  "detail": "Du har inte behörighet till detta atteststeg."
 }
 ```
 
@@ -152,13 +156,23 @@ Returned when the approval step is not assigned to the logged-in attestant (and 
 
 Returned when the approval step doesn't exist.
 
+```json
+{
+  "status": 404,
+  "title": "NotFound",
+  "detail": "Atteststeget hittades inte."
+}
+```
+
 ### `409 Conflict`
 
 Returned when the approval step has already been decided.
 
 ```json
 {
-  "message": "Det här atteststeget är redan hanterat."
+  "status": 409,
+  "title": "Conflict",
+  "detail": "Det här atteststeget är redan hanterat."
 }
 ```
 
@@ -186,12 +200,26 @@ Backend should use this contract to:
 - compute `requiresDoubleApproval` on the backend from a single shared threshold source. v1 used two different threshold values across `NewPayment.cs` (500 000) and `ApprovalInbox.cs` (200 000) for the same rule (BUG-006). Consolidating that value is part of US-25/US-26, not this contract. The contract's job is just to make sure frontend never has to guess or duplicate the number itself
 - return `409` rather than silently reprocessing when a step has already been decided
 - represent all money values as decimal strings, never floating-point numbers
-- return consistent error responses per the format above
+- return consistent ProblemDetails error responses (status, title, detail) per the format above
+- throw the matching custom exception (ApprovalStepNotFoundException, ApprovalStepAccessDeniedException, ApprovalStepAlreadyDecidedException) rather than returning ad-hoc error objects. The global exception handler converts these to the responses shown above automatically
 
 **Out of scope for this contract (belongs to other tickets):**
 - Creating approval steps when a payment is first submitted (US-21/US-22)
 - Notifying attestants of new pending approvals (US-25/US-26, and the notification queue itself is a separate Could-have)
 - Deducting account balance on final approval (US-24)
+
+---
+
+## Implementation Notes (US-25 / US-26)
+
+Implemented in `backend/SebPortal.Api` as `ApprovalsController` → `ApprovalService` → `ApprovalRepository`. The controller reads the caller's id, tenant and role from the JWT only, and never accepts any of them from the request. Four things are worth knowing on top of the contract above:
+
+- **The double approval threshold now lives in configuration**, `PaymentRules:DoubleApprovalThreshold` (200 000 SEK in `appsettings.json`), next to the existing `ApprovalThreshold`. `requiresDoubleApproval` and `totalSteps` are both derived from it. This is the consolidation BUG-006 called for: payment creation, the approval flow and the frontend badge all read the same value, and changing the rule means changing one setting.
+- **Admins see the whole tenant's pending list**, attestants only steps assigned to them. This carries over v1's behaviour and matches the `403` rule above, which already exempts `admin`.
+- **A step in another tenant answers `404`, not `403`**, even for an admin. Answering `403` would confirm that the id exists somewhere, which leaks across tenants. v1 let an admin decide steps in any tenant at all.
+- **Every decision is audited to the database** as `APPROVE_PAYMENT`, `APPROVE_PAYMENT_STEP` (a step approved while others remain) or `REJECT_PAYMENT`. v1 wrote partial approvals to `/tmp/audit.log` only, so they never reached the audit log UI.
+
+The final approval completes the payment through the same `PaymentService.CompletePaymentOrThrow` a direct payment uses, so status, balance, execution timestamp and transaction history stay consistent between the two paths. If a payment ever reaches its last approval with fewer approvals than the threshold requires, the service creates the missing step (assigned to an attestant who has neither decided nor created the payment) instead of completing early or leaving the payment stuck.
 
 ---
 

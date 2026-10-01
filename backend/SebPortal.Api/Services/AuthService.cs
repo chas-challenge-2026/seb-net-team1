@@ -1,3 +1,4 @@
+using SebPortal.Api.Auth;
 using SebPortal.Api.DTOs;
 using SebPortal.Api.Repositories;
 
@@ -8,8 +9,8 @@ public class AuthService(UserRepository userRepository, PasswordHasher passwordH
     /// <summary>
     /// Performs a login request using the provided LoginRequest
     /// </summary>
-    /// <returns>A LoginResponse upon success, otherwise null</returns>
-    public LoginResponse? Login(LoginRequest request)
+    /// <returns>The authenticated user upon success, otherwise null</returns>
+    public AuthenticatedUserDto? Login(LoginRequest request)
     {
         var user = userRepository.GetByEmail(request.Email!);
 
@@ -18,19 +19,13 @@ public class AuthService(UserRepository userRepository, PasswordHasher passwordH
             return null;
         }
 
-        var response = new LoginResponse
+        return new AuthenticatedUserDto
         {
-            AccessToken = "mock-jwt-token",
-            User = new AuthenticatedUserDto
-            {
-                Id = user.Id,
-                Name = user.Name,
-                Email = user.Email,
-                Role = user.Role,
-                TenantId = user.TenantId
-            }
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            TenantId = user.TenantId
         };
-
-        return response;
     }
 }

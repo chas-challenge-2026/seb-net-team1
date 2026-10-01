@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { LuBuilding2, LuArrowRight } from "react-icons/lu";
+import { Link } from "react-router-dom";
 import Card from "../shared/Card";
 
 interface Account {
@@ -27,10 +28,10 @@ export default function AccountOverview() {
       <div className="dashboard-section__header">
         <h2>Konton</h2>
 
-        <button className="dashboard-section__link">
-          Visa alla konton
+        <Link to="/accounts" className="dashboard-section__link">
+           Visa alla konton
           <LuArrowRight />
-        </button>
+        </Link>
       </div>
 
       <div className="account-overview__grid">

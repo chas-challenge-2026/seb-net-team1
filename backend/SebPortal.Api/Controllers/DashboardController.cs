@@ -1,20 +1,29 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.Services;
+using SebPortal.Api.Auth;
 
 namespace SebPortal.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public class DashboardController(DashboardService dashboardService) : ControllerBase
 {
-    // we will replace these with real ones from JWT claims once auth middleware is there
-    private const int CurrentTenantId = 1;
-    private const int CurrentUserId = 1;
 
     [HttpGet]
     public async Task<IActionResult> Get()
     {
-        var dashboard = await dashboardService.GetDashboardAsync(CurrentTenantId, CurrentUserId);
+
+        var userId = User.GetUserId();
+        var tenantId = User.GetTenantId();
+
+        if (userId is null || tenantId is null)
+        {
+            return Unauthorized(new { message = "Ogiltig eller saknad användarinformation i token." });
+        }
+
+        var dashboard = await dashboardService.GetDashboardAsync(tenantId.Value, userId.Value);
 
         if (dashboard is null)
         {

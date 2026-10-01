@@ -135,17 +135,26 @@ public class SebDbContext : DbContext
             entity.ToTable("audit_entries");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.Action).HasColumnName("action").HasMaxLength(100);
             entity.Property(e => e.EntityType).HasColumnName("entity_type").HasMaxLength(50);
             entity.Property(e => e.EntityId).HasColumnName("entity_id");
             entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");            
+            entity.Property(e => e.Signature).HasColumnName("signature");
+            entity.Property(e => e.PreviousSignature).HasColumnName("previous_signature");
+            entity.HasOne<Tenant>()
+                .WithMany()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.User)
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => new { e.TenantId, e.Id });
         });
 
         // Transactions
