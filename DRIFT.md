@@ -31,6 +31,11 @@ Appen svarar sedan på http://localhost:PORT. Vilken port som gäller för ert c
 
 - Driftmiljön måste tillhandahålla `JWT_KEY`, `POSTGRES_DB`, `POSTGRES_USER` och `POSTGRES_PASSWORD` när Docker Compose körs. Den lokala `infra/.env` följer inte med i Git eller Docker-imagen.
 
+- JWT stöder en valfri `JWT_PREVIOUS_KEY` vid planerad rotation. Följ
+  [rotationsguiden](docs/jwt-key-rotation.md), särskilt ordningen för flera
+  instanser och väntetiden innan gamla nyckeln tas bort. Nycklar läses vid start;
+  återskapa containrar efter byte. Extern secret manager är ännu inte ansluten.
+
 - `SEED_TEST_PASSWORD` och lösenordsscriptet används bara av den lokala Compose-override-filen. Grundkonfigurationen skapar nya testkonton utan användbara lösenord. Befintliga testkonton i stage/prod behöver granskas separat; seed körs inte igen på en befintlig databas.
 
 - Push till `develop` bygger om er stage-miljö, push till `main` bygger om prod. Adresserna står i README.
