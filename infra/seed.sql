@@ -11,7 +11,7 @@ CREATE TABLE users (
     tenant_id INT REFERENCES tenants(id),
     name VARCHAR(100),
     email VARCHAR(100) UNIQUE,
-    password_md5 VARCHAR(32),
+    password_md5 VARCHAR(255), -- Legacy column name; the API stores BCrypt hashes here.
     role VARCHAR(20) -- 'initiator', 'attestant', 'admin'
 );
 
@@ -65,11 +65,11 @@ CREATE INDEX idx_audit_entries_tenant_id_id ON audit_entries (tenant_id, id);
 -- Seed: tenant Malmö Bygg AB
 INSERT INTO tenants (name) VALUES ('Malmö Bygg AB');
 
--- password = "password123" MD5 = 482c811da5d5b4bc6d497ffa98491e38
+-- Test accounts have no usable password until local setup assigns BCrypt hashes.
 INSERT INTO users (tenant_id, name, email, password_md5, role) VALUES
-(1, 'Lisa Persson',  'lisa@malmobygg.se',  '482c811da5d5b4bc6d497ffa98491e38', 'initiator'),
-(1, 'Johan Berg',   'johan@malmobygg.se', '482c811da5d5b4bc6d497ffa98491e38', 'attestant'),
-(1, 'Sara Ek',      'sara@malmobygg.se',  '482c811da5d5b4bc6d497ffa98491e38', 'admin');
+(1, 'Lisa Persson',  'lisa@malmobygg.se',  NULL, 'initiator'),
+(1, 'Johan Berg',   'johan@malmobygg.se', NULL, 'attestant'),
+(1, 'Sara Ek',      'sara@malmobygg.se',  NULL, 'admin');
 
 INSERT INTO accounts (tenant_id, account_name, iban, balance, currency) VALUES
 (1, 'Driftkonto',   'SE4550000000058398257466', 2500000.00, 'SEK'),
