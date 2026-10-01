@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.Exceptions;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 
 namespace SebPortal.Api.Middleware;
@@ -33,7 +34,12 @@ public class AppExceptionHandler(
         var (statusCode, detail) = exception switch
         {
             AppException appException => (appException.StatusCode, appException.UserMessage),
-            _ => (StatusCodes.Status500InternalServerError, "Ett oväntat fel uppstod. Försök igen senare.")
+            DbUpdateConcurrencyException => (
+                StatusCodes.Status409Conflict,
+                "Kontot ändrades av en annan betalning. Uppdatera och försök igen."),
+            _ => (
+                StatusCodes.Status500InternalServerError,
+                "Ett oväntat fel uppstod. Försök igen senare.")
         };
 
         if (exception is AppException appEx)
@@ -44,9 +50,19 @@ public class AppExceptionHandler(
                 appEx.GetType().Name,
                 appEx.Message);
         }
+        else if (exception is DbUpdateConcurrencyException)
+        {
+            logger.LogWarning(
+                exception,
+                "Concurrent database update detected on {Path}",
+                httpContext.Request.Path);
+        }
         else
         {
-            logger.LogError(exception, "Unhandled exception on {Path}", httpContext.Request.Path);
+            logger.LogError(
+                exception,
+                "Unhandled exception on {Path}",
+                httpContext.Request.Path);
         }
 
         httpContext.Response.StatusCode = statusCode;
