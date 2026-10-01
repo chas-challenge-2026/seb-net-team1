@@ -32,7 +32,7 @@ Frontend uses this endpoint when a user submits the login form.
 ```json
 {
   "email": "lisa@malmobygg.se",
-  "password": "password123"
+  "password": "<your-local-test-password>"
 }
 ```
 
