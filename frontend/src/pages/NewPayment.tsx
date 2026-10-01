@@ -93,8 +93,12 @@ function NewPayment() {
       const payment = await createPayment(paymentToCreate);
 
       setCreatedPayment(payment);
-    } catch {
-      setSubmitError("Kunde inte skapa betalningen. Försök igen.");
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Kunde inte skapa betalningen. Försök igen."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -259,7 +263,7 @@ function NewPayment() {
 
                 {createdPayment ? (
                   <small role="status">
-                    Betalning skapad i mock-API med ID {createdPayment.id}.
+                    {getPaymentSuccessMessage(createdPayment)}
                   </small>
                 ) : null}
 
@@ -271,6 +275,14 @@ function NewPayment() {
       </main>
     </div>
   );
+}
+
+function getPaymentSuccessMessage(payment: CreatePaymentResponse): string {
+  if (payment.status === "pending_approval") {
+    return `Betalning skapad och väntar på godkännande. ID ${payment.id}.`;
+  }
+
+  return `Betalning skapad och genomförd. ID ${payment.id}.`;
 }
 
 export default NewPayment;
