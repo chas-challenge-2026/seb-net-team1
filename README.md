@@ -16,6 +16,7 @@ git checkout 3-seb
 
 **Första gången:** skapa [JWT-nyckeln](#jwt-nyckel-för-docker) och fyll i
 [databasuppgifterna](#databasuppgifter) i `infra/.env` enligt instruktionerna nedan.
+Skapa även ett [lokalt testlösenord](#lokala-testkonton) om ni vill använda testkontona.
 Starta sedan Docker Desktop och kör från projektets rot:
 
 ```bash
@@ -25,11 +26,65 @@ docker compose up --build
 
 Öppna [http://localhost:8081](http://localhost:8081)
 
-| Roll | E-post | Lösenord |
-|------|--------|---------|
-| Initiator | lisa@malmobygg.se | password123 |
-| Attestant | johan@malmobygg.se | password123 |
-| Admin | sara@malmobygg.se | password123 |
+| Roll | E-post |
+|------|--------|
+| Initiator | lisa@malmobygg.se |
+| Attestant | johan@malmobygg.se |
+| Admin | sara@malmobygg.se |
+
+Lösenordet för dessa konton väljer ni lokalt enligt nästa avsnitt.
+
+---
+
+## Lokala testkonton
+
+Jag har tagit bort det gemensamma testlösenordet från README och seed-data.
+Varje utvecklare använder i stället ett eget lokalt lösenord för de tre kontona ovan.
+Nya seedade konton saknar ett användbart lösenord tills ni konfigurerar detta.
+
+**1. Skapa lösenordet.** När `infra/.env` finns, kör hela blocket i PowerShell
+från projektets rot. Befintliga inställningar och testlösenord behålls.
+
+```powershell
+if (-not (Test-Path -LiteralPath infra/.env)) {
+    throw 'Skapa infra/.env med JWT-nyckel och databasuppgifter först.'
+} elseif (Select-String -LiteralPath infra/.env -Pattern '^SEED_TEST_PASSWORD=.' -Quiet) {
+    Write-Host 'Ett lokalt testlösenord finns redan.'
+} elseif (Select-String -LiteralPath infra/.env -Pattern '^SEED_TEST_PASSWORD=' -Quiet) {
+    throw 'Fyll i den befintliga SEED_TEST_PASSWORD-raden innan ni fortsätter.'
+} else {
+    $bytes = New-Object byte[] 32
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $rng.GetBytes($bytes)
+    $rng.Dispose()
+    $testPassword = [Convert]::ToBase64String($bytes)
+    Add-Content -LiteralPath infra/.env -Value "`nSEED_TEST_PASSWORD=$testPassword" -Encoding ASCII
+}
+```
+
+Lösenordet finns nu på raden `SEED_TEST_PASSWORD` i er lokala `.env`-fil,
+som är undantagen från Git. Det är ett separat lösenord från databasens lösenord
+och JWT-nyckeln. Egna testlösenord behöver vara 16–72 byte långa.
+
+**2. Aktivera testkontona.** Kör från projektets rot:
+
+```powershell
+cd infra
+docker compose up -d --build app
+docker compose exec -T db bash /docker-entrypoint-initdb.d/zz-set-test-passwords.sh
+```
+
+Det sista kommandot fungerar även med en befintlig databas: det ändrar bara
+lösenorden för de tre seedade kontona och sparar separata BCrypt-hashar.
+Andra konton och betalningsdata behålls. Databasen behöver inte tömmas.
+Vid första starten av en tom lokal databas körs samma script automatiskt.
+
+**3. Logga in.** Öppna [http://localhost:8081](http://localhost:8081) och använd
+en av mejladresserna ovan med lösenordet från er `SEED_TEST_PASSWORD`-rad.
+
+Lösenordsinställningen och scriptet kopplas in via den lokala Compose-override-filen.
+Grundfilen för stage/prod aktiverar inte testlösenorden. Befintliga databaser får
+inte sina gamla testlösenord ändrade automatiskt; de måste hanteras separat.
 
 ---
 
