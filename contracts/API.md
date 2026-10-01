@@ -7,7 +7,7 @@ Frontend can use this document to create forms, API calls and mock data.
 Backend can use this document to implement endpoints that return the expected response format.
 
 This reduces misunderstandings such as:
-- frontend expecting `accessToken` while backend returns `token`
+- frontend expecting a token in JSON while backend uses a cookie
 - frontend expecting `name` while backend returns `userName`
 - different formats for error messages
 - unclear role names
@@ -16,12 +16,14 @@ This reduces misunderstandings such as:
 
 ## Auth
 
-The JWT signing key stays in the backend; the frontend receives only an access token after login.
+The JWT signing key stays in the backend. Login sets the JWT in an HttpOnly cookie;
+the response body contains user information only. Never store JWTs in browser storage.
 For local setup without Docker, see [Create and save a JWT signing key](../README.md#jwt-nyckel-för-lokal-körning-utan-docker).
 
 ### POST `/api/auth/login`
 
-Logs in a user and returns a JWT access token plus basic user information.
+Logs in a user, sets the authentication cookie and returns basic user information.
+Requires the CSRF header described under [Browser authentication](#browser-authentication).
 
 Frontend uses this endpoint when a user submits the login form.
 
@@ -53,7 +55,6 @@ Returned when the email and password are correct.
 
 ```json
 {
-  "accessToken": "jwt-token-here",
   "user": {
     "id": 1,
     "name": "Lisa Andersson",
@@ -68,7 +69,6 @@ Returned when the email and password are correct.
 
 | Field | Type | Description |
 |---|---|---|
-| `accessToken` | string | JWT token used for authenticated API requests |
 | `user.id` | number | The logged-in user's id |
 | `user.name` | string | The logged-in user's name |
 | `user.email` | string | The logged-in user's email |
@@ -91,7 +91,7 @@ Returned when email or password is incorrect.
 
 ### `400 Bad Request`
 
-Returned when email or password is missing.
+Returned when email or password is missing, or CSRF validation fails.
 
 ```json
 {
@@ -113,20 +113,39 @@ Possible roles:
 
 ---
 
-## Authentication Header
+## Browser authentication
 
-After login, frontend should include the JWT token in protected API requests.
+Use `apiRequest` from `frontend/src/api/apiClient.ts` for real backend calls under
+`/api`. It sends cookies with `credentials: 'include'` and obtains a fresh CSRF
+token before each POST, PUT, PATCH or DELETE. The existing mock API is separate.
 
-```http
-Authorization: Bearer jwt-token-here
-```
+1. GET `/api/auth/csrf` with credentials included. The server sets an HttpOnly
+   CSRF cookie and returns `{ "requestToken": "..." }`. This value is a CSRF token,
+   not a JWT, and does not authenticate a user.
+2. POST `/api/auth/login` with credentials included, JSON email/password and the
+   `X-CSRF-TOKEN` header set to that request token. A successful response sets
+   `SebPortal.Auth` (`HttpOnly`, `SameSite=Strict`, `Path=/api`, expires with the
+   JWT after two hours). `Secure` is the default; local HTTP has an explicit override.
+3. GET protected endpoints such as `/api/dashboard` with credentials included.
+   The browser sends the cookie; JavaScript does not read the JWT.
+4. Before changing data, obtain a fresh CSRF token and include it as
+   `X-CSRF-TOKEN`. Tokens are bound to the current identity, which changes on login.
+   Missing or invalid CSRF gives **400**. Missing, invalid or expired JWT gives
+   **401** on protected endpoints.
+5. POST `/api/auth/logout` with credentials and a fresh CSRF token. **204** expires
+   the auth cookie. Further protected requests return **401**. This clears the
+   browser session; an independently copied JWT remains valid until it expires.
 
-Example:
+The JWT is never returned in login JSON. Login/logout require CSRF validation
+even when anonymous. Auth responses must not be cached. Local Vite origins
+`http://localhost:5173` and `http://localhost:5174` are allowed with credentials;
+Docker serves frontend and API from the same origin.
 
-```http
-GET /api/accounts
-Authorization: Bearer jwt-token-here
-```
+Non-browser clients that already hold a JWT may still send `Authorization: Bearer …`.
+Valid bearer-only requests to protected endpoints do not need CSRF. If an auth
+cookie is also present, CSRF remains required for changes. An explicit invalid
+Authorization header never falls back to the cookie. Login no longer issues
+tokens in JSON, so existing scripts must use a cookie jar and the CSRF flow above.
 
 ---
 
@@ -136,14 +155,13 @@ Frontend can use this contract to:
 - build the login form
 - know what fields to send
 - create mock login responses
-- know where to store the token
+- send cookies and the CSRF header correctly
 - know what error messages to handle
 
 Example mock response:
 
 ```ts
 const mockLoginResponse = {
-  accessToken: "fake-jwt-token",
   user: {
     id: 1,
     name: "Lisa Andersson",
@@ -162,7 +180,8 @@ Backend should use this contract to:
 - implement `POST /api/auth/login`
 - validate that email and password are provided
 - verify the user's password securely
-- return a JWT token on successful login
+- set the HttpOnly authentication cookie on successful login
+- validate CSRF on login, logout and requests that change data using cookies
 - return consistent error responses
 - include user id, role and tenant id in the login result
 
