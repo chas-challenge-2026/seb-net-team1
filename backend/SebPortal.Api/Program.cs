@@ -1,13 +1,14 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using SebPortal.Api.Data;
 using SebPortal.Api.Repositories;
 using SebPortal.Api.Services;
 using SebPortal.Api.Auth;
 using SebPortal.Api.Middleware;
 using SebPortal.Api.Options;
+using SebPortal.Api.Signing;
 using System.Net;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,7 @@ builder.Services.AddSingleton(jwtConfiguration);
 
 // Add database context
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
 builder.Services.AddDbContext<SebDbContext>(options =>
 {
     if (!string.IsNullOrEmpty(connectionString))
@@ -28,11 +30,14 @@ builder.Services.AddDbContext<SebDbContext>(options =>
 builder.Services.AddExceptionHandler<AppExceptionHandler>();
 builder.Services.AddProblemDetails();
 
-// Only configured proxies (and the framework's loopback defaults) may supply the HTTPS scheme.
+// Only configured proxies may supply the HTTPS scheme.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
-    foreach (var address in builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
+
+    foreach (var address in builder.Configuration
+                 .GetSection("ReverseProxy:KnownProxies")
+                 .Get<string[]>() ?? [])
     {
         options.KnownProxies.Add(IPAddress.Parse(address));
     }
@@ -52,41 +57,59 @@ builder.Services.AddAntiforgery(options =>
 builder.Services.Configure<PaymentRulesOptions>(
     builder.Configuration.GetSection(PaymentRulesOptions.SectionName));
 
-// Add services to the container.
+// Services
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<JwtTokenService>();
+
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<PasswordHasher>();
+
 builder.Services.AddScoped<PaymentRepository>();
 builder.Services.AddScoped<PaymentService>();
-builder.Services.AddScoped<DashboardRepository>();  
+
+builder.Services.AddScoped<DashboardRepository>();
 builder.Services.AddScoped<DashboardService>();
+
 builder.Services.AddScoped<ApprovalRepository>();
 builder.Services.AddScoped<ApprovalService>();
+
+builder.Services.AddScoped<AuditRepository>();
+builder.Services.AddScoped<AuditService>();
+
+// Audit services from develop.
+builder.Services.AddSingleton<AuditLockProvider>();
+builder.Services.AddSingleton<IAuditSigner, UnsignedPlaceholderAuditSigner>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.MapInboundClaims = false;
+
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
             {
-                // An explicit header takes precedence, including an invalid one.
                 if (!context.Request.Headers.ContainsKey("Authorization"))
                 {
                     context.Token = context.Request.Cookies[AuthCookie.Name];
                 }
+
                 return Task.CompletedTask;
             }
         };
-        options.TokenValidationParameters = jwtConfiguration.CreateValidationParameters();
+
+        options.TokenValidationParameters =
+            jwtConfiguration.CreateValidationParameters();
     });
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddControllers(options => options.Filters.Add<CookieAntiforgeryFilter>());
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<CookieAntiforgeryFilter>();
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -97,8 +120,7 @@ builder.Services.AddCors(options =>
         policy
             .WithOrigins(
                 "http://localhost:5173",
-                "http://localhost:5174"
-            )
+                "http://localhost:5174")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -109,12 +131,12 @@ var app = builder.Build();
 
 app.UseForwardedHeaders();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
 app.UseExceptionHandler();
 
 app.UseCors("AllowFrontend");
