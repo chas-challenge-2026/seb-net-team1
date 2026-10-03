@@ -1,5 +1,9 @@
 import type { User } from "../types/User";
 
+// TODO: Ersätt JSON Server-anropen med autentiserade apiRequest-anrop till
+// GET /api/dashboard och GET /api/audit-log, och mappa DTO:erna till DashboardData.
+// Säkerställ att backendkontraktet även innehåller betalningsstatusar och
+// IBAN-valideringsresultat; lägg till fält eller endpoints om de saknas.
 const DEFAULT_MOCK_API_URL = "http://localhost:3001";
 const MOCK_API_URL =
   import.meta.env.VITE_MOCK_API_URL?.trim() || DEFAULT_MOCK_API_URL;
