@@ -1,27 +1,13 @@
-import { useEffect, useState } from "react";
 import { LuBuilding2, LuArrowRight } from "react-icons/lu";
 import { Link } from "react-router-dom";
 import Card from "../shared/Card";
+import type { DashboardAccount } from "../../api/dashboardApi";
 
-interface Account {
-  id: number;
-  accountName: string;
-  iban: string;
-  balance: number;
-  currency: string;
+interface AccountOverviewProps {
+  accounts: DashboardAccount[] | null;
 }
 
-export default function AccountOverview() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-
-  useEffect(() => {
-    fetch("http://localhost:3001/accounts")
-      .then((response) => response.json())
-      .then((data) => setAccounts(data))
-      .catch((error) => {
-        console.error("Kunde inte hämta konton:", error);
-      });
-  }, []);
+export default function AccountOverview({ accounts }: AccountOverviewProps) {
 
   return (
     <Card className="account-overview">
@@ -35,7 +21,11 @@ export default function AccountOverview() {
       </div>
 
       <div className="account-overview__grid">
-        {accounts.map((account) => (
+        {accounts === null ? (
+          <p className="account-overview__empty">Hämtar konton...</p>
+        ) : accounts.length === 0 ? (
+          <p className="account-overview__empty">Inga konton att visa.</p>
+        ) : accounts.map((account) => (
           <div className="account-card" key={account.id}>
             <div className="account-card__top">
               <div

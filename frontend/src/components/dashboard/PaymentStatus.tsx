@@ -1,45 +1,14 @@
-import { useEffect, useState } from "react";
 import {LuArrowRight, LuCircleCheck, LuClock3, LuCircleX, LuCircleAlert,} from "react-icons/lu";
 import { Link } from "react-router-dom";
 import Card from "../shared/Card";
 import StatusBadge from "../shared/StatusBadge";
+import type { DashboardPaymentStatusCounts } from "../../api/dashboardApi";
 
-interface Payment {
-  id: number;
-  status: string;
+interface PaymentStatusProps {
+  counts: DashboardPaymentStatusCounts | null;
 }
 
-export default function PaymentStatus() {
-  const [payments, setPayments] = useState<Payment[]>([]);
-
-  useEffect(() => {
-    fetch("http://localhost:3001/payments")
-      .then((response) => response.json())
-      .then((data) => setPayments(data))
-      .catch((error) => {
-        console.error("Kunde inte hämta betalningar:", error);
-      });
-  }, []);
-
-  const completed = payments.filter(
-    (payment) => payment.status === "completed"
-  ).length;
-
-  const ongoing = payments.filter(
-    (payment) => payment.status === "processing"
-  ).length;
-
-  const pendingApproval = payments.filter(
-    (payment) => payment.status === "pending_approval"
-  ).length;
-
-  const rejected = payments.filter(
-    (payment) => payment.status === "rejected"
-  ).length;
-
-  const failed = payments.filter(
-    (payment) => payment.status === "failed"
-  ).length;
+export default function PaymentStatus({ counts }: PaymentStatusProps) {
 
   return (
     <Card className="payment-status">
@@ -62,7 +31,7 @@ export default function PaymentStatus() {
           </div>
 
           <StatusBadge status="success">
-            {completed}
+            {counts?.completed ?? "—"}
           </StatusBadge>
         </div>
 
@@ -74,7 +43,7 @@ export default function PaymentStatus() {
           </div>
 
           <StatusBadge status="processing">
-            {ongoing}
+            {counts?.processing ?? "—"}
           </StatusBadge>
         </div>
 
@@ -86,7 +55,7 @@ export default function PaymentStatus() {
           </div>
 
           <StatusBadge status="pending">
-            {pendingApproval}
+            {counts?.pendingApproval ?? "—"}
           </StatusBadge>
         </div>
 
@@ -98,7 +67,7 @@ export default function PaymentStatus() {
           </div>
 
           <StatusBadge status="rejected">
-            {rejected}
+            {counts?.rejected ?? "—"}
           </StatusBadge>
         </div>
 
@@ -110,7 +79,7 @@ export default function PaymentStatus() {
           </div>
 
           <StatusBadge status="failed">
-            {failed}
+            {counts?.failed ?? "—"}
           </StatusBadge>
         </div>
 

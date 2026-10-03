@@ -3,6 +3,7 @@ import logo from "../../assets/seb_logo_white.png";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "../../api/usersApi";
+import type { User } from "../../types/User";
 import {
   FiHome,
   FiCreditCard,
@@ -21,17 +22,39 @@ interface SidebarProps {
   isOpen?: boolean;
   onToggle?: () => void;
   onClose?: () => void;
+  user?: User | null;
+  tenantName?: string | null;
+  pendingApprovalCount?: number;
+}
+
+function getStoredUser(): User | null {
+  try {
+    const storedUser = localStorage.getItem("user");
+    return storedUser ? (JSON.parse(storedUser) as User) : null;
+  } catch {
+    return null;
+  }
 }
 
 export default function DashboardSidebar({
   isOpen = false,
   onToggle,
   onClose,
+  user,
+  tenantName,
+  pendingApprovalCount,
 }: SidebarProps){
     const { pathname } = useLocation();
     const navigate = useNavigate();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [logoutError, setLogoutError] = useState("");
+    const displayedUser = user ?? getStoredUser();
+    const userInitials = displayedUser?.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("") ?? "?";
     const overviewClassName = `dashboard-sidebar-link${pathname === "/dashboard" ? " active" : ""}`;
     const paymentsClassName = `dashboard-sidebar-link${pathname === "/new-payment" ? " active" : ""}`;
     const accountsClassName = `dashboard-sidebar-link${pathname === "/accounts" ? " active" : ""}`;
@@ -104,9 +127,9 @@ export default function DashboardSidebar({
           <FiCheckSquare />
           <span>Godkännanden</span>
 
-          <span className="dashboard-sidebar-badge">
-            12 {/* Exempel siffra, implementera riktig data senare*/}
-          </span>
+          {pendingApprovalCount !== undefined && pendingApprovalCount > 0 && (
+            <span className="dashboard-sidebar-badge">{pendingApprovalCount}</span>
+          )}
         </Link>
 
         <Link to="/accounts" className={accountsClassName}>
@@ -141,17 +164,17 @@ export default function DashboardSidebar({
       <div className="dashboard-sidebar-user">
 
         <div className="dashboard-sidebar-avatar">
-          AA
+          {userInitials}
         </div>
 
         <div className="dashboard-sidebar-user-info">
           <span className="dashboard-sidebar-user-name">
-            Anna Andersson
+            {displayedUser?.name ?? "Inloggad användare"}
           </span>
 
-          <span className="dashboard-sidebar-user-company">
-            Malmö Bygg AB
-          </span>
+          {tenantName && (
+            <span className="dashboard-sidebar-user-company">{tenantName}</span>
+          )}
         </div>
 
         <button

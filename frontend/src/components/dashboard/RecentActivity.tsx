@@ -1,33 +1,12 @@
-import { useEffect, useState } from "react";
 import {LuCircleCheck, LuFilePlus, LuShieldCheck } from "react-icons/lu";
 import Card from "../shared/Card";
+import type { DashboardAuditEntry } from "../../api/dashboardApi";
 
-interface AuditEntry {
-	id: number;
-	userId: number;
-	action: string;
-	entityType: string;
-	entityId: number;
-	description: string;
-	createdAt: string;
+interface RecentActivityProps {
+	activities: DashboardAuditEntry[] | null;
 }
 
-export default function RecentActivity() {
-	const [activities, setActivities] = useState<AuditEntry[]>([]);
-
-	useEffect(() => {
-		fetch("http://localhost:3001/auditEntries")
-			.then((response) => response.json())
-			.then((data: AuditEntry[]) => {
-				setActivities(data.slice(-3).reverse());
-			})
-			.catch((error) => {
-				console.error(
-					"Kunde inte hämta senaste aktivitet:",
-					error
-				);
-			});
-	}, []);
+export default function RecentActivity({ activities }: RecentActivityProps) {
 
 	const formatTime = (date: string) => {
 		return new Intl.DateTimeFormat("sv-SE", {
@@ -57,7 +36,9 @@ export default function RecentActivity() {
 			</div>
 
 			<div className="recent-activity__list">
-				{activities.length === 0 ? (
+				{activities === null ? (
+					<div className="recent-activity__empty">Hämtar aktivitet...</div>
+				) : activities.length === 0 ? (
 					<div className="recent-activity__empty">
 						Ingen aktivitet ännu
 					</div>

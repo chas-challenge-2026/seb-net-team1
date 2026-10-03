@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getDashboardData } from "../api/dashboardApi";
+import type { DashboardData } from "../api/dashboardApi";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import DashboardPromoBanner from "../components/dashboard/DashboardPromoBanner";
 import Sidebar from "../components/dashboard/Sidebar";
@@ -13,14 +15,28 @@ import "../styles/dashboard.css";
 
 function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
-  const user = {
-    id: 1,
-    tenantId: 1,
-    name: "Anna Andersson",
-    email: "anna@foretag.se",
-    role: "Admin",
-  };
+  useEffect(() => {
+    let isCurrent = true;
+
+    getDashboardData()
+      .then((data) => {
+        if (isCurrent) {
+          setDashboardData(data);
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setDashboardError("Kunde inte hämta dashboardens mockdata. Kontrollera att mock-API:t körs.");
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   return (
     <div className="dashboard-layout">
@@ -28,6 +44,9 @@ function Dashboard() {
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen((isOpen) => !isOpen)}
         onClose={() => setIsSidebarOpen(false)}
+        user={dashboardData?.user}
+        tenantName={dashboardData?.tenantName}
+        pendingApprovalCount={dashboardData?.pendingApprovals.length}
       />
 
       <button
@@ -38,23 +57,30 @@ function Dashboard() {
       />
 
       <main className="dashboard-main">
-        <DashboardHeader user={user} />
+        <DashboardHeader user={dashboardData?.user ?? null} />
 
         <div className="dashboard-content">
-          <DashboardSummary />
+          {dashboardError && (
+            <p className="dashboard-data-error" role="alert">
+              {dashboardError}
+            </p>
+          )}
 
-          <section className="dashboard-panels" aria-label="Dashboardöversikt">
-            <div className="dashboard-column">
-              <AccountOverview />
-              <PendingApprovals />
-              <RecentActivity />
-            </div>
+          <DashboardSummary data={dashboardData} />
 
-            <div className="dashboard-column">
-              <PaymentStatus />
-              <UpcomingPayments />
-              <QuickActions />
-            </div>
+          <section className="dashboard-overview-grid">
+            <AccountOverview accounts={dashboardData?.accounts ?? null} />
+            <PaymentStatus counts={dashboardData?.paymentStatusCounts ?? null} />
+          </section>
+
+          <section className="dashboard-lower-grid">
+            <PendingApprovals approvals={dashboardData?.pendingApprovals ?? null} />
+            <UpcomingPayments payments={dashboardData?.upcomingPayments ?? null} />
+          </section>
+
+          <section className="dashboard-lower-grid">
+            <RecentActivity activities={dashboardData?.recentActivity ?? null} />
+            <QuickActions />
           </section>
         </div>
 

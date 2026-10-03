@@ -1,81 +1,13 @@
-import { useEffect, useState } from "react";
 import {LuWalletCards,LuCircleCheck,LuArrowUpRight,LuTriangleAlert,} from "react-icons/lu";
 import { Link } from "react-router-dom";
+import type { DashboardData } from "../../api/dashboardApi";
 
-interface Account {
-    id: number;
-    tenantId: number;
-    accountNumber: string;
-    iban: string;
-    balance: number;
-    currency: string;
+interface DashboardSummaryProps {
+  data: DashboardData | null;
 }
 
-interface Payment {
-    id: number;
-    tenantId: number;
-    fromAccountId: number;
-    toIban: string;
-    bic: string;
-    amount: number;
-    currency: string;
-    reference: string;
-    status: string;
-    createdAt: string;
-    executedAt: string | null;
-}
-
-interface IbanValidation {
-  id: number;
-  paymentId: number;
-  iban: string;
-  bic: string;
-  ibanValid: boolean;
-  bicValid: boolean;
-  validatedAt: string;
-}
-
-export default function DashboardSummary() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [validations, setValidations] = useState<IbanValidation[]>([]);
-
-  useEffect(() => {
-    Promise.all([
-      fetch("http://localhost:3001/accounts").then((response) =>
-        response.json()
-      ),
-      fetch("http://localhost:3001/payments").then((response) =>
-        response.json()
-      ),
-      fetch("http://localhost:3001/ibanValidations").then((response) =>
-        response.json()
-      ),
-    ])
-      .then(([accountsData, paymentsData, validationsData]) => {
-        setAccounts(accountsData);
-        setPayments(paymentsData);
-        setValidations(validationsData);
-      })
-      .catch((error) => {
-        console.error("Kunde inte hämta dashboard-data:", error);
-      });
-  }, []);
-
-  const totalBalance = accounts.reduce(
-    (total, account) => total + account.balance,
-    0
-  );
-
-  const pendingApprovals = payments.filter(
-    (payment) => payment.status === "pending_approval"
-  ).length;
-
-  const totalPayments = payments.length;
-
-  const validationErrors = validations.filter(
-    (validation) => !validation.ibanValid || !validation.bicValid
-  ).length;
+export default function DashboardSummary({ data }: DashboardSummaryProps) {
+  const summary = data?.summary;
 
 return (
     <section className="dashboard-summary">
@@ -86,7 +18,7 @@ return (
 
         <span className="summary-card__label">Totalt saldo (SEK)</span>
         <strong className="summary-card__value">
-          {totalBalance.toLocaleString("sv-SE")} kr
+          {summary ? `${summary.totalBalance.toLocaleString("sv-SE")} kr` : "—"}
         </strong>
 
         <span className="summary-card__description">
@@ -108,7 +40,7 @@ return (
         </span>
 
         <strong className="summary-card__value">
-          {pendingApprovals} st
+          {summary ? `${summary.pendingApprovals} st` : "—"}
         </strong>
 
         <span className="summary-card__description">
@@ -126,7 +58,7 @@ return (
         </span>
 
         <strong className="summary-card__value">
-          {totalPayments} st
+          {summary ? `${summary.totalPayments} st` : "—"}
         </strong>
 
         <span className="summary-card__description">
@@ -144,7 +76,7 @@ return (
         </span>
 
         <strong className="summary-card__value">
-          {validationErrors} st
+          {summary ? `${summary.validationErrors} st` : "—"}
         </strong>
 
         <span className="summary-card__description">

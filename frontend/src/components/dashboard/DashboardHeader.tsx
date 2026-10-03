@@ -5,7 +5,7 @@ import { FiBell, FiSearch } from "react-icons/fi";
 import "../../styles/dashboard.css";
 
 interface DashboardHeaderProps {
-  user: User;
+    user?: User | null;
     title?: string;
     subtitle?: string;
   onSearch?: (value: string) => void;
@@ -32,7 +32,7 @@ export default function DashboardHeader({
         <header className="dashboard-header">
             <div className="dashboard-header-title">
                 <h1>{title}</h1>
-                <p>{subtitle ?? `Välkommen, ${user.name}!`}</p>
+                <p>{subtitle ?? (user ? `Välkommen, ${user.name}!` : "Laddar dashboard...")}</p>
             </div>
 
             <div className="dashboard-header-actions">

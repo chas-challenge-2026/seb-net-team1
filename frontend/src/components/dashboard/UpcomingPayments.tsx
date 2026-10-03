@@ -1,39 +1,13 @@
-import { useEffect, useState } from "react";
 import { LuArrowRight, LuCalendarDays } from "react-icons/lu";
 import Card from "../shared/Card";
 import StatusBadge from "../shared/StatusBadge";
+import type { DashboardPayment } from "../../api/dashboardApi";
 
-interface Payment {
-  id: number;
-  toIban: string;
-  amount: number;
-  currency: string;
-  reference: string;
-  status: string;
-  createdAt: string;
+interface UpcomingPaymentsProps {
+  payments: DashboardPayment[] | null;
 }
 
-export default function UpcomingPayments() {
-  const [payments, setPayments] = useState<Payment[]>([]);
-
-  useEffect(() => {
-    fetch("http://localhost:3001/payments")
-      .then((response) => response.json())
-      .then((data) => {
-        const upcomingPayments = data
-          .filter(
-            (payment: Payment) =>
-              payment.status === "pending_approval" ||
-              payment.status === "processing"
-          )
-          .slice(0, 3);
-
-        setPayments(upcomingPayments);
-      })
-      .catch((error) => {
-        console.error("Kunde inte hämta kommande betalningar:", error);
-      });
-  }, []);
+export default function UpcomingPayments({ payments }: UpcomingPaymentsProps) {
 
   const formatAmount = (amount: number, currency: string) => {
     return `${new Intl.NumberFormat("sv-SE").format(amount)} ${currency}`;
@@ -69,7 +43,9 @@ export default function UpcomingPayments() {
       </div>
 
       <div className="upcoming-payments__list">
-        {payments.length === 0 ? (
+        {payments === null ? (
+          <div className="upcoming-payments__empty">Hämtar betalningar...</div>
+        ) : payments.length === 0 ? (
           <div className="upcoming-payments__empty">
             <p>Inga kommande betalningar</p>
           </div>
