@@ -131,8 +131,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     upcomingPayments: payments
       .filter((payment) =>
         payment.status === "pending_approval" || payment.status === "processing"
-      )
-      .slice(0, 3),
+      ),
     paymentStatusCounts: {
       completed: countStatus("completed"),
       processing: countStatus("processing"),
@@ -141,7 +140,9 @@ export async function getDashboardData(): Promise<DashboardData> {
       failed: countStatus("failed"),
     },
     summary: {
-      totalBalance: accounts.reduce((total, account) => total + account.balance, 0),
+      totalBalance: accounts
+        .filter((account) => account.currency === "SEK")
+        .reduce((total, account) => total + account.balance, 0),
       pendingApprovals: pendingApprovals.length,
       totalPayments: null,
       validationErrors: null,

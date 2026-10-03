@@ -13,8 +13,23 @@ import RecentActivity from "../components/dashboard/RecentActivity";
 import QuickActions from "../components/dashboard/QuickActions";
 import "../styles/dashboard.css";
 
+function filterBySearch<T>(
+  items: T[] | null,
+  query: string,
+  getSearchText: (item: T) => string
+): T[] | null {
+  if (items === null || !query) {
+    return items;
+  }
+
+  return items.filter((item) =>
+    getSearchText(item).toLocaleLowerCase("sv-SE").includes(query)
+  );
+}
+
 function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
 
@@ -30,7 +45,9 @@ function Dashboard() {
       .catch((error: unknown) => {
         if (isCurrent) {
           setDashboardError(
-            error instanceof Error
+            error instanceof TypeError
+              ? "Kunde inte nå backend-API:t. Kontrollera anslutningen och försök igen."
+              : error instanceof Error
               ? error.message
               : "Kunde inte hämta dashboarddata från API:t."
           );
@@ -41,6 +58,23 @@ function Dashboard() {
       isCurrent = false;
     };
   }, []);
+
+  const normalizedSearchTerm = searchTerm.trim().toLocaleLowerCase("sv-SE");
+  const visibleAccounts = filterBySearch(
+    dashboardData?.accounts ?? null,
+    normalizedSearchTerm,
+    (account) => `${account.accountName} ${account.iban ?? ""} ${account.currency}`
+  );
+  const visibleApprovals = filterBySearch(
+    dashboardData?.pendingApprovals ?? null,
+    normalizedSearchTerm,
+    (payment) => `${payment.reference} ${payment.toIban ?? ""} ${payment.status}`
+  );
+  const visibleUpcomingPayments = filterBySearch(
+    dashboardData?.upcomingPayments ?? null,
+    normalizedSearchTerm,
+    (payment) => `${payment.reference} ${payment.toIban ?? ""} ${payment.status}`
+  );
 
   return (
     <div className="dashboard-layout">
@@ -61,7 +95,11 @@ function Dashboard() {
       />
 
       <main className="dashboard-main">
-        <DashboardHeader user={dashboardData?.user ?? null} />
+        <DashboardHeader
+          user={dashboardData?.user ?? null}
+          subtitle={dashboardError ? "Dashboarddata kunde inte hämtas" : undefined}
+          onSearch={setSearchTerm}
+        />
 
         <div className="dashboard-content">
           {dashboardError && (
@@ -73,13 +111,22 @@ function Dashboard() {
           <DashboardSummary data={dashboardData} />
 
           <section className="dashboard-overview-grid">
-            <AccountOverview accounts={dashboardData?.accounts ?? null} />
+            <AccountOverview
+              accounts={visibleAccounts}
+              searchActive={Boolean(normalizedSearchTerm)}
+            />
             <PaymentStatus counts={dashboardData?.paymentStatusCounts ?? null} />
           </section>
 
           <section className="dashboard-lower-grid">
-            <PendingApprovals approvals={dashboardData?.pendingApprovals ?? null} />
-            <UpcomingPayments payments={dashboardData?.upcomingPayments ?? null} />
+            <PendingApprovals
+              approvals={visibleApprovals}
+              searchActive={Boolean(normalizedSearchTerm)}
+            />
+            <UpcomingPayments
+              payments={visibleUpcomingPayments}
+              searchActive={Boolean(normalizedSearchTerm)}
+            />
           </section>
 
           <section className="dashboard-lower-grid">

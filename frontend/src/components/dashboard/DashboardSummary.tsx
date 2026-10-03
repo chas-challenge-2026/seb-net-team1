@@ -18,11 +18,16 @@ return (
 
         <span className="summary-card__label">Totalt saldo (SEK)</span>
         <strong className="summary-card__value">
-          {summary ? `${summary.totalBalance.toLocaleString("sv-SE")} kr` : "—"}
+            {summary
+              ? `${summary.totalBalance.toLocaleString("sv-SE", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })} kr`
+              : "—"}
         </strong>
 
         <span className="summary-card__description">
-          Alla företagets konton
+           Saldo på SEK-konton
         </span>
       </Link>
 

@@ -13,7 +13,7 @@ export default function PaymentStatus({ counts }: PaymentStatusProps) {
   return (
     <Card className="payment-status">
       <div className="dashboard-section__header">
-        <h2>Betalningsstatus</h2>
+        <h2>Betalningsstatus, senaste 20</h2>
 
         <Link to="/reports" className="dashboard-section__link">
           Visa rapport

@@ -42,6 +42,7 @@ export default function DashboardHeader({
                     <input
                         type="search"
                         placeholder="Sök betalningar, konton..."
+                        aria-label="Sök betalningar och konton"
                         value={searchValue}
                         onChange={handleSearchChange}
                     />
@@ -51,6 +52,8 @@ export default function DashboardHeader({
                     className="dashboard-notification-button"
                     type="button"
                     onClick={onNotificationClick}
+                    disabled={!onNotificationClick}
+                    title={onNotificationClick ? "Notifikationer" : "Notifikationer är inte tillgängliga"}
                     aria-label="Notifikationer"
                 >
                     <FiBell className="dashboard-notification-icon" />

@@ -5,9 +5,13 @@ import type { DashboardAccount } from "../../api/dashboardApi";
 
 interface AccountOverviewProps {
   accounts: DashboardAccount[] | null;
+  searchActive?: boolean;
 }
 
-export default function AccountOverview({ accounts }: AccountOverviewProps) {
+export default function AccountOverview({
+  accounts,
+  searchActive = false,
+}: AccountOverviewProps) {
 
   return (
     <Card className="account-overview">
@@ -24,7 +28,9 @@ export default function AccountOverview({ accounts }: AccountOverviewProps) {
         {accounts === null ? (
           <p className="account-overview__empty">Hämtar konton...</p>
         ) : accounts.length === 0 ? (
-          <p className="account-overview__empty">Inga konton att visa.</p>
+          <p className="account-overview__empty">
+            {searchActive ? "Inga konton matchar sökningen." : "Inga konton att visa."}
+          </p>
         ) : accounts.map((account) => (
           <div className="account-card" key={account.id}>
             <div className="account-card__top">
@@ -47,7 +53,10 @@ export default function AccountOverview({ accounts }: AccountOverviewProps) {
               <span>Aktuellt saldo</span>
 
               <strong>
-                {account.balance.toLocaleString("sv-SE")}{" "}
+                  {account.balance.toLocaleString("sv-SE", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{" "}
                 {account.currency}
               </strong>
             </div>
