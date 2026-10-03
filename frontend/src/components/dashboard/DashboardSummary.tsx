@@ -1,100 +1,41 @@
-import { useEffect, useState } from "react";
 import {LuWalletCards,LuCircleCheck,LuArrowUpRight,LuTriangleAlert,} from "react-icons/lu";
-import Card from "../shared/Card";
+import { Link } from "react-router-dom";
+import type { DashboardData } from "../../api/dashboardApi";
 
-interface Account {
-    id: number;
-    tenantId: number;
-    accountNumber: string;
-    iban: string;
-    balance: number;
-    currency: string;
+interface DashboardSummaryProps {
+  data: DashboardData | null;
 }
 
-interface Payment {
-    id: number;
-    tenantId: number;
-    fromAccountId: number;
-    toIban: string;
-    bic: string;
-    amount: number;
-    currency: string;
-    reference: string;
-    status: string;
-    createdAt: string;
-    executedAt: string | null;
-}
-
-interface IbanValidation {
-  id: number;
-  paymentId: number;
-  iban: string;
-  bic: string;
-  ibanValid: boolean;
-  bicValid: boolean;
-  validatedAt: string;
-}
-
-export default function DashboardSummary() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [validations, setValidations] = useState<IbanValidation[]>([]);
-
-  useEffect(() => {
-    Promise.all([
-      fetch("http://localhost:3001/accounts").then((response) =>
-        response.json()
-      ),
-      fetch("http://localhost:3001/payments").then((response) =>
-        response.json()
-      ),
-      fetch("http://localhost:3001/ibanValidations").then((response) =>
-        response.json()
-      ),
-    ])
-      .then(([accountsData, paymentsData, validationsData]) => {
-        setAccounts(accountsData);
-        setPayments(paymentsData);
-        setValidations(validationsData);
-      })
-      .catch((error) => {
-        console.error("Kunde inte hämta dashboard-data:", error);
-      });
-  }, []);
-
-  const totalBalance = accounts.reduce(
-    (total, account) => total + account.balance,
-    0
-  );
-
-  const pendingApprovals = payments.filter(
-    (payment) => payment.status === "pending_approval"
-  ).length;
-
-  const totalPayments = payments.length;
-
-  const validationErrors = validations.filter(
-    (validation) => !validation.ibanValid || !validation.bicValid
-  ).length;
+export default function DashboardSummary({ data }: DashboardSummaryProps) {
+  const summary = data?.summary;
 
 return (
     <section className="dashboard-summary">
-      <Card className="summary-card">
+      <Link to="/accounts" className="card summary-card" aria-label="Visa konton">
         <div className="summary-card__icon">
 			<LuWalletCards />
 		</div>
 
         <span className="summary-card__label">Totalt saldo (SEK)</span>
         <strong className="summary-card__value">
-          {totalBalance.toLocaleString("sv-SE")} kr
+            {summary
+              ? `${summary.totalBalance.toLocaleString("sv-SE", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })} kr`
+              : "—"}
         </strong>
 
         <span className="summary-card__description">
-          Alla företagets konton
+           Saldo på SEK-konton
         </span>
-      </Card>
+      </Link>
 
-      <Card className="summary-card">
+      <Link
+        to="/approval-inbox"
+        className="card summary-card"
+        aria-label="Visa väntande godkännanden"
+      >
         <div className="summary-card__icon">
           <LuCircleCheck />
         </div>
@@ -104,15 +45,15 @@ return (
         </span>
 
         <strong className="summary-card__value">
-          {pendingApprovals} st
+          {summary ? `${summary.pendingApprovals} st` : "—"}
         </strong>
 
         <span className="summary-card__description">
           Betalningar kräver godkännande
         </span>
-      </Card>
+      </Link>
 
-      <Card className="summary-card">
+      <Link to="/audit-log" className="card summary-card" aria-label="Visa betalningar">
         <div className="summary-card__icon">
           <LuArrowUpRight />
         </div>
@@ -122,15 +63,15 @@ return (
         </span>
 
         <strong className="summary-card__value">
-          {totalPayments} st
+          {summary?.totalPayments != null ? `${summary.totalPayments} st` : "—"}
         </strong>
 
         <span className="summary-card__description">
           Totalt registrerade betalningar
         </span>
-      </Card>
+      </Link>
 
-      <Card className="summary-card">
+      <Link to="/reports" className="card summary-card" aria-label="Visa rapporter">
         <div className="summary-card__icon">
           <LuTriangleAlert />
         </div>
@@ -140,13 +81,13 @@ return (
         </span>
 
         <strong className="summary-card__value">
-          {validationErrors} st
+          {summary?.validationErrors != null ? `${summary.validationErrors} st` : "—"}
         </strong>
 
         <span className="summary-card__description">
           Fel i IBAN eller BIC
         </span>
-      </Card>
+      </Link>
     </section>
   );
 }

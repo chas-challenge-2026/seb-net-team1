@@ -14,9 +14,14 @@ export default function DashboardPromoBanner() {
         </p>
       </div>
 
-      <button className="dashboard-promo-banner__button" type="button">
+      <a
+        className="dashboard-promo-banner__button"
+        href="https://seb.se/juridik-och-sakerhet"
+        target="_blank"
+        rel="noreferrer"
+      >
         Läs mer <span aria-hidden="true">→</span>
-      </button>
+      </a>
     </aside>
   );
 }

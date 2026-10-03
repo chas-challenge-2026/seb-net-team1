@@ -1,27 +1,17 @@
-import { useEffect, useState } from "react";
 import { LuBuilding2, LuArrowRight } from "react-icons/lu";
 import { Link } from "react-router-dom";
 import Card from "../shared/Card";
+import type { DashboardAccount } from "../../api/dashboardApi";
 
-interface Account {
-  id: number;
-  accountName: string;
-  iban: string;
-  balance: number;
-  currency: string;
+interface AccountOverviewProps {
+  accounts: DashboardAccount[] | null;
+  searchActive?: boolean;
 }
 
-export default function AccountOverview() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-
-  useEffect(() => {
-    fetch("http://localhost:3001/accounts")
-      .then((response) => response.json())
-      .then((data) => setAccounts(data))
-      .catch((error) => {
-        console.error("Kunde inte hämta konton:", error);
-      });
-  }, []);
+export default function AccountOverview({
+  accounts,
+  searchActive = false,
+}: AccountOverviewProps) {
 
   return (
     <Card className="account-overview">
@@ -35,7 +25,13 @@ export default function AccountOverview() {
       </div>
 
       <div className="account-overview__grid">
-        {accounts.map((account) => (
+        {accounts === null ? (
+          <p className="account-overview__empty">Hämtar konton...</p>
+        ) : accounts.length === 0 ? (
+          <p className="account-overview__empty">
+            {searchActive ? "Inga konton matchar sökningen." : "Inga konton att visa."}
+          </p>
+        ) : accounts.map((account) => (
           <div className="account-card" key={account.id}>
             <div className="account-card__top">
               <div
@@ -48,7 +44,7 @@ export default function AccountOverview() {
                 <h3>{account.accountName}</h3>
 
                 <span className="account-card__iban">
-                  •••• {account.iban.slice(-4)}
+                  {account.iban ? `•••• ${account.iban.slice(-4)}` : "IBAN saknas"}
                 </span>
               </div>
             </div>
@@ -57,7 +53,10 @@ export default function AccountOverview() {
               <span>Aktuellt saldo</span>
 
               <strong>
-                {account.balance.toLocaleString("sv-SE")}{" "}
+                  {account.balance.toLocaleString("sv-SE", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{" "}
                 {account.currency}
               </strong>
             </div>
