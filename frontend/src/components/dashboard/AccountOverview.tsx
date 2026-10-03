@@ -38,7 +38,7 @@ export default function AccountOverview({ accounts }: AccountOverviewProps) {
                 <h3>{account.accountName}</h3>
 
                 <span className="account-card__iban">
-                  •••• {account.iban.slice(-4)}
+                  {account.iban ? `•••• ${account.iban.slice(-4)}` : "IBAN saknas"}
                 </span>
               </div>
             </div>

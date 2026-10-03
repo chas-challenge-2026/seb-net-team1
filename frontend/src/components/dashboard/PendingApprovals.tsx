@@ -1,11 +1,11 @@
 import { LuArrowRight, LuCircleCheck, LuClock3 } from "react-icons/lu";
 import { Link } from "react-router-dom";
-import type { DashboardApproval } from "../../api/dashboardApi";
+import type { DashboardPayment } from "../../api/dashboardApi";
 import Card from "../shared/Card";
 import StatusBadge from "../shared/StatusBadge";
 
 interface PendingApprovalsProps {
-	approvals: DashboardApproval[] | null;
+	approvals: DashboardPayment[] | null;
 }
 
 export default function PendingApprovals({ approvals }: PendingApprovalsProps) {
@@ -31,20 +31,20 @@ export default function PendingApprovals({ approvals }: PendingApprovalsProps) {
 						<span>Inga betalningar väntar på godkännande</span>
 					</div>
 				) : (
-					approvals.map(({ payment, step, approver }) => (
-						<div className="pending-approvals__item" key={step.id}>
+					approvals.slice(0, 3).map((payment) => (
+						<div className="pending-approvals__item" key={payment.id}>
 							<div className="pending-approvals__icon">
 								<LuClock3 />
 							</div>
 							<div className="pending-approvals__info">
 								<strong>{payment.reference}</strong>
-								<span>{approver?.name ?? "Godkännare"}</span>
+								<span>
+									{payment.toIban ? `•••• ${payment.toIban.slice(-4)}` : "IBAN saknas"}
+								</span>
 							</div>
 							<div className="pending-approvals__details">
 								<strong>{formatAmount(payment.amount, payment.currency)}</strong>
-								<StatusBadge status="pending">
-									Steg {step.stepNumber}
-								</StatusBadge>
+								<StatusBadge status="pending">Godkännande</StatusBadge>
 							</div>
 						</div>
 					))

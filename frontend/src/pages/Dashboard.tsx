@@ -27,9 +27,13 @@ function Dashboard() {
           setDashboardData(data);
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (isCurrent) {
-          setDashboardError("Kunde inte hämta dashboardens mockdata. Kontrollera att mock-API:t körs.");
+          setDashboardError(
+            error instanceof Error
+              ? error.message
+              : "Kunde inte hämta dashboarddata från API:t."
+          );
         }
       });
 

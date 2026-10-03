@@ -58,7 +58,7 @@ return (
         </span>
 
         <strong className="summary-card__value">
-          {summary ? `${summary.totalPayments} st` : "—"}
+          {summary?.totalPayments != null ? `${summary.totalPayments} st` : "—"}
         </strong>
 
         <span className="summary-card__description">
@@ -76,7 +76,7 @@ return (
         </span>
 
         <strong className="summary-card__value">
-          {summary ? `${summary.validationErrors} st` : "—"}
+          {summary?.validationErrors != null ? `${summary.validationErrors} st` : "—"}
         </strong>
 
         <span className="summary-card__description">
