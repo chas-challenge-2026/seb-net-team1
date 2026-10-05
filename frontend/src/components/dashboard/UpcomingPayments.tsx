@@ -1,42 +1,25 @@
-import { useEffect, useState } from "react";
-import { LuArrowRight, LuCalendarDays } from "react-icons/lu";
+import { useState } from "react";
+import { LuCalendarDays, LuChevronDown, LuChevronUp } from "react-icons/lu";
 import Card from "../shared/Card";
 import StatusBadge from "../shared/StatusBadge";
+import type { DashboardPayment } from "../../api/dashboardApi";
 
-interface Payment {
-  id: number;
-  toIban: string;
-  amount: number;
-  currency: string;
-  reference: string;
-  status: string;
-  createdAt: string;
+interface UpcomingPaymentsProps {
+  payments: DashboardPayment[] | null;
+  searchActive?: boolean;
 }
 
-export default function UpcomingPayments() {
-  const [payments, setPayments] = useState<Payment[]>([]);
-
-  useEffect(() => {
-    fetch("http://localhost:3001/payments")
-      .then((response) => response.json())
-      .then((data) => {
-        const upcomingPayments = data
-          .filter(
-            (payment: Payment) =>
-              payment.status === "pending_approval" ||
-              payment.status === "processing"
-          )
-          .slice(0, 3);
-
-        setPayments(upcomingPayments);
-      })
-      .catch((error) => {
-        console.error("Kunde inte hämta kommande betalningar:", error);
-      });
-  }, []);
+export default function UpcomingPayments({
+  payments,
+  searchActive = false,
+}: UpcomingPaymentsProps) {
+  const [showAll, setShowAll] = useState(false);
 
   const formatAmount = (amount: number, currency: string) => {
-    return `${new Intl.NumberFormat("sv-SE").format(amount)} ${currency}`;
+    return `${new Intl.NumberFormat("sv-SE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount)} ${currency}`;
   };
 
   const formatDate = (date: string) => {
@@ -61,20 +44,32 @@ export default function UpcomingPayments() {
     <Card className="upcoming-payments">
       <div className="dashboard-section__header">
         <h2>Kommande betalningar</h2>
-
-        <button className="dashboard-section__link">
-          Visa alla
-          <LuArrowRight />
-        </button>
+        {payments !== null && payments.length > 3 && (
+          <button
+            type="button"
+            className="dashboard-section__link"
+            aria-expanded={showAll}
+            onClick={() => setShowAll((expanded) => !expanded)}
+          >
+            {showAll ? "Visa färre" : "Visa alla"}
+            {showAll ? <LuChevronUp /> : <LuChevronDown />}
+          </button>
+        )}
       </div>
 
       <div className="upcoming-payments__list">
-        {payments.length === 0 ? (
+        {payments === null ? (
+          <div className="upcoming-payments__empty">Hämtar betalningar...</div>
+        ) : payments.length === 0 ? (
           <div className="upcoming-payments__empty">
-            <p>Inga kommande betalningar</p>
+            <p>
+              {searchActive
+                ? "Inga betalningar matchar sökningen"
+                : "Inga kommande betalningar"}
+            </p>
           </div>
         ) : (
-          payments.map((payment) => (
+          (showAll ? payments : payments.slice(0, 3)).map((payment) => (
             <div
               className="upcoming-payments__item"
               key={payment.id}
