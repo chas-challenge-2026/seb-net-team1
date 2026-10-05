@@ -10,9 +10,10 @@
 }
 
 .dashboard-main {
-	--dashboard-promo-space: 106px;
 	background: var(--light-gray);
+	display: flex;
 	flex: 1;
+	flex-direction: column;
 	height: 100vh;
 	min-height: 0;
 	min-width: 0;
@@ -362,10 +363,12 @@
 .dashboard-content {
 	box-sizing: border-box;
 	display: flex;
+	flex: 1 1 auto;
 	flex-direction: column;
-	height: calc(100vh - var(--header-height) - var(--dashboard-promo-space));
-	overflow: hidden;
-	padding: 16px 24px 36px;
+	height: auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 16px 24px 24px;
 }
 
 .dashboard-content .card {
@@ -1156,16 +1159,14 @@
 
 @media (max-width: 1100px) {
 	.dashboard-content {
+		flex: 0 0 auto;
 		height: auto;
+		min-height: 0;
 		overflow: visible;
 	}
 
 	.dashboard-main {
 		overflow-y: auto;
-	}
-
-	.dashboard-main {
-		--dashboard-promo-space: 0px;
 	}
 
 	.dashboard-promo-banner {
