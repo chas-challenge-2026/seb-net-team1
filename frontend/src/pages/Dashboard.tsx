@@ -110,28 +110,26 @@ function Dashboard() {
 
           <DashboardSummary data={dashboardData} />
 
-          <section className="dashboard-overview-grid">
-            <AccountOverview
-              accounts={visibleAccounts}
-              searchActive={Boolean(normalizedSearchTerm)}
-            />
-            <PaymentStatus counts={dashboardData?.paymentStatusCounts ?? null} />
-          </section>
-
-          <section className="dashboard-lower-grid">
-            <PendingApprovals
-              approvals={visibleApprovals}
-              searchActive={Boolean(normalizedSearchTerm)}
-            />
-            <UpcomingPayments
-              payments={visibleUpcomingPayments}
-              searchActive={Boolean(normalizedSearchTerm)}
-            />
-          </section>
-
-          <section className="dashboard-lower-grid">
-            <RecentActivity activities={dashboardData?.recentActivity ?? null} />
-            <QuickActions />
+          <section className="dashboard-panels">
+            <div className="dashboard-column">
+              <AccountOverview
+                accounts={visibleAccounts}
+                searchActive={Boolean(normalizedSearchTerm)}
+              />
+              <PendingApprovals
+                approvals={visibleApprovals}
+                searchActive={Boolean(normalizedSearchTerm)}
+              />
+              <RecentActivity activities={dashboardData?.recentActivity ?? null} />
+            </div>
+            <aside className="dashboard-column" aria-label="Betalningsöversikt">
+              <PaymentStatus counts={dashboardData?.paymentStatusCounts ?? null} />
+              <UpcomingPayments
+                payments={visibleUpcomingPayments}
+                searchActive={Boolean(normalizedSearchTerm)}
+              />
+              <QuickActions />
+            </aside>
           </section>
         </div>
 
