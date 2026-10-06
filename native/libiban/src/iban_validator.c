@@ -24,6 +24,9 @@ static int mod97_feed(int rem, char c)
 
 IBAN_API int iban_mod97(const char* iban)
 {
+    if(iban == NULL)
+        return -1;
+        
     int rem = 0;
     int pos = 0;
 
@@ -48,6 +51,8 @@ IBAN_API int iban_mod97(const char* iban)
 
 IBAN_API int validate_iban(const char* iban, int* error_out)
 {
+    if(iban == NULL)
+        return fail(error_out, 0);
     // Extract length
     const char* search = iban;
     int whitespaces = 0;
