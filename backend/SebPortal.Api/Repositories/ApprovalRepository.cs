@@ -55,14 +55,14 @@ public class ApprovalRepository(SebDbContext dbContext)
             .ToListAsync();
 
     /// <summary>
-    /// One step with everything needed to decide it: the payment and the account
+    /// One step, found by the id clients see (PublicId), with everything needed to decide it: the payment and the account
     /// the money would leave (including its transactions, so completing the payment
     /// can append one).
     /// </summary>
-    public Task<ApprovalStep?> GetStepWithPaymentAsync(int approvalStepId) =>
+    public Task<ApprovalStep?> GetStepWithPaymentAsync(Guid approvalStepId) =>
         dbContext.ApprovalSteps
             .Include(step => step.Payment!).ThenInclude(payment => payment.FromAccount!).ThenInclude(account => account.Transactions)
-            .FirstOrDefaultAsync(step => step.Id == approvalStepId);
+            .FirstOrDefaultAsync(step => step.PublicId == approvalStepId);
 
     /// <summary>All steps belonging to one payment, ordered by step number.</summary>
     public Task<List<ApprovalStep>> GetStepsForPaymentAsync(int paymentId) =>

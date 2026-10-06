@@ -8,7 +8,7 @@ public class PendingApprovalDto
     public int PaymentId { get; set; }
 
     /// <summary>Id of this specific step. Passed back to POST /api/approvals/{id}/decision.</summary>
-    public int ApprovalStepId { get; set; }
+    public Guid ApprovalStepId { get; set; }
 
     public string ToIban { get; set; } = string.Empty;
 
