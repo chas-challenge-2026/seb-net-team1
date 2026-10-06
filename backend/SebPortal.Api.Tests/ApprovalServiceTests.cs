@@ -48,12 +48,16 @@ public class ApprovalServiceTests
                 DoubleApprovalThreshold = doubleApprovalThreshold
             });
 
-        var paymentService = new PaymentService(new PaymentRepository(db), paymentRules);
+        var approvalRepository = new ApprovalRepository(db);
+        var paymentService = new PaymentService(
+            new PaymentRepository(db),
+            approvalRepository,
+            paymentRules);
 
         var auditService = new AuditService(
             new AuditRepository(db), new AuditLockProvider(), new UnsignedPlaceholderAuditSigner());
 
-        return new ApprovalService(new ApprovalRepository(db), paymentService, auditService);
+        return new ApprovalService(approvalRepository, paymentService, auditService);
     }
 
     /// <summary>

@@ -25,6 +25,55 @@ public class ApprovalsApiIntegrationTests
     private const int AccountId = 100;
 
     /// <summary>
+    /// Seeds the users and account required to create a payment through the API.
+    /// The payment and approval step are intentionally created by the tested flow.
+    /// </summary>
+    private static async Task SeedPaymentCreationScenarioAsync(
+        ApprovalApiFactory factory)
+    {
+        using var scope = factory.Services.CreateScope();
+
+        var db = scope.ServiceProvider
+            .GetRequiredService<SebDbContext>();
+
+        db.Tenants.Add(new Tenant
+        {
+            Id = TenantId,
+            Name = "Malmö Bygg AB"
+        });
+
+        db.Users.AddRange(
+            new User
+            {
+                Id = InitiatorId,
+                TenantId = TenantId,
+                Name = "Lisa Persson",
+                Email = "lisa@malmobygg.se",
+                Role = UserRoles.Initiator
+            },
+            new User
+            {
+                Id = AttestantId,
+                TenantId = TenantId,
+                Name = "Johan Berg",
+                Email = "johan@malmobygg.se",
+                Role = UserRoles.Attestant
+            });
+
+        db.Accounts.Add(new Account
+        {
+            Id = AccountId,
+            TenantId = TenantId,
+            AccountName = "Driftkonto",
+            Iban = "SE4550000000058398257466",
+            Balance = 500000m,
+            Currency = "SEK"
+        });
+
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
     /// Seeds a tenant with two attestants, an account and one payment of
     /// 75 000 SEK waiting for <paramref name="assignedAttestantId"/>'s approval.
     /// </summary>
@@ -109,6 +158,53 @@ public class ApprovalsApiIntegrationTests
             new AuthenticationHeaderValue("Bearer", token);
 
         return client;
+    }
+
+    /// <summary>
+    /// Verifies the complete lifecycle from creating a payment that requires
+    /// approval to displaying it in the assigned attestant's inbox.
+    /// </summary>
+    [Fact]
+    public async Task CreatePayment_WhenApprovalIsRequired_AppearsInAttestantsInbox()
+    {
+        using var factory = new ApprovalApiFactory();
+
+        await SeedPaymentCreationScenarioAsync(factory);
+
+        var initiatorClient = CreateClient(
+            factory,
+            userId: InitiatorId,
+            role: UserRoles.Initiator);
+
+        var createResponse = await initiatorClient.PostAsJsonAsync(
+            "/api/payments",
+            new CreatePaymentRequestDto
+            {
+                FromAccountId = AccountId,
+                ToIban = "SE8550000000054910000004",
+                Amount = 75000m,
+                Reference = "Faktura #1043"
+            });
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var attestantClient = CreateClient(factory);
+
+        var inboxResponse = await attestantClient.GetAsync("/api/approvals");
+
+        Assert.Equal(HttpStatusCode.OK, inboxResponse.StatusCode);
+
+        var inbox = await inboxResponse.Content
+            .ReadFromJsonAsync<ApprovalInboxResponse>();
+
+        Assert.NotNull(inbox);
+
+        var pending = Assert.Single(inbox!.Pending);
+
+        Assert.Equal("75000.00", pending.Amount);
+        Assert.Equal("Lisa Persson", pending.CreatedByName);
+        Assert.Equal("Driftkonto", pending.FromAccountName);
+        Assert.Equal(1, pending.CurrentStep);
     }
 
     [Fact]
