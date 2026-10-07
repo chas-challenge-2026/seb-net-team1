@@ -58,7 +58,7 @@ public class ApprovalService(
     /// <param name="userId">User from the JWT.</param>
     /// <param name="role">Role from the JWT.</param>
     public async Task<ApprovalDecisionResponseDto> DecideAsync(
-        int approvalStepId,
+        Guid approvalStepId,
         ApprovalDecisionRequestDto request,
         int tenantId,
         int userId,
@@ -122,7 +122,7 @@ public class ApprovalService(
             return new ApprovalDecisionResponseDto
             {
                 PaymentId = payment.Id,
-                ApprovalStepId = step.Id,
+                ApprovalStepId = step.PublicId,
                 StepStatus = step.Status,
                 PaymentStatus = payment.Status
             };
@@ -284,7 +284,7 @@ public class ApprovalService(
         return new PendingApprovalDto
         {
             PaymentId = payment.Id,
-            ApprovalStepId = step.Id,
+            ApprovalStepId = step.PublicId,
             ToIban = payment.ToIban,
             Amount = FormatAmount(payment.Amount),
             Currency = payment.Currency,

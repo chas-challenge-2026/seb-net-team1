@@ -126,6 +126,7 @@ public class ApprovalsControllerTests
         db.ApprovalSteps.Add(new ApprovalStep
         {
             Id = 501,
+            PublicId = TestIds.Step(501),
             PaymentId = 42,
             AttestantId = assignedAttestantId,
             StepNumber = 1,
@@ -175,7 +176,7 @@ public class ApprovalsControllerTests
         var ok = Assert.IsType<OkObjectResult>(result);
         var inbox = Assert.IsType<ApprovalInboxResponse>(ok.Value);
 
-        Assert.Equal(501, Assert.Single(inbox.Pending).ApprovalStepId);
+        Assert.Equal(TestIds.Step(501), Assert.Single(inbox.Pending).ApprovalStepId);
     }
 
     [Fact]
@@ -187,7 +188,7 @@ public class ApprovalsControllerTests
         var controller = CreateController(db);
         SetAuthenticatedUser(controller, userId: null);
 
-        var result = await controller.Decide(501, Approve());
+        var result = await controller.Decide(TestIds.Step(501), Approve());
 
         Assert.IsType<UnauthorizedObjectResult>(result);
 
@@ -204,13 +205,13 @@ public class ApprovalsControllerTests
         var controller = CreateController(db);
         SetAuthenticatedUser(controller);
 
-        var result = await controller.Decide(501, Approve());
+        var result = await controller.Decide(TestIds.Step(501), Approve());
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var decision = Assert.IsType<ApprovalDecisionResponseDto>(ok.Value);
 
         Assert.Equal(42, decision.PaymentId);
-        Assert.Equal(501, decision.ApprovalStepId);
+        Assert.Equal(TestIds.Step(501), decision.ApprovalStepId);
         Assert.Equal(ApprovalStatuses.Approved, decision.StepStatus);
         Assert.Equal(PaymentStatuses.Completed, decision.PaymentStatus);
     }
@@ -229,7 +230,7 @@ public class ApprovalsControllerTests
         SetAuthenticatedUser(controller, userId: AttestantId);
 
         await Assert.ThrowsAsync<ApprovalStepAccessDeniedException>(() =>
-            controller.Decide(501, Approve()));
+            controller.Decide(TestIds.Step(501), Approve()));
     }
 
     /// <summary>
@@ -245,7 +246,7 @@ public class ApprovalsControllerTests
         var controller = CreateController(db);
         SetAuthenticatedUser(controller, userId: AdminId, role: UserRoles.Admin);
 
-        var result = await controller.Decide(501, Approve());
+        var result = await controller.Decide(TestIds.Step(501), Approve());
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var decision = Assert.IsType<ApprovalDecisionResponseDto>(ok.Value);

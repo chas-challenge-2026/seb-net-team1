@@ -119,6 +119,7 @@ public class ApprovalsApiIntegrationTests
         db.ApprovalSteps.Add(new ApprovalStep
         {
             Id = 501,
+            PublicId = TestIds.Step(501),
             PaymentId = 42,
             AttestantId = assignedAttestantId,
             StepNumber = 1,
@@ -253,7 +254,7 @@ public class ApprovalsApiIntegrationTests
 
         var pending = Assert.Single(inbox!.Pending);
         Assert.Equal(42, pending.PaymentId);
-        Assert.Equal(501, pending.ApprovalStepId);
+        Assert.Equal(TestIds.Step(501), pending.ApprovalStepId);
         Assert.Equal("75000.00", pending.Amount);
         Assert.Equal("Lisa Persson", pending.CreatedByName);
         Assert.Equal("Driftkonto", pending.FromAccountName);
@@ -270,7 +271,7 @@ public class ApprovalsApiIntegrationTests
         var client = CreateClient(factory);
 
         var response = await client.PostAsJsonAsync(
-            "/api/approvals/501/decision",
+            $"/api/approvals/{TestIds.Step(501)}/decision",
             new ApprovalDecisionRequestDto { Action = "approve", Comment = "Ser korrekt ut" });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -279,7 +280,7 @@ public class ApprovalsApiIntegrationTests
 
         Assert.NotNull(decision);
         Assert.Equal(42, decision!.PaymentId);
-        Assert.Equal(501, decision.ApprovalStepId);
+        Assert.Equal(TestIds.Step(501), decision.ApprovalStepId);
         Assert.Equal(ApprovalStatuses.Approved, decision.StepStatus);
         Assert.Equal(PaymentStatuses.Completed, decision.PaymentStatus);
     }
@@ -297,7 +298,7 @@ public class ApprovalsApiIntegrationTests
         var client = CreateClient(factory);
 
         var response = await client.PostAsJsonAsync(
-            "/api/approvals/501/decision",
+            $"/api/approvals/{TestIds.Step(501)}/decision",
             new ApprovalDecisionRequestDto { Action = "approve" });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -318,7 +319,7 @@ public class ApprovalsApiIntegrationTests
         var client = CreateClient(factory);
 
         var response = await client.PostAsJsonAsync(
-            "/api/approvals/501/decision",
+            $"/api/approvals/{TestIds.Step(501)}/decision",
             new ApprovalDecisionRequestDto { Action = "delete" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -338,10 +339,42 @@ public class ApprovalsApiIntegrationTests
         var client = CreateClient(factory);
 
         var response = await client.PostAsJsonAsync(
-            "/api/approvals/999/decision",
+            $"/api/approvals/{TestIds.Step(999)}/decision",
             new ApprovalDecisionRequestDto { Action = "approve" });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostDecision_WithTheOldNumericId_IsNotFound()
+    {
+        // Steps used to be addressed by their counter (501). Only the public Guid works now.
+        using var factory = new ApprovalApiFactory();
+        await SeedApprovalScenarioAsync(factory);
+
+        var client = CreateClient(factory);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/approvals/501/decision",
+            new ApprovalDecisionRequestDto { Action = "approve" });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetApprovals_SendsTheStepIdAsAGuidString_NotAsTheCounter()
+    {
+        using var factory = new ApprovalApiFactory();
+        await SeedApprovalScenarioAsync(factory);
+
+        var client = CreateClient(factory);
+
+        var response = await client.GetAsync("/api/approvals");
+        using var body = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        var stepId = body.RootElement.GetProperty("pending")[0].GetProperty("approvalStepId");
+        Assert.Equal(System.Text.Json.JsonValueKind.String, stepId.ValueKind);
+        Assert.Equal(TestIds.Step(501), Guid.Parse(stepId.GetString()!));
     }
 
     [Fact]
@@ -353,7 +386,7 @@ public class ApprovalsApiIntegrationTests
         var client = CreateClient(factory);
 
         var response = await client.PostAsJsonAsync(
-            "/api/approvals/501/decision",
+            $"/api/approvals/{TestIds.Step(501)}/decision",
             new ApprovalDecisionRequestDto { Action = "approve" });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
