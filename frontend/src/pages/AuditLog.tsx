@@ -15,6 +15,33 @@ type AuditLogError = {
   requiresLogin: boolean;
 };
 
+type PageRequest = {
+  cursor?: string;
+  index: number;
+};
+
+type CursorNavigation = {
+  cursors: (string | undefined)[];
+  index: number;
+};
+
+type PageSlot = number | "leading-ellipsis" | "trailing-ellipsis";
+
+function getReachedPageSlots(knownPages: number, currentPage: number): PageSlot[] {
+  if (knownPages <= 7) {
+    return Array.from({ length: knownPages }, (_, index) => index + 1);
+  }
+
+  const first = Math.max(2, Math.min(currentPage - 1, knownPages - 3));
+  const last = Math.min(knownPages - 1, Math.max(currentPage + 1, 4));
+  const pages: PageSlot[] = [1];
+  if (first > 2) pages.push("leading-ellipsis");
+  for (let page = first; page <= last; page++) pages.push(page);
+  if (last < knownPages - 1) pages.push("trailing-ellipsis");
+  pages.push(knownPages);
+  return pages;
+}
+
 type ActionPresentation = {
   label: string;
   tone: "created" | "approved" | "step" | "rejected" | "neutral";
@@ -75,38 +102,46 @@ export default function AuditLog() {
   const [auditLog, setAuditLog] = useState<AuditLogResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initialError, setInitialError] = useState<AuditLogError | null>(null);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [loadMoreError, setLoadMoreError] = useState<AuditLogError | null>(null);
-  const [hasLoadedMore, setHasLoadedMore] = useState(false);
+  const [isLoadingPage, setIsLoadingPage] = useState(false);
+  const [pageError, setPageError] = useState<AuditLogError | null>(null);
+  const [navigation, setNavigation] = useState<CursorNavigation>({ cursors: [undefined], index: 0 });
+  const [showFilterNotice, setShowFilterNotice] = useState(false);
   const activeRequest = useRef<AbortController | null>(null);
+  const currentPage = navigation.index + 1;
+  const pageSlots = getReachedPageSlots(navigation.cursors.length, currentPage);
 
-  const loadPage = useCallback((cursor?: string) => {
+  const loadPage = useCallback((request?: PageRequest) => {
     if (activeRequest.current) {
       return;
     }
 
     const controller = new AbortController();
     activeRequest.current = controller;
-    const isNextPage = cursor !== undefined;
+    const isNavigation = request !== undefined;
 
-    getAuditLog({ cursor, signal: controller.signal })
+    getAuditLog({ cursor: request?.cursor, signal: controller.signal })
       .then((page) => {
         if (!controller.signal.aborted) {
-          setAuditLog((current) =>
-            isNextPage && current
-              ? {
-                  entries: [...current.entries, ...page.entries],
-                  nextCursor: page.nextCursor,
-                }
-              : page
-          );
-          setHasLoadedMore(isNextPage);
+          setAuditLog(page);
+          setNavigation((current) => {
+            if (!request) return { cursors: [undefined], index: 0 };
+
+            // Retain reached pages on return; replace a forward path only if its cursor changed.
+            const isKnownCursor = request.index < current.cursors.length &&
+              current.cursors[request.index] === request.cursor;
+            return {
+              cursors: isKnownCursor
+                ? current.cursors
+                : [...current.cursors.slice(0, request.index), request.cursor],
+              index: request.index,
+            };
+          });
         }
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
-          if (isNextPage) {
-            setLoadMoreError(getAuditLogError(error));
+          if (isNavigation) {
+            setPageError(getAuditLogError(error));
           } else {
             setInitialError(getAuditLogError(error));
           }
@@ -114,8 +149,8 @@ export default function AuditLog() {
       })
       .finally(() => {
         if (!controller.signal.aborted) {
-          if (isNextPage) {
-            setIsLoadingMore(false);
+          if (isNavigation) {
+            setIsLoadingPage(false);
           } else {
             setIsLoading(false);
           }
@@ -146,14 +181,24 @@ export default function AuditLog() {
     loadPage();
   }
 
-  function loadMore() {
+  function loadNextPage() {
     if (activeRequest.current || auditLog?.nextCursor == null) {
       return;
     }
 
-    setLoadMoreError(null);
-    setIsLoadingMore(true);
-    loadPage(auditLog.nextCursor);
+    setPageError(null);
+    setIsLoadingPage(true);
+    loadPage({ cursor: auditLog.nextCursor, index: navigation.index + 1 });
+  }
+
+  function loadKnownPage(index: number) {
+    if (activeRequest.current || index < 0 || index >= navigation.cursors.length || index === navigation.index) {
+      return;
+    }
+
+    setPageError(null);
+    setIsLoadingPage(true);
+    loadPage({ cursor: navigation.cursors[index], index });
   }
 
   return (
@@ -194,10 +239,18 @@ export default function AuditLog() {
             className="audit-log-toolbar"
             aria-describedby="audit-log-filter-availability"
             title="Sökning och filtrering är inte tillgängliga ännu."
+            onFocus={() => setShowFilterNotice(true)}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setShowFilterNotice(false);
+            }}
           >
             <legend className="audit-log-sr-only">Sök och filtrera audit-loggen</legend>
-            <p id="audit-log-filter-availability" className="audit-log-sr-only">
-              Sökning och filtrering är inte tillgängliga ännu.
+            <p
+              id="audit-log-filter-availability"
+              className={showFilterNotice ? "audit-log-filter-notice" : "audit-log-sr-only"}
+              role="status"
+            >
+              Sökning och filtrering är inte tillgängliga ännu. Inga filter har tillämpats.
             </p>
             <label className="audit-log-search">
               <FiSearch aria-hidden="true" />
@@ -205,27 +258,29 @@ export default function AuditLog() {
               <input type="search" name="search" placeholder="Sök loggar..." />
             </label>
             <label className="audit-log-filter">
-              <span>Date range:</span>
-              <select name="dateRange" aria-label="Period" defaultValue="all">
-                <option value="all">All</option>
+              <select name="dateRange" aria-label="Period, endast All är tillgängligt" defaultValue="all">
+                <option value="all">Date range: All</option>
               </select>
               <FiChevronDown aria-hidden="true" />
             </label>
             <label className="audit-log-filter">
-              <span>Action:</span>
-              <select name="action" aria-label="Händelse" defaultValue="all">
-                <option value="all">All</option>
+              <select name="action" aria-label="Händelse, endast All är tillgängligt" defaultValue="all">
+                <option value="all">Action: All</option>
               </select>
               <FiChevronDown aria-hidden="true" />
             </label>
             <label className="audit-log-filter">
-              <span>User:</span>
-              <select name="user" aria-label="Användare" defaultValue="all">
-                <option value="all">All</option>
+              <select name="user" aria-label="Användare, endast All är tillgängligt" defaultValue="all">
+                <option value="all">User: All</option>
               </select>
               <FiChevronDown aria-hidden="true" />
             </label>
-            <Button type="button" className="audit-log-filter-button">
+            <Button
+              type="button"
+              className="audit-log-filter-button"
+              onClick={() => setShowFilterNotice(true)}
+              aria-describedby="audit-log-filter-availability"
+            >
               <FiSliders aria-hidden="true" />
               Filters
             </Button>
@@ -268,7 +323,7 @@ export default function AuditLog() {
                       role="region"
                       aria-label="Granskningslogg"
                       tabIndex={0}
-                      aria-busy={isLoadingMore}
+                      aria-busy={isLoadingPage}
                     >
                       <table className="audit-log-table">
                         <caption className="audit-log-sr-only">
@@ -326,12 +381,12 @@ export default function AuditLog() {
                     </div>
                   )}
 
-                  {loadMoreError && (
+                  {pageError && (
                     <div className="audit-log-pagination-error">
                       <p className="audit-log-error" role="alert">
-                        {loadMoreError.message}
+                        {pageError.message}
                       </p>
-                      {loadMoreError.requiresLogin && (
+                      {pageError.requiresLogin && (
                         <Link to="/" className="audit-log-login-link">
                           Till inloggning
                         </Link>
@@ -341,72 +396,66 @@ export default function AuditLog() {
 
                   <footer className="audit-log-footer">
                     <p className="audit-log-count" role="status" aria-atomic="true">
-                      Visar {auditLog.entries.length} inlästa händelser
+                      Visar {auditLog.entries.length} händelser i aktuell vy
                     </p>
-                    <div className="audit-log-pagination" role="group" aria-label="Sidkontroller">
+                    <nav
+                      className="audit-log-pagination"
+                      aria-label="Besökta auditsidor"
+                      title="Sidnumren visar endast vyer som har hämtats."
+                    >
                       <Button
                         type="button"
                         className="audit-log-page-button"
-                        disabled
-                        title="Bakåtnavigering är inte tillgänglig."
-                        aria-label="Föregående vy, inte tillgänglig"
+                        onClick={() => loadKnownPage(navigation.index - 1)}
+                        disabled={isLoadingPage || navigation.index === 0}
+                        aria-busy={isLoadingPage}
+                        title={
+                          isLoadingPage
+                            ? "Hämtar audithändelser..."
+                            : navigation.index === 0
+                            ? "Du är i den första vyn."
+                            : "Visa föregående vy"
+                        }
+                        aria-label="Visa föregående vy"
                       >
                         <FiChevronLeft aria-hidden="true" />
                       </Button>
-                      {/* Numbers mirror the design only; the API provides cursors, not page numbers. */}
-                      <Button
-                        type="button"
-                        className={`audit-log-page-button${hasLoadedMore ? "" : " audit-log-page-button--current"}`}
-                        disabled
-                        aria-current={hasLoadedMore ? undefined : "page"}
-                        aria-label="Första vyn, endast visuell markering"
-                        title="Sidnummer är visuella platshållare utan sidnavigering."
-                      >
-                        1
-                      </Button>
-                      {[2, 3].map((number) => (
+                      {pageSlots.map((slot) => typeof slot === "number" ? (
                         <Button
-                          key={number}
+                          key={slot}
                           type="button"
-                          className="audit-log-page-button"
-                          disabled
-                          aria-label={`Siffra ${number}, endast visuell platshållare`}
-                          title="Sidnummer är visuella platshållare utan sidnavigering."
+                          className={`audit-log-page-button${slot === currentPage ? " audit-log-page-button--current" : ""}`}
+                          onClick={() => loadKnownPage(slot - 1)}
+                          disabled={isLoadingPage}
+                          aria-label={`Sida ${slot}`}
+                          aria-current={slot === currentPage ? "page" : undefined}
                         >
-                          {number}
+                          {slot}
                         </Button>
+                      ) : (
+                        <span key={slot} className="audit-log-page-ellipsis" aria-hidden="true">&hellip;</span>
                       ))}
                       <Button
                         type="button"
-                        className="audit-log-page-button audit-log-page-button--next"
-                        onClick={loadMore}
-                        disabled={isLoadingMore || auditLog.nextCursor === null}
-                        aria-busy={isLoadingMore}
+                        className="audit-log-page-button"
+                        onClick={loadNextPage}
+                        disabled={isLoadingPage || auditLog.nextCursor === null}
+                        aria-busy={isLoadingPage}
                         title={
-                          auditLog.nextCursor === null
+                          isLoadingPage
+                            ? "Hämtar audithändelser..."
+                            : auditLog.nextCursor === null
                             ? "Inga äldre händelser att visa."
-                            : isLoadingMore
-                            ? "Hämtar fler..."
-                            : loadMoreError
-                            ? "Försök igen"
                             : "Visa äldre händelser"
                         }
-                        aria-label={
-                          auditLog.nextCursor === null
-                            ? "Inga äldre händelser att visa"
-                            : isLoadingMore
-                            ? "Hämtar fler audithändelser"
-                            : loadMoreError
-                            ? "Försök hämta äldre händelser igen"
-                            : "Visa äldre händelser"
-                        }
+                        aria-label="Visa äldre händelser"
                       >
                         <FiChevronRight aria-hidden="true" />
                       </Button>
                       <span className="audit-log-sr-only" role="status">
-                        {isLoadingMore ? "Hämtar fler audithändelser..." : ""}
+                        {isLoadingPage ? "Hämtar audithändelser..." : ""}
                       </span>
-                    </div>
+                    </nav>
                   </footer>
                 </>
               ) : null}
