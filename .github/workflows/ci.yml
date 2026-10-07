@@ -60,3 +60,32 @@ jobs:
             echo "Coverage $PCT% is below 85%"
             exit 1
           fi
+
+      - name: Dependency audit (backend)
+        shell: bash
+        run: |
+          FAILED=0
+          for PROJECT in backend/SebPortal.Api/SebPortal.Api.csproj backend/SebPortal.Api.Tests/SebPortal.Api.Tests.csproj; do
+            dotnet list "$PROJECT" package --vulnerable --include-transitive > audit.txt 2>&1
+            cat audit.txt
+            if grep -E -q "(High|Critical)" audit.txt; then
+              FAILED=1
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then
+            echo "A package with a High or Critical vulnerability was found."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Dependency audit (frontend)
+        working-directory: frontend
+        run: |
+          npm ci --no-fund
+          npm audit --omit=dev --audit-level=high
