@@ -49,13 +49,15 @@ public class ApprovalServiceTests
             });
 
         var approvalRepository = new ApprovalRepository(db);
-        var paymentService = new PaymentService(
-            new PaymentRepository(db),
-            approvalRepository,
-            paymentRules);
 
         var auditService = new AuditService(
             new AuditRepository(db), new AuditLockProvider(), new UnsignedPlaceholderAuditSigner());
+
+        var paymentService = new PaymentService(
+            new PaymentRepository(db),
+            approvalRepository,
+            paymentRules,
+            auditService);
 
         return new ApprovalService(approvalRepository, paymentService, auditService);
     }

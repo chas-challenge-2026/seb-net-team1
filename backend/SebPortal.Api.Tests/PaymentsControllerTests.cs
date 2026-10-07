@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.Controllers;
 using SebPortal.Api.DTOs;
 using SebPortal.Api.Services;
+using SebPortal.Api.Signing;
 using Microsoft.EntityFrameworkCore;
 using SebPortal.Api.Data;
 using SebPortal.Api.Models;
@@ -39,7 +40,11 @@ public class PaymentsControllerTests
         return new PaymentService(
             repository,
             approvalRepository,
-            paymentRules);
+            paymentRules,
+            new AuditService(
+                new AuditRepository(db),
+                new AuditLockProvider(),
+                new UnsignedPlaceholderAuditSigner()));
     }
 
     /// <summary>
