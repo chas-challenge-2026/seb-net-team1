@@ -117,6 +117,8 @@ public class SebDbContext : DbContext
             entity.ToTable("approval_steps");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.PublicId).HasColumnName("public_id");
+            entity.HasIndex(e => e.PublicId).IsUnique();
             entity.Property(e => e.PaymentId).HasColumnName("payment_id");
             entity.Property(e => e.AttestantId).HasColumnName("attestant_id");
             entity.Property(e => e.StepNumber).HasColumnName("step_number");
@@ -172,4 +174,3 @@ public class SebDbContext : DbContext
         });
     }
 }
-

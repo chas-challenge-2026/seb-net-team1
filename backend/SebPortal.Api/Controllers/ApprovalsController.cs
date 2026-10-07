@@ -55,8 +55,8 @@ public class ApprovalsController(ApprovalService approvalService) : ControllerBa
     /// or a too long comment, 403 when the step belongs to another attestant,
     /// 404 when it does not exist, 409 when it is already decided.
     /// </returns>
-    [HttpPost("{approvalStepId:int}/decision")]
-    public async Task<IActionResult> Decide(int approvalStepId, ApprovalDecisionRequestDto request)
+    [HttpPost("{approvalStepId:guid}/decision")]
+    public async Task<IActionResult> Decide(Guid approvalStepId, ApprovalDecisionRequestDto request)
     {
         var userId = User.GetUserId();
         var tenantId = User.GetTenantId();

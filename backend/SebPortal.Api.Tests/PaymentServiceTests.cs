@@ -29,6 +29,7 @@ public class PaymentServiceTests
         decimal doubleApprovalThreshold = 200000m)
     {
         var repository = new PaymentRepository(db);
+        var approvalRepository = new ApprovalRepository(db);
 
         var paymentRules = Microsoft.Extensions.Options.Options.Create(
             new PaymentRulesOptions
@@ -37,7 +38,10 @@ public class PaymentServiceTests
                 DoubleApprovalThreshold = doubleApprovalThreshold
             });
 
-        return new PaymentService(repository, paymentRules);
+        return new PaymentService(
+            repository,
+            approvalRepository,
+            paymentRules);
     }
 
     /// <summary>
@@ -201,9 +205,33 @@ public class PaymentServiceTests
                 createdById: 1));
     }
     [Fact]
-    public async Task CreatePaymentAsync_CreatesPendingPayment_WhenApprovalIsRequired()
+    public async Task CreatePaymentAsync_WhenApprovalIsRequired_CreatesPendingPaymentAndApprovalStep()
     {
         using var db = CreateContext();
+
+        db.Tenants.Add(new Tenant
+        {
+            Id = 1,
+            Name = "Testföretaget"
+        });
+
+        db.Users.AddRange(
+            new User
+            {
+                Id = 1,
+                TenantId = 1,
+                Name = "Lisa",
+                Email = "lisa@example.com",
+                Role = UserRoles.Initiator
+            },
+            new User
+            {
+                Id = 2,
+                TenantId = 1,
+                Name = "Johan",
+                Email = "johan@example.com",
+                Role = UserRoles.Attestant
+            });
 
         db.Accounts.Add(new Account
         {
@@ -219,21 +247,23 @@ public class PaymentServiceTests
 
         var service = CreatePaymentService(db);
 
-        var result = await service.CreatePaymentAsync(
+        var payment = await service.CreatePaymentAsync(
             tenantId: 1,
             fromAccountId: 1,
             toIban: "SE4550000000054910000099",
-            amount: 50001m,
+            amount: 75000m,
             currency: "SEK",
             reference: "Testbetalning",
             createdById: 1);
 
-        Assert.NotNull(result);
-        Assert.Equal(PaymentStatuses.PendingApproval, result.Status);
-        Assert.Equal(50001m, result.Amount);
-        Assert.Equal("SEK", result.Currency);
+        Assert.Equal(PaymentStatuses.PendingApproval, payment.Status);
 
-        Assert.Single(db.Payments);
+        var approvalStep = await db.ApprovalSteps.SingleAsync();
+
+        Assert.Equal(payment.Id, approvalStep.PaymentId);
+        Assert.Equal(2, approvalStep.AttestantId);
+        Assert.Equal(1, approvalStep.StepNumber);
+        Assert.Equal(ApprovalStatuses.Pending, approvalStep.Status);
     }
 
     [Theory]
