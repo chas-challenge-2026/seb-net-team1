@@ -2,11 +2,67 @@ import type {
   CreatePaymentRequest,
   CreatePaymentResponse,
   PaymentStatus,
+  PaymentOverview,
+  RecentPaymentSummary,
 } from "../types/Payment";
+import type { User } from "../types/User";
 import { apiRequest } from "./apiClient";
 
 const PAYMENTS_ENDPOINT = "/api/payments";
 const DEFAULT_PAYMENT_ERROR_MESSAGE = "Kunde inte skapa betalningen.";
+
+type PaymentOverviewResponse = {
+  recentPayments: RecentPaymentSummary[];
+  user: User | null;
+  tenantName: string | null;
+  pendingApprovals?: RecentPaymentSummary[];
+};
+
+export class PaymentReadError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message?: string) {
+    super(message ?? (status === 401
+      ? "Åtkomst nekad. Logga in igen."
+      : "Kunde inte hämta betalningarna. Försök igen."));
+    this.name = "PaymentReadError";
+    this.status = status;
+  }
+}
+
+export async function getRecentPayments(signal?: AbortSignal): Promise<PaymentOverview> {
+  const response = await apiRequest("/api/dashboard", { signal });
+
+  if (!response.ok) {
+    throw new PaymentReadError(response.status);
+  }
+
+  let overview: PaymentOverviewResponse;
+  try {
+    overview = await response.json() as PaymentOverviewResponse;
+  } catch {
+    throw new PaymentReadError(response.status, "Svaret från betalningstjänsten kunde inte läsas.");
+  }
+
+  if (!overview || !Array.isArray(overview.recentPayments) || overview.recentPayments.some(
+    (payment) => !payment || !Number.isSafeInteger(payment.id) || payment.id <= 0 ||
+      typeof payment.createdAt !== "string" ||
+      [payment.amount, payment.currency, payment.toIban, payment.reference, payment.status].some(
+        (value) => value !== null && typeof value !== "string"
+      )
+  )) {
+    throw new PaymentReadError(response.status, "Svaret från betalningstjänsten var ofullständigt.");
+  }
+
+  return {
+    recentPayments: overview.recentPayments,
+    user: overview.user ?? null,
+    tenantName: overview.tenantName ?? null,
+    pendingApprovalCount: Array.isArray(overview.pendingApprovals)
+      ? overview.pendingApprovals.length
+      : undefined,
+  };
+}
 
 type PaymentApiResponse = {
   id?: number;

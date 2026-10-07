@@ -80,7 +80,7 @@ function NewPayment() {
 
     const paymentToCreate: CreatePaymentRequest = {
       fromAccountId: paymentForm.fromAccountId,
-      toIban: paymentForm.toIban.trim(),
+      toIban: paymentForm.toIban.replace(/\s/g, "").toUpperCase(),
       amount: paymentForm.amount,
       reference: paymentForm.reference?.trim() || undefined,
     };
