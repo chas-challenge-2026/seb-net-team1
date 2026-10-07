@@ -8,6 +8,7 @@ interface DashboardHeaderProps {
     user?: User | null;
     title?: string;
     subtitle?: string;
+    showSearch?: boolean;
   onSearch?: (value: string) => void;
   onNotificationClick?: () => void;
 }
@@ -16,6 +17,7 @@ export default function DashboardHeader({
     user,
     title = "Översikt",
     subtitle,
+    showSearch = true,
     onSearch,
     onNotificationClick,
 }: DashboardHeaderProps) {
@@ -36,6 +38,7 @@ export default function DashboardHeader({
             </div>
 
             <div className="dashboard-header-actions">
+                {showSearch && (
                 <div className="search-input-wrapper">
         <FiSearch className="dashboard-search-icon" />
 
@@ -47,6 +50,7 @@ export default function DashboardHeader({
                         onChange={handleSearchChange}
                     />
                 </div>
+                )}
 
                 <button
                     className="dashboard-notification-button"

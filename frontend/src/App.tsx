@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import NewPayment from "./pages/NewPayment";
 import Accounts  from "./pages/Accounts";
 import BatchFiles from "./pages/BatchFiles";
+import AuditLog from "./pages/AuditLog";
 
 const pageTitles: Record<string, string> = {
   "/": "Logga in",
@@ -33,7 +34,8 @@ function App() {
       <Route path="/new-payment" element={<NewPayment />} />
       <Route path="/accounts" element={<Accounts />}/>
       <Route path="/batch-upload" element={<BatchFiles />} />
-      {/* TODO: Lägg till React-routes när sidorna för godkännanden, rapporter och audit-logg har flyttats hit. */}
+      <Route path="/audit-log" element={<AuditLog />} />
+      {/* TODO: Lägg till React-routes när sidorna för godkännanden och rapporter har flyttats hit. */}
     </Routes>
   );
 }
