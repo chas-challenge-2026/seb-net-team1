@@ -30,12 +30,16 @@ public class PaymentsControllerTests
     private static PaymentService CreatePaymentService(SebDbContext db)
     {
         var repository = new PaymentRepository(db);
+        var approvalRepository = new ApprovalRepository(db);
         var paymentRules = Microsoft.Extensions.Options.Options.Create(new PaymentRulesOptions
         {
             ApprovalThreshold = 50000m
         });
 
-        return new PaymentService(repository, paymentRules);
+        return new PaymentService(
+            repository,
+            approvalRepository,
+            paymentRules);
     }
 
     /// <summary>

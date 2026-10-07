@@ -46,13 +46,23 @@ public class ApprovalsControllerTests
                 DoubleApprovalThreshold = 200000m
             });
 
-        var paymentService = new PaymentService(new PaymentRepository(db), paymentRules);
+        var approvalRepository = new ApprovalRepository(db);
+
+        var paymentService = new PaymentService(
+            new PaymentRepository(db),
+            approvalRepository,
+            paymentRules);
 
         var auditService = new AuditService(
-            new AuditRepository(db), new AuditLockProvider(), new UnsignedPlaceholderAuditSigner());
+            new AuditRepository(db),
+            new AuditLockProvider(),
+            new UnsignedPlaceholderAuditSigner());
 
         return new ApprovalsController(
-            new ApprovalService(new ApprovalRepository(db), paymentService, auditService));
+            new ApprovalService(
+                approvalRepository,
+                paymentService,
+                auditService));
     }
 
     /// <summary>
