@@ -1,1 +1,6 @@
-<Solution />
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/SebPortal.Api.Tests/SebPortal.Api.Tests.csproj" />
+    <Project Path="backend/SebPortal.Api/SebPortal.Api.csproj" />
+  </Folder>
+</Solution>

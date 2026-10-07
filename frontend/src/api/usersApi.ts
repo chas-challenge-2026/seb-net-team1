@@ -1,24 +1,32 @@
-export type User = {
-  id: number;
-  tenantId: number;
-  name: string;
-  email: string;
-  password: string;
-  role: string;
-};
+import type { LoginResponse } from "../types/User";
+import { apiRequest } from "./apiClient";
 
-const API_URL = "http://localhost:3001";
-
-export async function getUserByEmail(email: string): Promise<User | null> {
-  const response = await fetch(
-    `${API_URL}/users?email=${encodeURIComponent(email)}`
-  );
+export async function login(
+  email: string,
+  password: string
+): Promise<LoginResponse> {
+  const response = await apiRequest("/api/auth/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  });
 
   if (!response.ok) {
-    throw new Error("Kunde inte hämta användare");
+    throw new Error("Fel e-post eller lösenord");
   }
 
-  const users: User[] = await response.json();
+  return response.json();
+}
 
-  return users[0] ?? null;
+export async function logout(): Promise<void> {
+  const response = await apiRequest("/api/auth/logout", { method: "POST" });
+
+  if (!response.ok) {
+    throw new Error("Kunde inte logga ut. Försök igen.");
+  }
 }

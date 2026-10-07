@@ -11,7 +11,7 @@ CREATE TABLE users (
     tenant_id INT REFERENCES tenants(id),
     name VARCHAR(100),
     email VARCHAR(100) UNIQUE,
-    password_md5 VARCHAR(32),
+    password_md5 VARCHAR(255), -- Legacy column name; the API stores BCrypt hashes here.
     role VARCHAR(20) -- 'initiator', 'attestant', 'admin'
 );
 
@@ -50,22 +50,26 @@ CREATE TABLE approval_steps (
 
 CREATE TABLE audit_entries (
     id SERIAL PRIMARY KEY,
+    tenant_id INT NOT NULL REFERENCES tenants(id),
     user_id INT,
     action VARCHAR(100),
     entity_type VARCHAR(50),
     entity_id INT,
     description TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT NOW(),
+    signature TEXT NOT NULL,
+    previous_signature TEXT NOT NULL
 );
+CREATE INDEX idx_audit_entries_tenant_id_id ON audit_entries (tenant_id, id);
 
 -- Seed: tenant Malmö Bygg AB
 INSERT INTO tenants (name) VALUES ('Malmö Bygg AB');
 
--- password = "password123" MD5 = 482c811da5d5b4bc6d497ffa98491e38
+-- Test accounts have no usable password until local setup assigns BCrypt hashes.
 INSERT INTO users (tenant_id, name, email, password_md5, role) VALUES
-(1, 'Lisa Persson',  'lisa@malmobygg.se',  '482c811da5d5b4bc6d497ffa98491e38', 'initiator'),
-(1, 'Johan Berg',   'johan@malmobygg.se', '482c811da5d5b4bc6d497ffa98491e38', 'attestant'),
-(1, 'Sara Ek',      'sara@malmobygg.se',  '482c811da5d5b4bc6d497ffa98491e38', 'admin');
+(1, 'Lisa Persson',  'lisa@malmobygg.se',  NULL, 'initiator'),
+(1, 'Johan Berg',   'johan@malmobygg.se', NULL, 'attestant'),
+(1, 'Sara Ek',      'sara@malmobygg.se',  NULL, 'admin');
 
 INSERT INTO accounts (tenant_id, account_name, iban, balance, currency) VALUES
 (1, 'Driftkonto',   'SE4550000000058398257466', 2500000.00, 'SEK'),
@@ -80,6 +84,6 @@ INSERT INTO payments (tenant_id, from_account_id, to_iban, amount, reference, st
 INSERT INTO approval_steps (payment_id, attestant_id, step_number, status) VALUES
 (2, 2, 1, 'pending');
 
-INSERT INTO audit_entries (user_id, action, entity_type, entity_id, description) VALUES
-(1, 'CREATE_PAYMENT', 'payment', 1, 'Skapade betalning 15000 SEK till SE8550000000054910000003'),
-(1, 'CREATE_PAYMENT', 'payment', 2, 'Skapade betalning 75000 SEK till SE8550000000054910000004');
+INSERT INTO audit_entries (tenant_id, user_id, action, entity_type, entity_id, description, signature, previous_signature) VALUES
+(1, 1, 'CREATE_PAYMENT', 'payment', 1, 'Skapade betalning 15000 SEK till SE8550000000054910000003', 'SEED-UNSIGNED', 'GENESIS'),
+(1, 1, 'CREATE_PAYMENT', 'payment', 2, 'Skapade betalning 75000 SEK till SE8550000000054910000004', 'SEED-UNSIGNED', 'SEED-UNSIGNED');

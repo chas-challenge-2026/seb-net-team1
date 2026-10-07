@@ -1,7 +1,13 @@
 services:
   app:
+    environment:
+      Auth__AllowInsecureCookies: "true"
     ports:
       - "8081:8081"
   db:
+    environment:
+      SEED_TEST_PASSWORD: "${SEED_TEST_PASSWORD:-}"
+    volumes:
+      - ./set-test-passwords.sh:/docker-entrypoint-initdb.d/zz-set-test-passwords.sh:ro
     ports:
       - "5433:5432"
