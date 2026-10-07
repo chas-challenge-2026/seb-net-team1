@@ -27,7 +27,7 @@ No request body, no query parameters for MVP.
   "pending": [
     {
       "paymentId": 42,
-      "approvalStepId": 501,
+      "approvalStepId": "3f2b7c1e-8a4d-4b6a-9d52-1c0e7f5a9b34",
       "toIban": "SE4550000000054910000099",
       "amount": "250000.00",
       "currency": "SEK",
@@ -57,7 +57,7 @@ No request body, no query parameters for MVP.
 | Field | Type | Description |
 |---|---|---|
 | `pending[].paymentId` | number | Id of the payment awaiting approval |
-| `pending[].approvalStepId` | number | Id of this specific approval step. Used when approving or rejecting |
+| `pending[].approvalStepId` | string (uuid) | Public id of this specific approval step. Used in the URL when approving or rejecting. It is random and cannot be guessed from another step's id |
 | `pending[].toIban` | string | Recipient IBAN, no spaces |
 | `pending[].amount` | string | Payment amount, as a decimal string |
 | `pending[].currency` | string | Currency code |
@@ -78,7 +78,7 @@ No request body, no query parameters for MVP.
 
 ### POST `/api/approvals/{approvalStepId}/decision`
 
-Approves or rejects a specific approval step.
+Approves or rejects a specific approval step. `{approvalStepId}` is the public uuid from `GET /api/approvals`, for example `/api/approvals/3f2b7c1e-8a4d-4b6a-9d52-1c0e7f5a9b34/decision`. A plain number no longer matches the route and answers `404`.
 
 Frontend uses this endpoint when an attestant clicks "Godkänn" or "Avvisa" on a pending payment.
 
@@ -109,7 +109,7 @@ Requires a valid JWT, role `attestant` or `admin`.
 ```json
 {
   "paymentId": 42,
-  "approvalStepId": 501,
+  "approvalStepId": "3f2b7c1e-8a4d-4b6a-9d52-1c0e7f5a9b34",
   "stepStatus": "approved",
   "paymentStatus": "pending_approval"
 }
@@ -120,7 +120,7 @@ Requires a valid JWT, role `attestant` or `admin`.
 | Field | Type | Description |
 |---|---|---|
 | `paymentId` | number | The payment this decision applies to |
-| `approvalStepId` | number | The approval step that was decided |
+| `approvalStepId` | string (uuid) | Public id of the approval step that was decided |
 | `stepStatus` | string | `approved` or `rejected` |
 | `paymentStatus` | string | The payment's resulting status: `completed`, `pending_approval` (if more steps remain), or `rejected` |
 
@@ -154,7 +154,7 @@ Returned when the approval step is not assigned to the logged-in attestant (and 
 
 ### `404 Not Found`
 
-Returned when the approval step doesn't exist.
+Returned when the approval step doesn't exist, or when `{approvalStepId}` is not a uuid.
 
 ```json
 {
@@ -216,6 +216,7 @@ Implemented in `backend/SebPortal.Api` as `ApprovalsController` → `ApprovalSer
 
 - **The double approval threshold now lives in configuration**, `PaymentRules:DoubleApprovalThreshold` (200 000 SEK in `appsettings.json`), next to the existing `ApprovalThreshold`. `requiresDoubleApproval` and `totalSteps` are both derived from it. This is the consolidation BUG-006 called for: payment creation, the approval flow and the frontend badge all read the same value, and changing the rule means changing one setting.
 - **Admins see the whole tenant's pending list**, attestants only steps assigned to them. This carries over v1's behaviour and matches the `403` rule above, which already exempts `admin`.
+- **Approval steps are addressed by a random public id (uuid), not by the database counter.** The counter (`approval_steps.id`) stays inside the database. `approval_steps.public_id` is what the API sends and accepts, so a client cannot guess the next step from the one it has. Tenant and assignment checks are unchanged and still apply to every request.
 - **A step in another tenant answers `404`, not `403`**, even for an admin. Answering `403` would confirm that the id exists somewhere, which leaks across tenants. v1 let an admin decide steps in any tenant at all.
 - **Every decision is audited to the database** as `APPROVE_PAYMENT`, `APPROVE_PAYMENT_STEP` (a step approved while others remain) or `REJECT_PAYMENT`. v1 wrote partial approvals to `/tmp/audit.log` only, so they never reached the audit log UI.
 

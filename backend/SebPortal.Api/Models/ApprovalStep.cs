@@ -3,6 +3,9 @@ namespace SebPortal.Api.Models;
 public class ApprovalStep
 {
     public int Id { get; set; }
+
+    public Guid PublicId { get; set; } = Guid.NewGuid();
+
     public int PaymentId { get; set; }
     public int? AttestantId { get; set; }
     public int StepNumber { get; set; } = 1;
