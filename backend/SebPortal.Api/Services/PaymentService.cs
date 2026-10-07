@@ -6,7 +6,10 @@ using SebPortal.Api.Options;
 
 namespace SebPortal.Api.Services;
 
-public class PaymentService(PaymentRepository paymentRepository, IOptions<PaymentRulesOptions> paymentRules)
+public class PaymentService(
+    PaymentRepository paymentRepository,
+    ApprovalRepository approvalRepository,
+    IOptions<PaymentRulesOptions> paymentRules)
 {
     /// <summary>
     /// Creates a payment, validates the source account and tenant,
@@ -51,7 +54,11 @@ public class PaymentService(PaymentRepository paymentRepository, IOptions<Paymen
         // 3. Determine the payment flow from the configured approval threshold.
         var requiresApproval = amount > paymentRules.Value.ApprovalThreshold;
 
-        if (!requiresApproval)
+        if (requiresApproval)
+        {
+            await AddInitialApprovalStepAsync(payment);
+        }
+        else
         {
             CompletePaymentOrThrow(payment, account);
         }
@@ -60,6 +67,27 @@ public class PaymentService(PaymentRepository paymentRepository, IOptions<Paymen
         await paymentRepository.AddPaymentAsync(payment);
 
         return payment;
+    }
+
+    private async Task AddInitialApprovalStepAsync(Payment payment)
+    {
+        var excludedUserIds = new List<int>();
+
+        if (payment.CreatedById.HasValue)
+        {
+            excludedUserIds.Add(payment.CreatedById.Value);
+        }
+
+        var attestantId = await approvalRepository.FindNextAttestantIdAsync(
+            payment.TenantId,
+            excludedUserIds);
+
+        payment.ApprovalSteps.Add(new ApprovalStep
+        {
+            AttestantId = attestantId,
+            StepNumber = 1,
+            Status = ApprovalStatuses.Pending
+        });
     }
 
     /// <summary>
