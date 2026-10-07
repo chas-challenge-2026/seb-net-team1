@@ -6,7 +6,7 @@ namespace SebPortal.Api.DTOs;
 public class ApprovalDecisionResponseDto
 {
     public int PaymentId { get; set; }
-    public int ApprovalStepId { get; set; }
+    public Guid ApprovalStepId { get; set; }
 
     /// <summary>"approved" or "rejected".</summary>
     public string StepStatus { get; set; } = string.Empty;

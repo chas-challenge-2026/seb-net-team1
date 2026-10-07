@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SebPortal.Api.Auth;
 using SebPortal.Api.DTOs;
 using SebPortal.Api.Services;
@@ -25,6 +26,7 @@ public class AuthController(
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public IActionResult Login(LoginRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
