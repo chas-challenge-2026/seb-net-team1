@@ -11,15 +11,18 @@ import type {
   CreatePaymentRequest,
   CreatePaymentResponse,
 } from "../types/Payment";
+import { PAYMENT_AMOUNT_ERROR, parsePaymentAmount } from "../utils/paymentAmount";
 import "../styles/dashboard.css";
 import "../styles/newPayment.css";
+
+type PaymentFormState = Omit<CreatePaymentRequest, "amount"> & { amount: string };
 
 function NewPayment() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
   const [accountLoadError, setAccountLoadError] = useState<string | null>(null);
-  const [paymentForm, setPaymentForm] = useState<CreatePaymentRequest>({
+  const [paymentForm, setPaymentForm] = useState<PaymentFormState>({
     fromAccountId: 0,
     toIban: "",
     amount: "",
@@ -78,10 +81,17 @@ function NewPayment() {
       return;
     }
 
+    const amount = parsePaymentAmount(paymentForm.amount);
+    if (amount === null) {
+      setSubmitError(PAYMENT_AMOUNT_ERROR);
+      setCreatedPayment(null);
+      return;
+    }
+
     const paymentToCreate: CreatePaymentRequest = {
       fromAccountId: paymentForm.fromAccountId,
       toIban: paymentForm.toIban.replace(/\s/g, "").toUpperCase(),
-      amount: paymentForm.amount,
+      amount,
       reference: paymentForm.reference?.trim() || undefined,
     };
 

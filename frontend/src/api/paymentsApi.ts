@@ -6,6 +6,7 @@ import type {
   RecentPaymentSummary,
 } from "../types/Payment";
 import type { User } from "../types/User";
+import { PAYMENT_AMOUNT_ERROR, parsePaymentAmount } from "../utils/paymentAmount";
 import { apiRequest } from "./apiClient";
 
 const PAYMENTS_ENDPOINT = "/api/payments";
@@ -83,6 +84,11 @@ type PaymentApiError = {
 export async function createPayment(
   payment: CreatePaymentRequest
 ): Promise<CreatePaymentResponse> {
+  if (typeof payment.amount !== "number" ||
+      parsePaymentAmount(String(payment.amount)) === null) {
+    throw new Error(PAYMENT_AMOUNT_ERROR);
+  }
+
   const response = await apiRequest(PAYMENTS_ENDPOINT, {
     method: "POST",
     headers: {
