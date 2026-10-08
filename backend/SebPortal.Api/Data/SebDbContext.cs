@@ -87,6 +87,20 @@ public class SebDbContext : DbContext
             entity.Property(e => e.Reference).HasColumnName("reference").HasMaxLength(100);
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(30);
             entity.Property(e => e.CreatedById).HasColumnName("created_by");
+            entity.Property(e => e.IdempotencyKey)
+                .HasColumnName("idempotency_key")
+                .HasMaxLength(Payment.MaxIdempotencyKeyLength);
+
+            entity.HasIndex(e => new
+            {
+                e.TenantId,
+                e.CreatedById,
+                e.IdempotencyKey
+            })
+                .IsUnique()
+                .HasFilter("idempotency_key IS NOT NULL")
+                .HasDatabaseName("ux_payments_tenant_creator_idempotency");
+
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.ExecutedAt).HasColumnName("executed_at");
 

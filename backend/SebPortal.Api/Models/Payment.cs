@@ -2,6 +2,8 @@ namespace SebPortal.Api.Models;
 
 public class Payment
 {
+    public const int MaxIdempotencyKeyLength = 128;
+
     public int Id { get; set; }
     public int TenantId { get; set; }
     public int FromAccountId { get; set; }
@@ -13,6 +15,7 @@ public class Payment
     public int? CreatedById { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ExecutedAt { get; set; }
+    public string? IdempotencyKey { get; set; }
 
     public Account? FromAccount { get; set; }
     public User? CreatedBy { get; set; }

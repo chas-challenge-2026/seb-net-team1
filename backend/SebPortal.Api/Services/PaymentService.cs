@@ -4,6 +4,8 @@ using SebPortal.Api.Models;
 using SebPortal.Api.Repositories;
 using Microsoft.Extensions.Options;
 using SebPortal.Api.Options;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace SebPortal.Api.Services;
 
@@ -13,6 +15,9 @@ public class PaymentService(
     IOptions<PaymentRulesOptions> paymentRules,
     AuditService auditService)
 {
+    private const string IdempotencyIndexName =
+        "ux_payments_tenant_creator_idempotency";
+
     /// <summary>
     /// Creates a payment, validates the source account and tenant,
     /// and uses the configured approval threshold to either complete the payment
@@ -25,8 +30,38 @@ public class PaymentService(
         decimal amount,
         string currency,
         string? reference,
-        int? createdById)
+        int? createdById,
+        string? idempotencyKey = null)
     {
+        // Check whether this user has already created a payment
+        // with the same idempotency key.
+        var normalizedIdempotencyKey =
+            string.IsNullOrWhiteSpace(idempotencyKey)
+                ? null
+                : idempotencyKey.Trim();
+
+        if (normalizedIdempotencyKey?.Length >
+            Payment.MaxIdempotencyKeyLength)
+        {
+            throw new InvalidIdempotencyKeyException(
+                Payment.MaxIdempotencyKeyLength);
+        }
+
+        var existingPayment = await FindExistingIdempotentPaymentAsync(
+            tenantId,
+            fromAccountId,
+            toIban,
+            amount,
+            currency,
+            reference,
+            createdById,
+            normalizedIdempotencyKey);
+
+        if (existingPayment is not null)
+        {
+            return existingPayment;
+        }
+
         // 1. Look for the right account or tenant
         var account = await paymentRepository.GetAccountAsync(fromAccountId, tenantId);
 
@@ -49,6 +84,7 @@ public class PaymentService(
             Currency = currency,
             Reference = reference,
             CreatedById = createdById,
+            IdempotencyKey = normalizedIdempotencyKey,
             CreatedAt = DateTime.UtcNow,
             Status = PaymentStatuses.PendingApproval
         };
@@ -81,6 +117,23 @@ public class PaymentService(
 
         try
         {
+            // Another request may have completed while this request waited for
+            // the tenant lock. Check again before changing the database.
+            existingPayment = await FindExistingIdempotentPaymentAsync(
+                tenantId,
+                fromAccountId,
+                toIban,
+                amount,
+                currency,
+                reference,
+                createdById,
+                normalizedIdempotencyKey);
+
+            if (existingPayment is not null)
+            {
+                return existingPayment;
+            }
+
             await using var transaction = await paymentRepository.BeginTransactionAsync();
 
             await paymentRepository.AddPaymentAsync(payment);
@@ -102,12 +155,88 @@ public class PaymentService(
                 await transaction.CommitAsync();
             }
         }
+        catch (DbUpdateException exception)
+            when (IsIdempotencyKeyViolation(exception))
+        {
+            // A different API instance can win the race because the tenant lock
+            // only coordinates requests inside this process. The database index
+            // is the final guard; clear the failed insert and return the winner.
+            paymentRepository.ClearTrackedChanges();
+
+            existingPayment = await FindExistingIdempotentPaymentAsync(
+                tenantId,
+                fromAccountId,
+                toIban,
+                amount,
+                currency,
+                reference,
+                createdById,
+                normalizedIdempotencyKey);
+
+            if (existingPayment is not null)
+            {
+                return existingPayment;
+            }
+
+            throw;
+        }
         finally
         {
             tenantLock.Release();
         }
 
         return payment;
+    }
+
+    private async Task<Payment?> FindExistingIdempotentPaymentAsync(
+        int tenantId,
+        int fromAccountId,
+        string toIban,
+        decimal amount,
+        string currency,
+        string? reference,
+        int? createdById,
+        string? idempotencyKey)
+    {
+        if (idempotencyKey is null || !createdById.HasValue)
+        {
+            return null;
+        }
+
+        var existingPayment =
+            await paymentRepository.GetByIdempotencyKeyAsync(
+                tenantId,
+                createdById.Value,
+                idempotencyKey);
+
+        if (existingPayment is null)
+        {
+            return null;
+        }
+
+        var hasSamePaymentData =
+            existingPayment.FromAccountId == fromAccountId &&
+            existingPayment.ToIban == toIban &&
+            existingPayment.Amount == amount &&
+            existingPayment.Currency == currency &&
+            existingPayment.Reference == reference;
+
+        if (!hasSamePaymentData)
+        {
+            throw new PaymentIdempotencyConflictException(idempotencyKey);
+        }
+
+        return existingPayment;
+    }
+
+    private static bool IsIdempotencyKeyViolation(
+        DbUpdateException exception)
+    {
+        return exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: IdempotencyIndexName
+        };
     }
 
     private async Task AddInitialApprovalStepAsync(Payment payment)

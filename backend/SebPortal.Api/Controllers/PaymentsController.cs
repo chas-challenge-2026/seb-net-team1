@@ -29,7 +29,9 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
     /// </returns>
     [HttpPost]
     [Authorize(Roles = UserRoles.CreatorRoles)]
-    public async Task<IActionResult> CreatePayment(CreatePaymentRequestDto request)
+    public async Task<IActionResult> CreatePayment(
+        CreatePaymentRequestDto request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null)
     {
         var userId = User.GetUserId();
         var tenantId = User.GetTenantId();
@@ -61,7 +63,8 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
             request.Amount,
             currency,
             request.Reference,
-            createdById);
+            createdById,
+            idempotencyKey);
 
         var response = new PaymentResponseDto
         {

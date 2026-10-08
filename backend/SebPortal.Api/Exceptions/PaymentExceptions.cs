@@ -35,3 +35,15 @@ public class PaymentAccountMismatchException(int paymentFromAccountId, int provi
     : BadRequestException(
         userMessage: "Betalningen tillhör inte det angivna kontot.",
         technicalMessage: $"Payment.FromAccountId {paymentFromAccountId} does not match provided Account.Id {providedAccountId}.");
+
+public class PaymentIdempotencyConflictException(string idempotencyKey)
+    : ConflictException(
+        userMessage: "Samma idempotency key har redan använts för en annan betalning.",
+        technicalMessage:
+            $"Idempotency key '{idempotencyKey}' was reused with different payment data.");
+
+public class InvalidIdempotencyKeyException(int maxLength)
+    : BadRequestException(
+        userMessage: $"Idempotency key får vara högst {maxLength} tecken.",
+        technicalMessage:
+            $"The supplied idempotency key exceeded {maxLength} characters.");

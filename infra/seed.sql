@@ -38,9 +38,13 @@ CREATE TABLE payments (
     reference VARCHAR(100),
     status VARCHAR(30) DEFAULT 'pending_approval', -- 'pending_approval', 'completed', 'rejected'
     created_by INT REFERENCES users(id),
+    idempotency_key VARCHAR(128),
     created_at TIMESTAMP DEFAULT NOW(),
     executed_at TIMESTAMP
 );
+CREATE UNIQUE INDEX ux_payments_tenant_creator_idempotency
+    ON payments (tenant_id, created_by, idempotency_key)
+    WHERE idempotency_key IS NOT NULL;
 
 CREATE TABLE approval_steps (
     id SERIAL PRIMARY KEY,
