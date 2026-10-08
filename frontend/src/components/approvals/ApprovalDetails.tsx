@@ -1,12 +1,16 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { FiX } from "react-icons/fi";
+import { ApprovalDecisionApiError, decideApproval } from "../../api/approvalsApi";
 import Button from "../shared/Button";
 import StatusBadge from "../shared/StatusBadge";
-import type { PendingApproval } from "../../types/Approval";
+import type { ApprovalDecisionRequest, ApprovalDecisionResponse, PendingApproval } from "../../types/Approval";
 
 type ApprovalDetailsProps = {
   approval: PendingApproval;
   onClose: () => void;
+  onDecision: (decision: ApprovalDecisionResponse) => void;
+  onRefresh: () => void;
 };
 
 const dateTimeFormatter = new Intl.DateTimeFormat("sv-SE", {
@@ -17,8 +21,14 @@ const dateTimeFormatter = new Intl.DateTimeFormat("sv-SE", {
   minute: "2-digit",
 });
 
-export default function ApprovalDetails({ approval, onClose }: ApprovalDetailsProps) {
+export default function ApprovalDetails({ approval, onClose, onDecision, onRefresh }: ApprovalDetailsProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const requestInFlight = useRef(false);
+  const mounted = useRef(false);
+  const [comment, setComment] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [decisionError, setDecisionError] = useState<ApprovalDecisionApiError | null>(null);
+  const needsRefresh = decisionError !== null && decisionError.status !== 400;
   const reference = approval.reference || `Betalning #${approval.paymentId}`;
   const createdAt = new Date(approval.createdAt);
   const amount = new Intl.NumberFormat("sv-SE", {
@@ -28,10 +38,46 @@ export default function ApprovalDetails({ approval, onClose }: ApprovalDetailsPr
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
+    mounted.current = true;
     dialog?.showModal();
 
-    return () => dialog?.close();
+    return () => {
+      mounted.current = false;
+      dialog?.close();
+    };
   }, []);
+
+  async function saveDecision(action: ApprovalDecisionRequest["action"]) {
+    if (requestInFlight.current || needsRefresh) return;
+
+    requestInFlight.current = true;
+    setIsSaving(true);
+    setDecisionError(null);
+
+    try {
+      const decision = await decideApproval(approval.approvalStepId, {
+        action,
+        ...(comment.trim() ? { comment: comment.trim() } : {}),
+      });
+      if (decision.paymentId !== approval.paymentId) {
+        throw new ApprovalDecisionApiError(200);
+      }
+      if (mounted.current) onDecision(decision);
+    } catch (cause: unknown) {
+      if (mounted.current) {
+        setDecisionError(cause instanceof ApprovalDecisionApiError ? cause : new ApprovalDecisionApiError(0));
+      }
+    } finally {
+      requestInFlight.current = false;
+      if (mounted.current) setIsSaving(false);
+    }
+  }
+
+  function closeDetails() {
+    if (requestInFlight.current) return;
+    if (needsRefresh) onRefresh();
+    else onClose();
+  }
 
   return (
     <dialog
@@ -40,7 +86,7 @@ export default function ApprovalDetails({ approval, onClose }: ApprovalDetailsPr
       aria-labelledby="approval-details-title"
       onCancel={(event) => {
         event.preventDefault();
-        onClose();
+        closeDetails();
       }}
     >
       <header className="approval-details-header">
@@ -51,7 +97,8 @@ export default function ApprovalDetails({ approval, onClose }: ApprovalDetailsPr
         <button
           type="button"
           className="approval-details-close"
-          onClick={onClose}
+          onClick={closeDetails}
+          disabled={isSaving}
           aria-label="Stäng betalningsdetaljer"
         >
           <FiX aria-hidden="true" />
@@ -94,10 +141,40 @@ export default function ApprovalDetails({ approval, onClose }: ApprovalDetailsPr
             <p className="approval-details-missing">Uppgifter om attestanter saknas.</p>
           )}
         </section>
+
+        <section className="approval-details-decision" aria-labelledby="approval-details-decision-heading" aria-busy={isSaving}>
+          <h3 id="approval-details-decision-heading">Ditt beslut</h3>
+          <label htmlFor="approval-decision-comment">Kommentar (valfri)</label>
+          <textarea
+            id="approval-decision-comment"
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            maxLength={255}
+            rows={3}
+            disabled={isSaving || needsRefresh}
+            aria-describedby="approval-decision-comment-help"
+          />
+          <p id="approval-decision-comment-help" className="approval-details-comment-help">Högst 255 tecken.</p>
+          {isSaving && <p role="status">Sparar ditt beslut...</p>}
+          {decisionError && (
+            <div className="approval-details-decision-error">
+              <p className="approval-inbox-error" role="alert">{decisionError.message}</p>
+              {decisionError.status === 401 ? (
+                <Link to="/" className="approval-inbox-link">Till inloggning</Link>
+              ) : needsRefresh ? (
+                <Button type="button" className="approval-inbox-button" onClick={onRefresh}>Uppdatera listan</Button>
+              ) : null}
+            </div>
+          )}
+        </section>
       </div>
 
       <footer className="approval-details-footer">
-        <Button type="button" className="approval-inbox-button" onClick={onClose}>Stäng</Button>
+        <Button type="button" className="approval-inbox-button approval-details-secondary" onClick={closeDetails} disabled={isSaving}>Stäng</Button>
+        <div className="approval-details-actions">
+          <Button type="button" className="approval-inbox-button approval-details-reject" onClick={() => void saveDecision("reject")} disabled={isSaving || needsRefresh}>Avvisa</Button>
+          <Button type="button" className="approval-inbox-button" onClick={() => void saveDecision("approve")} disabled={isSaving || needsRefresh}>Godkänn</Button>
+        </div>
       </footer>
     </dialog>
   );

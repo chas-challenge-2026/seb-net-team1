@@ -3,7 +3,44 @@
 }
 
 .approval-inbox-main .approval-inbox-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   padding: 24px;
+}
+
+.approval-inbox-receipt {
+  align-items: flex-start;
+  background: var(--light-green);
+  border: 1px solid var(--seb-deep-green);
+  border-radius: var(--radius-sm);
+  color: var(--seb-deep-green);
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+.approval-inbox-receipt > svg {
+  flex-shrink: 0;
+  font-size: 20px;
+}
+
+.approval-inbox-receipt strong,
+.approval-inbox-comment {
+  overflow-wrap: anywhere;
+}
+
+.approval-inbox-receipt p {
+  margin-top: 6px;
+}
+
+.approval-inbox-comment {
+  max-width: 320px;
+}
+
+.approval-inbox-history-empty {
+  color: var(--medium-gray);
+  padding: 24px 20px;
 }
 
 .approval-inbox-card {
@@ -239,6 +276,11 @@
   background: var(--light-green);
 }
 
+.approval-details-close:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .approval-details-content {
   display: flex;
   flex-direction: column;
@@ -308,8 +350,74 @@
 .approval-details-footer {
   border-top: 1px solid var(--border-color);
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
   padding: 16px 24px;
+}
+
+.approval-details-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.approval-details-secondary {
+  background: var(--light-gray);
+  border: 1px solid var(--border-color);
+  color: var(--ink);
+}
+
+.approval-details-secondary:hover:not(:disabled) {
+  background: var(--light-green);
+}
+
+.approval-details-reject {
+  background: #b42318;
+}
+
+.approval-details-reject:hover:not(:disabled) {
+  background: #912018;
+}
+
+.approval-details-decision label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.approval-details-decision textarea {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  display: block;
+  font: inherit;
+  padding: 10px 12px;
+  resize: vertical;
+  width: 100%;
+}
+
+.approval-details-decision textarea:focus-visible {
+  outline: 2px solid var(--seb-green);
+  outline-offset: 2px;
+}
+
+.approval-details-decision textarea:disabled {
+  background: var(--light-gray);
+}
+
+.approval-details-comment-help {
+  color: var(--medium-gray);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.approval-details-decision-error {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 12px;
 }
 
 .approval-inbox-sr-only {

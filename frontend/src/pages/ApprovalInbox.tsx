@@ -8,7 +8,7 @@ import Sidebar from "../components/dashboard/Sidebar";
 import Button from "../components/shared/Button";
 import Card from "../components/shared/Card";
 import StatusBadge from "../components/shared/StatusBadge";
-import type { PendingApproval } from "../types/Approval";
+import type { ApprovalDecisionResponse, HandledApproval, PendingApproval } from "../types/Approval";
 import "../styles/dashboard.css";
 import "../styles/approvalInbox.css";
 
@@ -38,6 +38,8 @@ function formatAmount(amount: string, currency: string): string {
 export default function ApprovalInbox() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [pending, setPending] = useState<PendingApproval[] | null>(null);
+  const [recentlyHandled, setRecentlyHandled] = useState<HandledApproval[] | null>(null);
+  const [receipt, setReceipt] = useState<{ reference: string; decision: ApprovalDecisionResponse } | null>(null);
   const [error, setError] = useState<InboxError | null>(null);
   const [requestVersion, setRequestVersion] = useState(0);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
@@ -51,6 +53,7 @@ export default function ApprovalInbox() {
       .then((inbox) => {
         if (!controller.signal.aborted) {
           setPending(inbox.pending);
+          setRecentlyHandled(inbox.recentlyHandled);
         }
       })
       .catch((cause: unknown) => {
@@ -73,6 +76,7 @@ export default function ApprovalInbox() {
   function refreshInbox() {
     setSelectedStepId(null);
     setPending(null);
+    setRecentlyHandled(null);
     setError(null);
     setRequestVersion((version) => version + 1);
   }
@@ -101,6 +105,21 @@ export default function ApprovalInbox() {
         />
 
         <div className="dashboard-content approval-inbox-content">
+          {receipt && (
+            <div className="approval-inbox-receipt" role="status">
+              <FiCheckCircle aria-hidden="true" />
+              <div>
+                <strong>{receipt.reference}</strong>
+                <p>
+                  {receipt.decision.paymentStatus === "completed"
+                    ? "Betalningen är godkänd och genomförd."
+                    : receipt.decision.paymentStatus === "rejected"
+                      ? "Betalningen är avvisad."
+                      : "Ditt atteststeg är godkänt. Betalningen väntar på nästa attestant."}
+                </p>
+              </div>
+            </div>
+          )}
           <section aria-labelledby="approval-inbox-heading">
             <Card className="approval-inbox-card">
               <div className="approval-inbox-card-header">
@@ -187,10 +206,60 @@ export default function ApprovalInbox() {
               )}
             </Card>
           </section>
+          {recentlyHandled !== null && !error && (
+            <section aria-labelledby="approval-handled-heading">
+              <Card className="approval-inbox-card">
+                <div className="approval-inbox-card-header">
+                  <div className="approval-inbox-title">
+                    <FiCheckCircle aria-hidden="true" />
+                    <h2 id="approval-handled-heading">Senast hanterade</h2>
+                  </div>
+                </div>
+                {recentlyHandled.length === 0 ? (
+                  <p className="approval-inbox-history-empty">Inga hanterade atteststeg ännu.</p>
+                ) : (
+                  <div className="approval-inbox-table-scroll" role="region" aria-label="Senast hanterade betalningar" tabIndex={0}>
+                    <table className="approval-inbox-table">
+                      <caption className="approval-inbox-sr-only">Dina senast hanterade atteststeg</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Betalning</th>
+                          <th scope="col" className="approval-inbox-amount">Belopp</th>
+                          <th scope="col">Atteststatus</th>
+                          <th scope="col">Beslutsdatum</th>
+                          <th scope="col">Kommentar</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentlyHandled.map((approval, index) => (
+                          <tr key={`${approval.paymentId}-${approval.decidedAt}-${index}`}>
+                            <td>Betalning #{approval.paymentId}</td>
+                            <td className="approval-inbox-amount">{formatAmount(approval.amount, "SEK")}</td>
+                            <td><StatusBadge status={approval.status === "approved" ? "success" : "rejected"}>{approval.status === "approved" ? "Godkänd" : "Avvisad"}</StatusBadge></td>
+                            <td>{approval.decidedAt ? <time dateTime={approval.decidedAt}>{formatDate(approval.decidedAt)}</time> : "—"}</td>
+                            <td className="approval-inbox-comment">{approval.comment || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            </section>
+          )}
         </div>
       </main>
       {selectedApproval && (
-        <ApprovalDetails approval={selectedApproval} onClose={() => setSelectedStepId(null)} />
+        <ApprovalDetails
+          key={selectedApproval.approvalStepId}
+          approval={selectedApproval}
+          onClose={() => setSelectedStepId(null)}
+          onRefresh={refreshInbox}
+          onDecision={(decision) => {
+            setReceipt({ reference: selectedApproval.reference || `Betalning #${selectedApproval.paymentId}`, decision });
+            refreshInbox();
+          }}
+        />
       )}
     </div>
   );

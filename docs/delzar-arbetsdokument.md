@@ -69,4 +69,31 @@ Jag testade följande:
 - Jag kontrollerade detaljvyn i dator- och mobilstorlek och att tangentbordsfokus stannar i dialogen. Stängknapparna och Escape stänger dialogen och lämnar tillbaka fokus till betalningen.
 - Jag simulerade flera attestanter, ett ej tilldelat steg och saknade uppgifter i webbläsartestet. Rätt namn och reservtexter visades utan fel.
 
-Story 2 är klar. Nästa steg är story 3: godkänna eller avvisa betalningar och se statusen uppdateras.
+Story 2 är klar.
+
+## Story 3 – Godkänna eller avvisa betalningar
+
+Datum: 2026-10-08
+
+Jag lade till Godkänn och Avvisa i betalningens detaljvy, tillsammans med en valfri kommentar på högst 255 tecken. Beslutet skickas till backendens befintliga `POST /api/approvals/{approvalStepId}/decision` med inloggningscookie och CSRF-token.
+
+När backend bekräftar beslutet visar sidan den nya betalningsstatusen och hämtar attestkorgen igen. Ett godkänt steg kan antingen genomföra betalningen eller lämna den väntande på nästa attestant. Betalningar som har hanterats visas under Senast hanterade med atteststatus, beslutsdatum och kommentar.
+
+Jag gjorde detta för att attestanten ska kunna fatta sitt beslut och direkt se resultatet. Knapparna låses medan beslutet sparas för att förhindra dubbla klick. Om svaret är osäkert eller betalningen redan har hanterats måste listan hämtas igen innan ett nytt beslut kan skickas. Fel visas i detaljvyn utan att ett lyckat beslut påstås.
+
+Den lokala databasen saknade tabellen `transactions` och attestloggens fält `tenant_id`, `signature` och `previous_signature`, som den befintliga backenden behöver. Jag kompletterade schemat och behöll de befintliga posterna. `infra/seed.sql` innehåller nu också transaktionstabellen för nya testdatabaser.
+
+Jag lade till två väntande betalningar på 75 000 kr för `test@malmobygg.se`: `Test - godkann betalning` och `Test - avvisa betalning`. Två separata betalningar tilldelades Johan för verifiering, så att testkontots betalningar finns kvar för manuell testning.
+
+Jag testade följande:
+
+- 27 nya automatiska frontendtester gick igenom med `npm.cmd run test:approvals`. De kontrollerar API-anrop, cookies, CSRF, godkännande, avvisning, fortsatt väntan, behörighetsfel, konflikter och felaktiga svar utan automatiska omsändningar.
+- 59 befintliga backendtester för attestflödet gick igenom, inklusive saldoförändring, avvisning, dubbel attest, behörigheter och redan hanterade steg.
+- `npm.cmd run build` och `npm.cmd run lint` gick igenom.
+- Databasens startskript kördes i ett separat testschema och återställdes med rollback efter kontroll av tabeller och kolumner.
+- Jag godkände och avvisade Johans separata testbetalningar i webbläsaren mot den riktiga backenden. Besluten och kommentarerna visades i historiken även efter omladdning. De ursprungliga betalningarna och testkontots betalningar behölls väntande.
+- Databaskontrollen visade en genomförd betalning med exakt en transaktion på −75 000 kr och en avvisad betalning utan transaktion. Båda besluten sparades i attestloggen.
+- Jag simulerade valideringsfel, redan hanterat steg, nätverksfel och långsam sparning i webbläsaren. Dubbelklick skickade bara ett beslut, Escape kunde inte stänga dialogen under sparning och alla stängningsvägar hämtade listan igen efter ett osäkert svar.
+- Jag kontrollerade detaljvyn i dator- och mobilstorlek och att ett godkänt första steg visas som väntande på nästa attestant, utan att betalningen felaktigt påstås vara genomförd.
+
+Story 3 är klar. Nästa steg är story 4: tidslinjen med vem som godkänt och vem som ska godkänna.

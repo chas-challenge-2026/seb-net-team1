@@ -31,3 +31,15 @@ export type ApprovalInboxResponse = {
   pending: PendingApproval[];
   recentlyHandled: HandledApproval[];
 };
+
+export type ApprovalDecisionRequest = {
+  action: "approve" | "reject";
+  comment?: string;
+};
+
+export type ApprovalDecisionResponse = {
+  paymentId: number;
+  approvalStepId: string;
+  stepStatus: "approved" | "rejected";
+  paymentStatus: "completed" | "pending_approval" | "rejected";
+};
