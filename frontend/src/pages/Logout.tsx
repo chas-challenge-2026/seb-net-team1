@@ -1,13 +1,17 @@
-import { LuArrowRight, LuCheck } from "react-icons/lu";
+import { FiArrowRight, FiCheck } from "react-icons/fi";
 import { Link } from "react-router-dom";
+import LoginLayout from "../components/auth/LoginLayout";
 import "../styles/logout.css";
 
 export default function Logout() {
   return (
-    <main className="logout-page">
-      <section className="logout-card" aria-labelledby="logout-heading">
+    <LoginLayout
+      labelledBy="logout-heading"
+      brandDescription="Hantera dina företagsbetalningar säkert, enkelt och effektivt – allt på ett ställe. SEB Företagsbetalningar."
+    >
+      <section className="logout-content" aria-labelledby="logout-heading">
         <div className="logout-success-icon" aria-hidden="true">
-          <LuCheck />
+          <FiCheck />
         </div>
 
         <h1 id="logout-heading">Du är nu utloggad</h1>
@@ -16,11 +20,11 @@ export default function Logout() {
           <p>Din session har avslutats.</p>
         </div>
 
-        <Link className="logout-relogin-button" to="/">
+        <Link className="login-submit logout-relogin-button" to="/">
           <span>Logga in igen</span>
-          <LuArrowRight aria-hidden="true" />
+          <FiArrowRight aria-hidden="true" />
         </Link>
       </section>
-    </main>
+    </LoginLayout>
   );
 }
