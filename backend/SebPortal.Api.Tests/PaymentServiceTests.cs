@@ -5,6 +5,7 @@ using SebPortal.Api.Models;
 using SebPortal.Api.Services;
 using SebPortal.Api.Exceptions;
 using SebPortal.Api.Options;
+using SebPortal.Api.Signing;
 
 namespace SebPortal.Api.Tests;
 
@@ -22,6 +23,9 @@ public class PaymentServiceTests
 
         return new SebDbContext(options);
     }
+
+    private static AuditService CreateAuditService(SebDbContext db) =>
+        new(new AuditRepository(db), new AuditLockProvider(), new UnsignedPlaceholderAuditSigner());
 
     private static PaymentService CreatePaymentService(
         SebDbContext db,
@@ -41,7 +45,8 @@ public class PaymentServiceTests
         return new PaymentService(
             repository,
             approvalRepository,
-            paymentRules);
+            paymentRules,
+            CreateAuditService(db));
     }
 
     /// <summary>
@@ -486,5 +491,106 @@ public class PaymentServiceTests
 
         Assert.False(service.RequiresDoubleApproval(300000m));
         Assert.Equal(1, service.RequiredApprovalSteps(300000m));
+    }
+
+    /// <summary>
+    /// A payment that needs approval must leave one CREATE_PAYMENT audit entry that
+    /// points at the payment and says it is waiting for an attestant.
+    /// </summary>
+    [Fact]
+    public async Task CreatePaymentAsync_WhenApprovalIsRequired_WritesCreatePaymentAuditEntry()
+    {
+        using var db = CreateContext();
+
+        db.Accounts.Add(new Account
+        {
+            Id = 1,
+            TenantId = 1,
+            AccountName = "Företagskonto",
+            Iban = "SE3550000000054910000003",
+            Balance = 100000m,
+            Currency = "SEK"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = CreatePaymentService(db);
+
+        var payment = await service.CreatePaymentAsync(
+            tenantId: 1,
+            fromAccountId: 1,
+            toIban: "SE4550000000054910000099",
+            amount: 60000m,
+            currency: "SEK",
+            reference: "Över gränsen",
+            createdById: 7);
+
+        var entry = Assert.Single(db.AuditEntries);
+        Assert.Equal("CREATE_PAYMENT", entry.Action);
+        Assert.Equal(1, entry.TenantId);
+        Assert.Equal(7, entry.UserId);
+        Assert.Equal("payment", entry.EntityType);
+        Assert.Equal(payment.Id, entry.EntityId);
+        Assert.Contains("Väntar på attest", entry.Description);
+    }
+
+    /// <summary>
+    /// A payment that completes straight away must be audited too, and the entry
+    /// must say it was executed directly. 50000 is exactly the threshold.
+    /// </summary>
+    [Fact]
+    public async Task CreatePaymentAsync_WhenCompletedDirectly_WritesCreatePaymentAuditEntry()
+    {
+        using var db = CreateContext();
+
+        db.Accounts.Add(new Account
+        {
+            Id = 1,
+            TenantId = 1,
+            AccountName = "Företagskonto",
+            Iban = "SE3550000000054910000003",
+            Balance = 100000m,
+            Currency = "SEK"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = CreatePaymentService(db);
+
+        var payment = await service.CreatePaymentAsync(
+            tenantId: 1,
+            fromAccountId: 1,
+            toIban: "SE4550000000054910000099",
+            amount: 50000m,
+            currency: "SEK",
+            reference: "Exakt på gränsen",
+            createdById: 7);
+
+        var entry = Assert.Single(db.AuditEntries);
+        Assert.Equal("CREATE_PAYMENT", entry.Action);
+        Assert.Equal(payment.Id, entry.EntityId);
+        Assert.Contains("Genomförd direkt", entry.Description);
+    }
+
+    /// <summary>
+    /// When the payment cannot be created (unknown account) nothing may be audited.
+    /// </summary>
+    [Fact]
+    public async Task CreatePaymentAsync_WhenAccountNotFound_WritesNoAuditEntry()
+    {
+        using var db = CreateContext();
+        var service = CreatePaymentService(db);
+
+        await Assert.ThrowsAsync<AccountNotFoundException>(() =>
+            service.CreatePaymentAsync(
+                tenantId: 1,
+                fromAccountId: 99,
+                toIban: "SE4550000000054910000099",
+                amount: 250m,
+                currency: "SEK",
+                reference: null,
+                createdById: 7));
+
+        Assert.Empty(db.AuditEntries);
     }
 }
