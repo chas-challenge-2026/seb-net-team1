@@ -71,7 +71,7 @@ export default function DashboardSidebar({
       try {
         await logout();
         localStorage.removeItem("user");
-        navigate("/", { replace: true });
+        navigate("/logout", { replace: true });
       } catch {
         setLogoutError("Kunde inte logga ut. Försök igen.");
       } finally {

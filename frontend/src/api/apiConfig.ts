@@ -1,4 +1,4 @@
-const DEFAULT_API_URL = "http://localhost:5010";
+const DEFAULT_API_URL = "http://localhost:8081";
 const DEFAULT_MOCK_API_URL = "http://localhost:3001";
 
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
