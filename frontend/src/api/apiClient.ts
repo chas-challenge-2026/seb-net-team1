@@ -19,7 +19,8 @@ export async function apiRequest(
       throw new Error("Kunde inte förbereda anropet. Försök igen.");
     }
 
-    const { requestToken } = await csrfResponse.json();
+    const csrfPayload = await csrfResponse.json();
+    const requestToken = csrfPayload?.requestToken;
     if (typeof requestToken !== "string" || !requestToken) {
       throw new Error("Kunde inte förbereda anropet. Försök igen.");
     }
