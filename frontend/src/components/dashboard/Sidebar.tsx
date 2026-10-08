@@ -59,7 +59,7 @@ export default function DashboardSidebar({
     const paymentsClassName = `dashboard-sidebar-link${pathname === "/new-payment" || pathname === "/payments" || pathname.startsWith("/payments/") ? " active" : ""}`;
     const accountsClassName = `dashboard-sidebar-link${pathname === "/accounts" ? " active" : ""}`;
     const approvalsClassName = `dashboard-sidebar-link${pathname === "/approval-inbox" ? " active" : ""}`;
-    const batchFilesClassName = `dashboard-sidebar-link${pathname === "/batch-upload" ? " active" : ""}`;
+    const batchFilesClassName = `dashboard-sidebar-link${pathname === "/batch-upload" || pathname === "/batch-files" || pathname.startsWith("/batch-files/") ? " active" : ""}`;
     const reportsClassName = `dashboard-sidebar-link${pathname === "/reports" ? " active" : ""}`;
     const auditLogClassName = `dashboard-sidebar-link${pathname === "/audit-log" ? " active" : ""}`;
 
@@ -137,7 +137,7 @@ export default function DashboardSidebar({
           <span>Konton</span>
         </Link>
 
-        <Link to="/batch-upload" className={batchFilesClassName}>
+        <Link to="/batch-files" className={batchFilesClassName}>
           <FiFileText />
           <span>Batchfiler</span>
         </Link>
