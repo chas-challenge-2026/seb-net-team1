@@ -95,4 +95,56 @@ public class PaymentsAuthorizationIntegrationTests
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
+
+    /// <summary>
+    /// Verifies that only initiator and admin can create payments. An attestant
+    /// only approves, so the endpoint must answer 403 before any payment is made.
+    /// </summary>
+    [Theory]
+    [InlineData("initiator", HttpStatusCode.Created)]
+    [InlineData("admin", HttpStatusCode.Created)]
+    [InlineData("attestant", HttpStatusCode.Forbidden)]
+    public async Task CreatePayment_DependsOnRole(string role, HttpStatusCode expected)
+    {
+        using var scope = _factory.Services.CreateScope();
+
+        var db = scope.ServiceProvider.GetRequiredService<SebDbContext>();
+
+        if (!db.Accounts.Any(a => a.Id == 2))
+        {
+            db.Accounts.Add(new Account
+            {
+                Id = 2,
+                TenantId = 1,
+                AccountName = "Företagskonto",
+                Iban = "SE3550000000054910000011",
+                Balance = 1000m,
+                Currency = "SEK"
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        var token = scope.ServiceProvider
+            .GetRequiredService<JwtTokenService>()
+            .GenerateToken(
+                userId: 1,
+                tenantId: 1,
+                email: "test@malmobygg.se",
+                role: role,
+                name: "Test User");
+
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.PostAsJsonAsync("/api/payments", new CreatePaymentRequestDto
+        {
+            FromAccountId = 2,
+            ToIban = "SE4550000000054910000099",
+            Amount = 125.50m,
+            Reference = "Role test"
+        });
+
+        Assert.Equal(expected, response.StatusCode);
+    }
 }
