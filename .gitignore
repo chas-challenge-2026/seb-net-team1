@@ -18,3 +18,9 @@ Thumbs.db
 
 ## Docker volumes (local)
 pgdata/
+
+## Local Docker secrets
+infra/.env
+
+## Local work document
+/docs/delzar-arbetsdokument.md

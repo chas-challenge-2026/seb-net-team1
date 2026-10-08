@@ -4,7 +4,7 @@
 
 ### GET `/api/approvals`
 
-Returns the logged-in attestant's pending approvals and their recently handled approvals.
+Returns the logged-in attestant's pending approvals and their recently handled steps. Handled steps include those assigned to the caller and those directly decided by the caller (for example, an admin deciding another attestant's step).
 
 Frontend uses this endpoint to render the Attestkorg page.
 
@@ -27,7 +27,7 @@ No request body, no query parameters for MVP.
   "pending": [
     {
       "paymentId": 42,
-      "approvalStepId": 501,
+      "approvalStepId": "3f2b7c1e-8a4d-4b6a-9d52-1c0e7f5a9b34",
       "toIban": "SE4550000000054910000099",
       "amount": "250000.00",
       "currency": "SEK",
@@ -35,6 +35,32 @@ No request body, no query parameters for MVP.
       "createdAt": "2026-08-30T09:15:00Z",
       "createdByName": "Lisa Andersson",
       "fromAccountName": "Företagskonto",
+      "attestants": [
+        { "stepNumber": 1, "name": "Johan Berg" },
+        { "stepNumber": 2, "name": "Eva Nord" }
+      ],
+      "timeline": [
+        {
+          "approvalStepId": "3f2b7c1e-8a4d-4b6a-9d52-1c0e7f5a9b34",
+          "stepNumber": 1,
+          "status": "pending",
+          "attestantName": "Johan Berg",
+          "decidedByName": null,
+          "decidedAt": null,
+          "comment": null,
+          "decisionSource": null
+        },
+        {
+          "approvalStepId": "1d8dd164-0ef5-44ea-a7c3-bae5f338c51f",
+          "stepNumber": 2,
+          "status": "pending",
+          "attestantName": "Eva Nord",
+          "decidedByName": null,
+          "decidedAt": null,
+          "comment": null,
+          "decisionSource": null
+        }
+      ],
       "currentStep": 1,
       "totalSteps": 2,
       "requiresDoubleApproval": true
@@ -46,7 +72,20 @@ No request body, no query parameters for MVP.
       "amount": "8000.00",
       "status": "approved",
       "decidedAt": "2026-08-29T14:00:00Z",
-      "comment": ""
+      "comment": "",
+      "decisionSource": "manual",
+      "timeline": [
+        {
+          "approvalStepId": "52f5dc34-5d44-40e5-a7ac-02946e8f6c15",
+          "stepNumber": 1,
+          "status": "approved",
+          "attestantName": "Johan Berg",
+          "decidedByName": "Johan Berg",
+          "decidedAt": "2026-08-29T14:00:00Z",
+          "comment": null,
+          "decisionSource": "manual"
+        }
+      ]
     }
   ]
 }
@@ -57,7 +96,7 @@ No request body, no query parameters for MVP.
 | Field | Type | Description |
 |---|---|---|
 | `pending[].paymentId` | number | Id of the payment awaiting approval |
-| `pending[].approvalStepId` | number | Id of this specific approval step. Used when approving or rejecting |
+| `pending[].approvalStepId` | string (uuid) | Public id of this specific approval step. Used in the URL when approving or rejecting. It is random and cannot be guessed from another step's id |
 | `pending[].toIban` | string | Recipient IBAN, no spaces |
 | `pending[].amount` | string | Payment amount, as a decimal string |
 | `pending[].currency` | string | Currency code |
@@ -65,20 +104,45 @@ No request body, no query parameters for MVP.
 | `pending[].createdAt` | string (ISO 8601) | When the payment was created |
 | `pending[].createdByName` | string | Name of the user who created the payment |
 | `pending[].fromAccountName` | string | Display name of the source account |
+| `pending[].attestants` | array | Attestants for all existing approval steps of this payment, including handled and unassigned steps, ordered by step number |
+| `pending[].attestants[].stepNumber` | number | Approval step number (1-indexed) |
+| `pending[].attestants[].name` | string or null | Assigned attestant's display name; null when the step is unassigned |
+| `pending[].timeline` | array | All existing approval steps, including handled and unassigned steps, ordered by step number and then internal id. Uses the timeline item fields below |
 | `pending[].currentStep` | number | Which approval step this is (1-indexed) |
 | `pending[].totalSteps` | number | Total approval steps required for this payment |
 | `pending[].requiresDoubleApproval` | boolean | Whether this payment needs a second attestant. Backend-computed. Frontend must not infer this from the amount itself |
 | `recentlyHandled[].paymentId` | number | Payment id |
 | `recentlyHandled[].amount` | string | Payment amount, as a decimal string |
 | `recentlyHandled[].status` | string | `approved` or `rejected` |
-| `recentlyHandled[].decidedAt` | string (ISO 8601) | When this attestant made their decision |
-| `recentlyHandled[].comment` | string | Optional comment left by the attestant |
+| `recentlyHandled[].decidedAt` | string (ISO 8601, UTC with `Z`) or null | When the step was decided or automatically closed; null when the time was not recorded |
+| `recentlyHandled[].comment` | string | Optional comment stored for this step; empty string when absent |
+| `recentlyHandled[].decisionSource` | string or null | `manual` for a direct decision, `payment_rejected` when another step's rejection closed this step, or null when provenance was not recorded |
+| `recentlyHandled[].timeline` | array | The payment's full current timeline, including steps still pending after this step was approved. Uses the same timeline item fields as `pending[].timeline` |
+
+### Timeline item fields
+
+| Field | Type | Description |
+|---|---|---|
+| `approvalStepId` | string (uuid) | This step's public id; database counters and user ids are not exposed |
+| `stepNumber` | number | Approval step number (1-indexed) |
+| `status` | string | Stored step status: `pending`, `approved`, or `rejected` |
+| `attestantName` | string or null | Assigned attestant's name; null for an unassigned step |
+| `decidedByName` | string or null | Recorded decision maker's name, which can differ from the assigned attestant when an admin acts. Null when no direct decision maker was recorded or the user no longer exists |
+| `decidedAt` | string (ISO 8601, UTC with `Z`) or null | Decision or automatic-closure time; null for pending steps or unavailable historical timestamps |
+| `comment` | string or null | Comment stored for this step; null when absent |
+| `decisionSource` | string or null | `manual` for a direct user decision, `payment_rejected` for automatic closure following another step's rejection, or null for pending steps and older decisions with unknown provenance |
+
+The assigned attestant is not automatically the decision maker. Frontend must use `decidedByName` when attributing a decision and show an unavailable-information label when it is null. It must not infer a historical actor from assignment, time, or audit-log descriptions.
+
+Both timeline and handled `decidedAt` values are serialized as UTC with a trailing `Z`, so browsers can display the correct local time. The service writes decision timestamps in UTC. For existing PostgreSQL `TIMESTAMP` columns that return an unspecified `DateTime` kind, the API restores that known UTC kind without changing the stored value.
+
+An automatic closure keeps the existing stored status `rejected` for compatibility, but frontend should label the step as cancelled because the payment was rejected. It must not claim that each remaining assigned attestant individually rejected the payment. A direct rejection has `decisionSource: "manual"` and the authenticated decision maker; automatically closed siblings have `decisionSource: "payment_rejected"` and no direct decision maker.
 
 ---
 
 ### POST `/api/approvals/{approvalStepId}/decision`
 
-Approves or rejects a specific approval step.
+Approves or rejects a specific approval step. `{approvalStepId}` is the public uuid from `GET /api/approvals`, for example `/api/approvals/3f2b7c1e-8a4d-4b6a-9d52-1c0e7f5a9b34/decision`. A plain number no longer matches the route and answers `404`.
 
 Frontend uses this endpoint when an attestant clicks "Godkänn" or "Avvisa" on a pending payment.
 
@@ -109,7 +173,7 @@ Requires a valid JWT, role `attestant` or `admin`.
 ```json
 {
   "paymentId": 42,
-  "approvalStepId": 501,
+  "approvalStepId": "3f2b7c1e-8a4d-4b6a-9d52-1c0e7f5a9b34",
   "stepStatus": "approved",
   "paymentStatus": "pending_approval"
 }
@@ -120,7 +184,7 @@ Requires a valid JWT, role `attestant` or `admin`.
 | Field | Type | Description |
 |---|---|---|
 | `paymentId` | number | The payment this decision applies to |
-| `approvalStepId` | number | The approval step that was decided |
+| `approvalStepId` | string (uuid) | Public id of the approval step that was decided |
 | `stepStatus` | string | `approved` or `rejected` |
 | `paymentStatus` | string | The payment's resulting status: `completed`, `pending_approval` (if more steps remain), or `rejected` |
 
@@ -134,7 +198,9 @@ Returned when `action` is missing or not one of `approve`/`reject`, or `comment`
 
 ```json
 {
-  "message": "Ogiltig åtgärd."
+  "status": 400,
+  "title": "BadRequest",
+  "detail": "Ogiltig åtgärd."
 }
 ```
 
@@ -144,23 +210,43 @@ Returned when the approval step is not assigned to the logged-in attestant (and 
 
 ```json
 {
-  "message": "Du har inte behörighet till detta atteststeg."
+  "status": 403,
+  "title": "Forbidden",
+  "detail": "Du har inte behörighet till detta atteststeg."
 }
 ```
 
 ### `404 Not Found`
 
-Returned when the approval step doesn't exist.
-
-### `409 Conflict`
-
-Returned when the approval step has already been decided.
+Returned when the approval step doesn't exist, or when `{approvalStepId}` is not a uuid.
 
 ```json
 {
-  "message": "Det här atteststeget är redan hanterat."
+  "status": 404,
+  "title": "NotFound",
+  "detail": "Atteststeget hittades inte."
 }
 ```
+
+### `409 Conflict`
+
+Returned when the approval step has already been decided, the payment can no
+longer be decided, or the caller has already approved another step of a payment
+that requires two different decision makers.
+
+```json
+{
+  "status": 409,
+  "title": "Conflict",
+  "detail": "Det här atteststeget är redan hanterat."
+}
+```
+
+For a duplicate decision maker, `detail` is
+`Du har redan godkänt den här betalningen. En annan attestant måste godkänna nästa steg.`
+This also applies to an admin acting on steps assigned to different users. The
+refused attempt does not update the pending step, balance, transaction history
+or audit log. The caller may still reject a remaining pending step when authorized.
 
 ### `401 Unauthorized`
 
@@ -172,7 +258,9 @@ Returned when the JWT is missing, invalid, or expired.
 
 Frontend can use this contract to:
 - render the pending approvals list with the "Dubbel attest krävs" badge driven by `requiresDoubleApproval`, not a hardcoded amount check
+- show payment details, creator and assigned attestants using the pending item's fields; show an unassigned label when an attestant name is null
 - render the recently handled table
+- display the full timeline from pending details or a handled step, including after reloading the page
 - submit approve/reject decisions with an optional comment
 - create mock approval data for the Attestkorg page before the backend is ready
 
@@ -186,12 +274,39 @@ Backend should use this contract to:
 - compute `requiresDoubleApproval` on the backend from a single shared threshold source. v1 used two different threshold values across `NewPayment.cs` (500 000) and `ApprovalInbox.cs` (200 000) for the same rule (BUG-006). Consolidating that value is part of US-25/US-26, not this contract. The contract's job is just to make sure frontend never has to guess or duplicate the number itself
 - return `409` rather than silently reprocessing when a step has already been decided
 - represent all money values as decimal strings, never floating-point numbers
-- return consistent error responses per the format above
+- load the complete timeline for each visible payment without extending visibility beyond the caller's own tenant and assigned or directly handled steps
+- record the authenticated decision maker separately from the assigned attestant; preserve null provenance for older rows
+- return consistent ProblemDetails error responses (status, title, detail) per the format above
+- throw the matching custom exception (ApprovalStepNotFoundException, ApprovalStepAccessDeniedException, ApprovalStepAlreadyDecidedException, DuplicateApprovalDecisionException) rather than returning ad-hoc error objects. The global exception handler converts these to the responses shown above automatically
 
 **Out of scope for this contract (belongs to other tickets):**
 - Creating approval steps when a payment is first submitted (US-21/US-22)
 - Notifying attestants of new pending approvals (US-25/US-26, and the notification queue itself is a separate Could-have)
 - Deducting account balance on final approval (US-24)
+
+---
+
+## Implementation Notes (US-25 / US-26)
+
+Implemented in `backend/SebPortal.Api` as `ApprovalsController` → `ApprovalService` → `ApprovalRepository`. The controller reads the caller's id, tenant and role from the JWT only, and never accepts any of them from the request. Four things are worth knowing on top of the contract above:
+
+- **The double approval threshold lives in configuration**, `PaymentRules:DoubleApprovalThreshold` (100 000 SEK by default and in `appsettings.json`), next to the existing `ApprovalThreshold`. The comparison is strict: 100 000.00 SEK needs one attestant; 100 000.01 SEK needs two. `requiresDoubleApproval` and `totalSteps` are both derived from this setting. Payment creation, the approval flow and the frontend badge read the same value. A configured double-approval requirement always takes precedence over direct execution, even if `ApprovalThreshold` is raised above it.
+- **New payments requiring double approval receive two steps immediately.** Eligible attestants or admins are selected inside the payment's tenant, excluding the creator and the other step's assigned user. If there is no second eligible user, that step stays unassigned and the payment stays pending until an authorized different person approves it.
+- **Completion requires two distinct authenticated decision makers.** The backend checks recorded `decided_by` values rather than counting assigned users or merely counting approved rows. An admin can approve a step assigned to someone else, but cannot supply both approvals themselves.
+- **Admins see the whole tenant's pending list**, attestants only steps assigned to them. This carries over v1's behaviour and matches the `403` rule above, which already exempts `admin`.
+- **Approval steps are addressed by a random public id (uuid), not by the database counter.** The counter (`approval_steps.id`) stays inside the database. `approval_steps.public_id` is what the API sends and accepts, so a client cannot guess the next step from the one it has. Tenant and assignment checks are unchanged and still apply to every request.
+- **A step in another tenant answers `404`, not `403`**, even for an admin. Answering `403` would confirm that the id exists somewhere, which leaks across tenants. v1 let an admin decide steps in any tenant at all.
+- **Every decision is audited to the database** as `APPROVE_PAYMENT`, `APPROVE_PAYMENT_STEP` (a step approved while others remain) or `REJECT_PAYMENT`. v1 wrote partial approvals to `/tmp/audit.log` only, so they never reached the audit log UI.
+
+The final required approval completes the payment through the same `PaymentService.CompletePaymentOrThrow` a direct payment uses, so status, balance, execution timestamp and transaction history stay consistent between the two paths. A first approval of a double-approval payment returns `paymentStatus: "pending_approval"` and does not move money. Completion records one withdrawal and one payment transaction; a rejection stops the payment and closes remaining pending steps as before.
+
+Existing pending payments are evaluated against the same configured threshold on each decision. If there are fewer required approvals and no pending step remains, the service creates a replacement step instead of completing early. Its assignment excludes the creator, existing assigned users and known actual decision makers. Legacy approved steps with an unknown decision maker are preserved but cannot establish one of the two distinct approvals. The backend never fills their actor from assignment or historical audit descriptions, and already completed historical payments are not reopened.
+
+### Timeline database upgrade
+
+`approval_steps.decided_by` is a nullable user foreign key with `ON DELETE SET NULL`; `approval_steps.decision_source` is a nullable `VARCHAR(30)`. New direct decisions record the caller and `manual`. A rejection closes remaining pending steps with `payment_rejected`, while leaving their direct decision maker null. This does not change stored statuses, decision response fields, approval thresholds, or the existing `attestants` array.
+
+Fresh databases receive these columns from `infra/seed.sql`. Before starting the updated API against an existing database, run `infra/migrations/20261008_approval_timeline.sql`. The additive script can be run again and does not rewrite existing decisions. Older rows retain unknown provenance because the existing audit entries do not identify an approval step reliably.
 
 ---
 

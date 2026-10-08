@@ -69,7 +69,9 @@ Returned when the JWT is missing, invalid, or expired.
 
 ```json
 {
-  "message": "Åtkomst nekad. Logga in igen."
+  "status": 401,
+  "title": "Unauthorized",
+  "detail": "Åtkomst nekad. Logga in igen."
 }
 ```
 
@@ -91,7 +93,7 @@ Backend should use this contract to:
 - return only entries belonging to the logged-in user's tenant. v1 had no tenant filtering on audit entries at all, so any logged-in user could see every tenant's activity if they guessed the URL. Fixing this likely needs a schema change (linking entries to a tenant, not just a user), which belongs to the data model work in US-06, not this contract
 - write every auditable action to one place. v1 wrote some actions to the database and others only to a local file, so entries like batch payments and partial approvals never showed up in this endpoint at all (BUG-008). This contract assumes a single source of truth going forward. Whoever implements the write side of audit logging should make sure nothing is file-only anymore
 - respect `limit`/`cursor` and return `nextCursor` accordingly. v1 hardcoded a limit of 200 with no way to page further
-- return consistent error responses per the format above
+- return consistent ProblemDetails error responses (status, title, detail) per the format above
 
 ---
 

@@ -6,12 +6,16 @@ Denna guide riktar sig särskilt till teamets driftansvariga, men alla i teamet 
 
 Krav: Docker Desktop (Windows/Mac) eller Docker Engine (Linux). På Windows behöver Docker Desktop WSL2, se vanliga fel nedan.
 
+Första gången: skapa `infra/.env` med [JWT-nyckeln](README.md#jwt-nyckel-för-docker)
+och [databasuppgifterna](README.md#databasuppgifter). För en befintlig databas måste
+uppgifterna matcha den befintliga databasen; en ändring i `.env` byter inte dess lösenord.
+
 ```bash
 cd infra
 docker compose up --build
 ```
 
-Appen svarar sedan på http://localhost:PORT. Vilken port som gäller för ert case står i `infra/docker-compose.override.yml`. Inloggningsuppgifter till seed-datan står i README.
+Appen svarar sedan på http://localhost:PORT. Vilken port som gäller för ert case står i `infra/docker-compose.override.yml`. Aktivera [lokala testkonton](README.md#lokala-testkonton) enligt README; lösenordet väljs lokalt.
 
 - Stoppa: Ctrl+C, eller `docker compose down`
 - Börja om med tom databas: `docker compose down -v` och sedan `up --build` igen
@@ -25,11 +29,42 @@ Appen svarar sedan på http://localhost:PORT. Vilken port som gäller för ert c
 
 ## Så funkar deploy
 
-- Push till `develop` bygger om er stage-miljö, push till `main` bygger om prod. Adresserna står i README.
+- Driftmiljön måste tillhandahålla `JWT_KEY`, `POSTGRES_DB`, `POSTGRES_USER` och `POSTGRES_PASSWORD` när Docker Compose körs. Den lokala `infra/.env` följer inte med i Git eller Docker-imagen.
+
+- JWT stöder en valfri `JWT_PREVIOUS_KEY` vid planerad rotation. Följ
+  [rotationsguiden](docs/jwt-key-rotation.md), särskilt ordningen för flera
+  instanser och väntetiden innan gamla nyckeln tas bort. Nycklar läses vid start;
+  återskapa containrar efter byte. Extern secret manager är ännu inte ansluten.
+
+- `SEED_TEST_PASSWORD` och lösenordsscriptet används bara av den lokala Compose-override-filen. Grundkonfigurationen skapar nya testkonton utan användbara lösenord. Befintliga testkonton i stage/prod behöver granskas separat; seed körs inte igen på en befintlig databas.
+
+- Push till `develop` bygger om er stage-miljö, push till `main` bygger om prod. Era adresser: stage https://seb-net-team1-dev.team.chas-challenge.comerit.se, prod https://seb-net-team1.team.chas-challenge.comerit.se
 - Grön bock eller rött X på committen i GitHub visar hur deployen gick. Vid rött X: klicka på markeringen och läs byggloggen.
 - **Ett misslyckat bygge sänker inte er miljö.** Senast fungerande version fortsätter köra tills ett nytt bygge går igenom.
 - Bygget tar några minuter. Vid deadline pushar alla team samtidigt och kön blir längre: pusha i god tid.
 - Arbetsflöde: testa alltid på `develop` innan ni mergar till `main`.
+
+## Cookies och HTTPS
+
+JWT lagras i `SebPortal.Auth`, en HttpOnly-cookie med `SameSite=Strict` och
+två timmars giltighet. Inloggning, utloggning och ändringar med cookie kräver
+CSRF-token. Frontend och API ska ligga på samma publika adress i Docker.
+
+Stage/prod använder `Secure` som standard. Bara lokal Development och
+`docker-compose.override.yml` sätter `Auth:AllowInsecureCookies=true` för HTTP.
+Använd inte den inställningen i drift.
+
+När HTTPS avslutas i plattformens reverse proxy måste den skicka
+`X-Forwarded-Proto: https`. Driftansvarig behöver ange proxyns faktiska interna
+IP-adress som `ReverseProxy__KnownProxies__0` i **appcontainerns** miljö
+(fler adresser får index 1, 2, …). Lägg inställningen i driftens Compose-overlay
+eller motsvarande containerkonfiguration; en variabel bara i Compose-terminalen
+skickas inte automatiskt in i containern. Utan konfiguration betros bara loopback.
+Betro inte alla avsändare. Kontrollera detta med plattformsansvarig inför deploy;
+den lokala Docker-kontrollen verifierar inte driftens proxy.
+
+Kontrollera efter deploy att `/api/auth/csrf` ger 200 över HTTPS, att inloggningen
+sätter `Secure` och `HttpOnly`, och att dashboard ger 401 efter utloggning.
 
 ## Plattformskontraktet - fyra regler
 

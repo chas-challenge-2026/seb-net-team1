@@ -19,7 +19,6 @@ function Login() {
       const response = await login(email, password);
 
       localStorage.setItem("user", JSON.stringify(response.user));
-      localStorage.setItem("accessToken", response.accessToken);
 
       navigate("/dashboard");
     } catch {

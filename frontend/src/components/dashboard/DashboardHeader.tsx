@@ -5,9 +5,10 @@ import { FiBell, FiSearch } from "react-icons/fi";
 import "../../styles/dashboard.css";
 
 interface DashboardHeaderProps {
-  user: User;
+    user?: User | null;
     title?: string;
     subtitle?: string;
+    showSearch?: boolean;
   onSearch?: (value: string) => void;
   onNotificationClick?: () => void;
 }
@@ -16,6 +17,7 @@ export default function DashboardHeader({
     user,
     title = "Översikt",
     subtitle,
+    showSearch = true,
     onSearch,
     onNotificationClick,
 }: DashboardHeaderProps) {
@@ -32,25 +34,30 @@ export default function DashboardHeader({
         <header className="dashboard-header">
             <div className="dashboard-header-title">
                 <h1>{title}</h1>
-                <p>{subtitle ?? `Välkommen, ${user.name}!`}</p>
+                <p>{subtitle ?? (user ? `Välkommen, ${user.name}!` : "Laddar dashboard...")}</p>
             </div>
 
             <div className="dashboard-header-actions">
+                {showSearch && (
                 <div className="search-input-wrapper">
         <FiSearch className="dashboard-search-icon" />
 
                     <input
                         type="search"
                         placeholder="Sök betalningar, konton..."
+                        aria-label="Sök betalningar och konton"
                         value={searchValue}
                         onChange={handleSearchChange}
                     />
                 </div>
+                )}
 
                 <button
                     className="dashboard-notification-button"
                     type="button"
                     onClick={onNotificationClick}
+                    disabled={!onNotificationClick}
+                    title={onNotificationClick ? "Notifikationer" : "Notifikationer är inte tillgängliga"}
                     aria-label="Notifikationer"
                 >
                     <FiBell className="dashboard-notification-icon" />

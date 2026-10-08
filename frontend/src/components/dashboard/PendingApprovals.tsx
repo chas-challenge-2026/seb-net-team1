@@ -1,146 +1,76 @@
-import { useEffect, useState } from "react";
-import { LuArrowRight, LuCircleCheck, LuClock3 } from "react-icons/lu";
+import { useState } from "react";
+import {
+	LuChevronDown,
+	LuChevronUp,
+	LuCircleCheck,
+	LuClock3,
+} from "react-icons/lu";
+import type { DashboardPayment } from "../../api/dashboardApi";
 import Card from "../shared/Card";
 import StatusBadge from "../shared/StatusBadge";
 
-interface ApprovalStep {
-	id: number;
-	paymentId: number;
-	attestantId: number;
-	stepNumber: number;
-	status: string;
+interface PendingApprovalsProps {
+	approvals: DashboardPayment[] | null;
+	searchActive?: boolean;
 }
 
-interface Payment {
-	id: number;
-	amount: number;
-	currency: string;
-	reference: string;
-	status: string;
-}
-
-interface User {
-	id: number;
-	name: string;
-}
-
-interface PendingApproval {
-	payment: Payment;
-	step: ApprovalStep;
-	approver: User | undefined;
-}
-
-export default function PendingApprovals() {
-	const [approvals, setApprovals] = useState<PendingApproval[]>([]);
-
-	useEffect(() => {
-		const fetchApprovals = async () => {
-			try {
-				const [approvalResponse, paymentResponse, userResponse] =
-					await Promise.all([
-						fetch("http://localhost:3001/approvalSteps"),
-						fetch("http://localhost:3001/payments"),
-						fetch("http://localhost:3001/users"),
-					]);
-
-				const approvalSteps: ApprovalStep[] =
-					await approvalResponse.json();
-
-				const payments: Payment[] = await paymentResponse.json();
-
-				const users: User[] = await userResponse.json();
-
-				const pendingApprovals = approvalSteps
-					.filter((step) => step.status === "pending")
-					.map((step) => {
-						const payment = payments.find(
-							(payment) => payment.id === step.paymentId
-						);
-
-						const approver = users.find(
-							(user) => user.id === step.attestantId
-						);
-
-						return {
-							payment,
-							step,
-							approver,
-						};
-					})
-					.filter(
-						(
-							approval
-						): approval is PendingApproval =>
-							approval.payment !== undefined
-					)
-					.slice(0, 3);
-
-				setApprovals(pendingApprovals);
-			} catch (error) {
-				console.error(
-					"Kunde inte hämta väntande godkännanden:",
-					error
-				);
-			}
-		};
-
-		fetchApprovals();
-	}, []);
-
-	const formatAmount = (amount: number, currency: string) => {
-		return `${new Intl.NumberFormat("sv-SE").format(
-			amount
-		)} ${currency}`;
-	};
+export default function PendingApprovals({
+	approvals,
+	searchActive = false,
+}: PendingApprovalsProps) {
+	const [showAll, setShowAll] = useState(false);
+	const formatAmount = (amount: number, currency: string) =>
+		`${new Intl.NumberFormat("sv-SE", {
+			minimumFractionDigits: 2,
+			maximumFractionDigits: 2,
+		}).format(amount)} ${currency}`;
 
 	return (
 		<Card className="pending-approvals">
 			<div className="dashboard-section__header">
 				<h2>Väntar på godkännande</h2>
-
-				<button className="dashboard-section__link">
-					Visa alla
-					<LuArrowRight />
-				</button>
+				{approvals !== null && approvals.length > 3 && (
+					<button
+						type="button"
+						className="dashboard-section__link"
+						aria-expanded={showAll}
+						onClick={() => setShowAll((expanded) => !expanded)}
+					>
+						{showAll ? "Visa färre" : "Visa alla"}
+						{showAll ? <LuChevronUp /> : <LuChevronDown />}
+					</button>
+				)}
 			</div>
 
 			<div className="pending-approvals__list">
-				{approvals.length === 0 ? (
+				{approvals === null ? (
+					<div className="pending-approvals__empty">Hämtar godkännanden...</div>
+				) : approvals.length === 0 ? (
 					<div className="pending-approvals__empty">
-						<LuCircleCheck />
-						<span>Inga betalningar väntar på godkännande</span>
+						{searchActive ? (
+							<span>Inga godkännanden matchar sökningen</span>
+						) : (
+							<>
+								<LuCircleCheck />
+								<span>Inga betalningar väntar på godkännande</span>
+							</>
+						)}
 					</div>
 				) : (
-					approvals.map(({ payment, step, approver }) => (
-						<div
-							className="pending-approvals__item"
-							key={step.id}
-						>
+					(showAll ? approvals : approvals.slice(0, 3)).map((payment) => (
+						<div className="pending-approvals__item" key={payment.id}>
 							<div className="pending-approvals__icon">
 								<LuClock3 />
 							</div>
-
 							<div className="pending-approvals__info">
 								<strong>{payment.reference}</strong>
-
 								<span>
-									{approver
-										? approver.name
-										: "Godkännare"}
+									{payment.toIban ? `•••• ${payment.toIban.slice(-4)}` : "IBAN saknas"}
 								</span>
 							</div>
-
 							<div className="pending-approvals__details">
-								<strong>
-									{formatAmount(
-										payment.amount,
-										payment.currency
-									)}
-								</strong>
-
-								<StatusBadge status="pending">
-									Steg {step.stepNumber}
-								</StatusBadge>
+								<strong>{formatAmount(payment.amount, payment.currency)}</strong>
+								<StatusBadge status="pending">Godkännande</StatusBadge>
 							</div>
 						</div>
 					))

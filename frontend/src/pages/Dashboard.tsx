@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getDashboardData } from "../api/dashboardApi";
+import type { DashboardData } from "../api/dashboardApi";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
+import DashboardPromoBanner from "../components/dashboard/DashboardPromoBanner";
 import Sidebar from "../components/dashboard/Sidebar";
 import DashboardSummary from "../components/dashboard/DashboardSummary";
 import AccountOverview from "../components/dashboard/AccountOverview";
@@ -10,16 +13,68 @@ import RecentActivity from "../components/dashboard/RecentActivity";
 import QuickActions from "../components/dashboard/QuickActions";
 import "../styles/dashboard.css";
 
+function filterBySearch<T>(
+  items: T[] | null,
+  query: string,
+  getSearchText: (item: T) => string
+): T[] | null {
+  if (items === null || !query) {
+    return items;
+  }
+
+  return items.filter((item) =>
+    getSearchText(item).toLocaleLowerCase("sv-SE").includes(query)
+  );
+}
+
 function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
-  const user = {
-    id: 1,
-    tenantId: 1,
-    name: "Anna Andersson",
-    email: "anna@foretag.se",
-    role: "Admin",
-  };
+  useEffect(() => {
+    let isCurrent = true;
+
+    getDashboardData()
+      .then((data) => {
+        if (isCurrent) {
+          setDashboardData(data);
+        }
+      })
+      .catch((error: unknown) => {
+        if (isCurrent) {
+          setDashboardError(
+            error instanceof TypeError
+              ? "Kunde inte nå backend-API:t. Kontrollera anslutningen och försök igen."
+              : error instanceof Error
+              ? error.message
+              : "Kunde inte hämta dashboarddata från API:t."
+          );
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  const normalizedSearchTerm = searchTerm.trim().toLocaleLowerCase("sv-SE");
+  const visibleAccounts = filterBySearch(
+    dashboardData?.accounts ?? null,
+    normalizedSearchTerm,
+    (account) => `${account.accountName} ${account.iban ?? ""} ${account.currency}`
+  );
+  const visibleApprovals = filterBySearch(
+    dashboardData?.pendingApprovals ?? null,
+    normalizedSearchTerm,
+    (payment) => `${payment.reference} ${payment.toIban ?? ""} ${payment.status}`
+  );
+  const visibleUpcomingPayments = filterBySearch(
+    dashboardData?.upcomingPayments ?? null,
+    normalizedSearchTerm,
+    (payment) => `${payment.reference} ${payment.toIban ?? ""} ${payment.status}`
+  );
 
   return (
     <div className="dashboard-layout">
@@ -27,6 +82,9 @@ function Dashboard() {
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen((isOpen) => !isOpen)}
         onClose={() => setIsSidebarOpen(false)}
+        user={dashboardData?.user}
+        tenantName={dashboardData?.tenantName}
+        pendingApprovalCount={dashboardData?.pendingApprovals.length}
       />
 
       <button
@@ -37,30 +95,47 @@ function Dashboard() {
       />
 
       <main className="dashboard-main">
-        <DashboardHeader user={user} />
+        <DashboardHeader
+          user={dashboardData?.user ?? null}
+          subtitle={dashboardError ? "Dashboarddata kunde inte hämtas" : undefined}
+          onSearch={setSearchTerm}
+        />
 
         <div className="dashboard-content">
-          
-          <DashboardSummary />
+          {dashboardError && (
+            <p className="dashboard-data-error" role="alert">
+              {dashboardError}
+            </p>
+          )}
 
-         
-          <section className="dashboard-overview-grid">
-            <AccountOverview />
-            <PaymentStatus />
-          </section>
+          <DashboardSummary data={dashboardData} />
 
-         
-          <section className="dashboard-lower-grid">
-            <PendingApprovals />
-            <UpcomingPayments />
-          </section>
-
-          
-          <section className="dashboard-lower-grid">
-            <RecentActivity />
-            <QuickActions />
+          <section className="dashboard-panels">
+            <div className="dashboard-column">
+              <AccountOverview
+                accounts={visibleAccounts}
+                searchActive={Boolean(normalizedSearchTerm)}
+              />
+              <PendingApprovals
+                approvals={visibleApprovals}
+                searchActive={Boolean(normalizedSearchTerm)}
+              />
+              <RecentActivity activities={dashboardData?.recentActivity ?? null} />
+            </div>
+            <aside className="dashboard-column" aria-label="Betalningsöversikt">
+              <PaymentStatus counts={dashboardData?.paymentStatusCounts ?? null} />
+              <UpcomingPayments
+                payments={visibleUpcomingPayments}
+                searchActive={Boolean(normalizedSearchTerm)}
+              />
+              <QuickActions />
+            </aside>
           </section>
         </div>
+
+        <footer className="dashboard-footer">
+          <DashboardPromoBanner />
+        </footer>
       </main>
     </div>
   );
