@@ -28,6 +28,16 @@ CREATE TABLE accounts (
     currency VARCHAR(3) DEFAULT 'SEK'
 );
 
+CREATE TABLE transactions (
+    id SERIAL PRIMARY KEY,
+    account_id INT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    amount DECIMAL(15,2) NOT NULL,
+    date TIMESTAMPTZ NOT NULL,
+    description VARCHAR(255),
+    transaction_type VARCHAR(50)
+);
+CREATE INDEX idx_transactions_account_id ON transactions (account_id);
+
 CREATE TABLE payments (
     id SERIAL PRIMARY KEY,
     tenant_id INT REFERENCES tenants(id),
@@ -49,6 +59,8 @@ CREATE TABLE approval_steps (
     attestant_id INT REFERENCES users(id),
     step_number INT DEFAULT 1,
     status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
+    decided_by INT REFERENCES users(id) ON DELETE SET NULL,
+    decision_source VARCHAR(30), -- 'manual', 'payment_rejected'; NULL when provenance is unknown
     decided_at TIMESTAMP,
     comment VARCHAR(255)
 );
