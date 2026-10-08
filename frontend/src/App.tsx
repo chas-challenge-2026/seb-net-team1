@@ -9,11 +9,14 @@ import BatchFiles from "./pages/BatchFiles";
 import AuditLog from "./pages/AuditLog";
 import ApprovalInbox from "./pages/ApprovalInbox";
 import Reports from "./pages/Reports";
+import Payments from "./pages/Payments";
+import PaymentDetails from "./pages/PaymentDetails";
 
 const pageTitles: Record<string, string> = {
   "/": "Logga in",
   "/dashboard": "Översikt",
   "/new-payment": "Betalningar",
+  "/payments": "Betalningar",
   "/accounts": "Konton",
   "/approval-inbox": "Godkännanden",
   "/batch-upload": "Batchfiler",
@@ -26,7 +29,10 @@ function App() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    document.title = `${pageTitles[pathname] ?? "Cash Management"} | SEB`;
+    const title = pathname.startsWith("/payments/")
+      ? "Betalningar – Detaljer"
+      : pageTitles[pathname] ?? "Cash Management";
+    document.title = `${title} | SEB`;
   }, [pathname]);
 
   return (
@@ -34,6 +40,8 @@ function App() {
       <Route path="/" element={<Login />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/new-payment" element={<NewPayment />} />
+      <Route path="/payments" element={<Payments />} />
+      <Route path="/payments/:id" element={<PaymentDetails />} />
       <Route path="/accounts" element={<Accounts />}/>
       <Route path="/batch-upload" element={<BatchFiles />} />
       <Route path="/audit-log" element={<AuditLog />} />

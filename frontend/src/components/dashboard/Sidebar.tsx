@@ -56,7 +56,7 @@ export default function DashboardSidebar({
       .map((part) => part[0])
       .join("") ?? "?";
     const overviewClassName = `dashboard-sidebar-link${pathname === "/dashboard" ? " active" : ""}`;
-    const paymentsClassName = `dashboard-sidebar-link${pathname === "/new-payment" ? " active" : ""}`;
+    const paymentsClassName = `dashboard-sidebar-link${pathname === "/new-payment" || pathname === "/payments" || pathname.startsWith("/payments/") ? " active" : ""}`;
     const accountsClassName = `dashboard-sidebar-link${pathname === "/accounts" ? " active" : ""}`;
     const approvalsClassName = `dashboard-sidebar-link${pathname === "/approval-inbox" ? " active" : ""}`;
     const batchFilesClassName = `dashboard-sidebar-link${pathname === "/batch-upload" ? " active" : ""}`;
@@ -118,7 +118,7 @@ export default function DashboardSidebar({
           <span>Översikt</span>
         </Link>
 
-        <Link to="/new-payment" className={paymentsClassName}>
+        <Link to="/payments" className={paymentsClassName}>
           <FiCreditCard />
           <span>Betalningar</span>
         </Link>
