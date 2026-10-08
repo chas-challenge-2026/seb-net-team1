@@ -67,6 +67,18 @@ CREATE TABLE audit_entries (
 );
 CREATE INDEX idx_audit_entries_tenant_id_id ON audit_entries (tenant_id, id);
 
+-- Written by PaymentService when a payment completes (account_id, amount, date, description, type).
+-- The API maps this table, and every account query joins it, so it must exist.
+CREATE TABLE transactions (
+    id SERIAL PRIMARY KEY,
+    account_id INT NOT NULL REFERENCES accounts(id),
+    amount DECIMAL(15,2) NOT NULL,
+    date TIMESTAMP NOT NULL DEFAULT NOW(),
+    description VARCHAR(255),
+    transaction_type VARCHAR(50)
+);
+CREATE INDEX idx_transactions_account_id ON transactions (account_id);
+
 -- Seed: tenant Malmö Bygg AB
 INSERT INTO tenants (name) VALUES ('Malmö Bygg AB');
 
@@ -78,17 +90,21 @@ INSERT INTO users (tenant_id, name, email, password_md5, role) VALUES
 
 INSERT INTO accounts (tenant_id, account_name, iban, balance, currency) VALUES
 (1, 'Driftkonto',   'SE4550000000058398257466', 2500000.00, 'SEK'),
-(1, 'Lönekonto',    'SE4550000000058398257467',  890000.00, 'SEK'),
-(1, 'Projektkonto', 'SE4550000000058398257468',  450000.00, 'SEK');
+(1, 'Lönekonto',    'SE1850000000058398257467',  890000.00, 'SEK'),
+(1, 'Projektkonto', 'SE8850000000058398257468',  450000.00, 'SEK');
 
 -- Some pre-existing payments
 INSERT INTO payments (tenant_id, from_account_id, to_iban, amount, reference, status, created_by, executed_at) VALUES
-(1, 1, 'SE8550000000054910000003', 15000.00, 'Faktura #1042', 'completed',        1, NOW()),
-(1, 1, 'SE8550000000054910000004', 75000.00, 'Faktura #1043', 'pending_approval', 1, NULL);
+(1, 1, 'SE3550000000054910000003', 15000.00, 'Faktura #1042', 'completed',        1, NOW()),
+(1, 1, 'SE0850000000054910000004', 75000.00, 'Faktura #1043', 'pending_approval', 1, NULL);
 
 INSERT INTO approval_steps (payment_id, attestant_id, step_number, status) VALUES
 (2, 2, 1, 'pending');
 
 INSERT INTO audit_entries (tenant_id, user_id, action, entity_type, entity_id, description, signature, previous_signature) VALUES
-(1, 1, 'CREATE_PAYMENT', 'payment', 1, 'Skapade betalning 15000 SEK till SE8550000000054910000003', 'SEED-UNSIGNED', 'GENESIS'),
-(1, 1, 'CREATE_PAYMENT', 'payment', 2, 'Skapade betalning 75000 SEK till SE8550000000054910000004', 'SEED-UNSIGNED', 'SEED-UNSIGNED');
+(1, 1, 'CREATE_PAYMENT', 'payment', 1, 'Skapade betalning 15000 SEK till SE3550000000054910000003', 'SEED-UNSIGNED', 'GENESIS'),
+(1, 1, 'CREATE_PAYMENT', 'payment', 2, 'Skapade betalning 75000 SEK till SE0850000000054910000004', 'SEED-UNSIGNED', 'SEED-UNSIGNED');
+
+-- The completed seed payment above has its matching transaction.
+INSERT INTO transactions (account_id, amount, date, description, transaction_type) VALUES
+(1, -15000.00, NOW(), 'Faktura #1042', 'payment');
