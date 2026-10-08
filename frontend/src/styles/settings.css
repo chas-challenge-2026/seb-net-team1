@@ -1,0 +1,255 @@
+.settings-content {
+  gap: 24px;
+  padding: 28px 32px 32px;
+}
+
+.settings-main .dashboard-header-title p {
+  display: none;
+}
+
+.settings-layout {
+  align-items: start;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(210px, 280px) minmax(0, 1fr);
+}
+
+.settings-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--dark-gray);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  min-height: 48px;
+  padding: 0 16px;
+  text-align: left;
+}
+
+.settings-tab:hover {
+  background: color-mix(in srgb, var(--white) 60%, transparent);
+}
+
+.settings-tab.is-active {
+  background: var(--white);
+  border-color: var(--border-color);
+  border-left: 4px solid #e3e8eb;
+  color: var(--seb-green);
+  font-weight: 600;
+}
+
+.settings-tab:focus-visible,
+.settings-button:focus-visible,
+.settings-photo-link:focus-visible {
+  outline: 2px solid var(--seb-green);
+  outline-offset: 2px;
+}
+
+.settings-panel {
+  min-width: 0;
+}
+
+.dashboard-content .card.settings-card {
+  border-radius: 12px;
+  padding: 32px;
+}
+
+.settings-profile-header {
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  gap: 24px;
+  padding-bottom: 30px;
+}
+
+.settings-avatar {
+  align-items: center;
+  background: #006831;
+  border-radius: 50%;
+  color: var(--white);
+  display: flex;
+  flex: 0 0 84px;
+  font-size: 28px;
+  font-weight: 700;
+  height: 84px;
+  justify-content: center;
+}
+
+.settings-profile-heading h2 {
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.settings-profile-heading p {
+  color: var(--dark-gray);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.settings-photo-link {
+  background: none;
+  border: 0;
+  color: var(--seb-green);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 5px;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.settings-form-grid {
+  border-bottom: 1px solid var(--border-color);
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 28px 0 30px;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-field label {
+  color: var(--dark-gray);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.settings-field input,
+.settings-field select {
+  background: var(--light-gray);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  height: 44px;
+  min-width: 0;
+  padding: 0 12px;
+  width: 100%;
+}
+
+.settings-field input:focus,
+.settings-field select:focus {
+  border-color: var(--seb-green);
+  outline: 2px solid color-mix(in srgb, var(--seb-green) 14%, transparent);
+}
+
+.settings-field select:disabled {
+  color: var(--ink);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.settings-form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 28px;
+}
+
+.settings-button {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 42px;
+  padding: 0 18px;
+}
+
+.settings-button-secondary {
+  background: var(--white);
+  color: var(--dark-gray);
+}
+
+.settings-button-primary {
+  background: var(--seb-deep-green);
+  border-color: var(--seb-deep-green);
+  color: var(--white);
+}
+
+.settings-button-primary:hover {
+  background: var(--green-hover);
+  border-color: var(--green-hover);
+}
+
+.settings-placeholder {
+  min-height: 220px;
+}
+
+.settings-placeholder h2 {
+  font-size: 20px;
+}
+
+.settings-placeholder p {
+  color: var(--medium-gray);
+  margin-top: 12px;
+}
+
+@media (max-width: 760px) {
+  .settings-content {
+    gap: 18px;
+    padding: 20px 16px 24px;
+  }
+
+  .settings-layout {
+    gap: 16px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .settings-tab {
+    min-height: 44px;
+    min-width: 0;
+    padding: 0 6px;
+    text-align: center;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  .dashboard-content .card.settings-card {
+    padding: 22px 18px;
+  }
+
+  .settings-profile-header {
+    gap: 16px;
+    padding-bottom: 22px;
+  }
+
+  .settings-avatar {
+    flex-basis: 68px;
+    font-size: 23px;
+    height: 68px;
+  }
+
+  .settings-profile-heading h2 {
+    font-size: 19px;
+  }
+
+  .settings-form-grid {
+    gap: 18px;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 22px 0;
+  }
+}
