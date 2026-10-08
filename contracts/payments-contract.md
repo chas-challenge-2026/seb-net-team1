@@ -10,6 +10,25 @@ Frontend uses this endpoint when a user submits the "Ny betalning" form.
 
 Requires a valid JWT (`Authorization: Bearer <token>`), role `initiator` or `admin`.
 
+### Idempotency header
+
+Clients should send an `Idempotency-Key` header when creating a payment:
+
+```http
+Idempotency-Key: 9f45f15e-23d4-4fa6-8df8-a80a45f05061
+```
+
+The key identifies one logical payment attempt and may contain at most 128
+characters. A retry of the same payment must reuse the same key. A genuinely
+new payment must use a new key.
+
+- Same tenant, user, key and payment data: returns the existing payment without
+  creating another payment, transaction, approval step or audit entry.
+- Same tenant, user and key with different payment data: returns `409 Conflict`.
+- The same textual key may be used independently by another user or tenant.
+- The header is optional for backwards compatibility. Duplicate protection only
+  applies when a non-empty key is supplied.
+
 ---
 
 ## Request
@@ -70,7 +89,8 @@ Requires a valid JWT (`Authorization: Bearer <token>`), role `initiator` or `adm
 
 ### `400 Bad Request`
 
-Returned when a field is missing, the IBAN format is invalid, or the amount is not greater than 0.
+Returned when a field is missing, the IBAN format is invalid, the amount is not
+greater than 0, or the idempotency key exceeds 128 characters.
 
 ```json
 {
@@ -104,6 +124,19 @@ Returned when the JWT is missing, invalid, or expired.
 }
 ```
 
+### `409 Conflict`
+
+Returned when an idempotency key that already belongs to a payment is reused
+with different payment data.
+
+```json
+{
+  "status": 409,
+  "title": "Conflict",
+  "detail": "Samma idempotency key har redan använts för en annan betalning."
+}
+```
+
 ---
 
 ## Frontend Notes
@@ -112,6 +145,8 @@ Frontend can use this contract to:
 - build the "Ny betalning" form (account select, IBAN, amount, reference)
 - show the correct success message based on returned `status`
 - create mock payment responses for both `completed` and `pending_approval` outcomes
+- generate one idempotency key when submission starts and reuse that key if the
+  same submission is retried; generate a new key only for a new payment
 
 ---
 

@@ -16,6 +16,19 @@ public class PaymentRepository(SebDbContext dbContext)
             .FirstOrDefaultAsync(a => a.Id == accountId && a.TenantId == tenantId);
     }
 
+    public async Task<Payment?> GetByIdempotencyKeyAsync(
+        int tenantId,
+        int createdById,
+        string idempotencyKey)
+    {
+        return await dbContext.Payments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(payment =>
+                payment.TenantId == tenantId &&
+                payment.CreatedById == createdById &&
+                payment.IdempotencyKey == idempotencyKey);
+    }
+
     public async Task<Payment> AddPaymentAsync(Payment payment)
     {
         dbContext.Payments.Add(payment);
@@ -27,6 +40,11 @@ public class PaymentRepository(SebDbContext dbContext)
     public async Task SaveChangesAsync()
     {
         await dbContext.SaveChangesAsync();
+    }
+
+    public void ClearTrackedChanges()
+    {
+        dbContext.ChangeTracker.Clear();
     }
 
     /// <summary>
