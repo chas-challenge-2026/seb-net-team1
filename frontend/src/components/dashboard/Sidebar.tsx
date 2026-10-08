@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "../../api/usersApi";
 import type { User } from "../../types/User";
+import { canReadAuditLog } from "../../utils/auditAccess";
 import {
   FiHome,
   FiCreditCard,
@@ -147,10 +148,12 @@ export default function DashboardSidebar({
           <span>Rapporter</span>
         </Link>
 
-        <Link to="/audit-log" className={auditLogClassName}>
-          <FiActivity />
-          <span>Audit-logg</span>
-        </Link>
+        {canReadAuditLog(displayedUser?.role) && (
+          <Link to="/audit-log" className={auditLogClassName}>
+            <FiActivity />
+            <span>Audit-logg</span>
+          </Link>
+        )}
 
         <a href="#" className="dashboard-sidebar-link">
           <FiSettings />

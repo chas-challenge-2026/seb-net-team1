@@ -13,6 +13,7 @@ import "../styles/auditLog.css";
 type AuditLogError = {
   message: string;
   requiresLogin: boolean;
+  accessDenied: boolean;
 };
 
 type PageRequest = {
@@ -94,6 +95,7 @@ function getAuditLogError(error: unknown): AuditLogError {
         ? "Kunde inte nå backend-API:t. Kontrollera anslutningen och försök igen."
         : "Kunde inte hämta granskningsloggen. Försök igen.",
     requiresLogin: error instanceof AuditLogApiError && error.status === 401,
+    accessDenied: error instanceof AuditLogApiError && error.status === 403,
   };
 }
 
@@ -140,10 +142,17 @@ export default function AuditLog() {
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
-          if (isNavigation) {
-            setPageError(getAuditLogError(error));
+          const auditError = getAuditLogError(error);
+          if (auditError.accessDenied) {
+            // A revoked permission ends pagination and removes previously loaded rows.
+            setAuditLog(null);
+            setNavigation({ cursors: [undefined], index: 0 });
+            setPageError(null);
+            setInitialError(auditError);
+          } else if (isNavigation) {
+            setPageError(auditError);
           } else {
-            setInitialError(getAuditLogError(error));
+            setInitialError(auditError);
           }
         }
       })
@@ -301,7 +310,7 @@ export default function AuditLog() {
                     <Link to="/" className="audit-log-login-link">
                       Till inloggning
                     </Link>
-                  ) : (
+                  ) : !initialError.accessDenied ? (
                     <Button
                       type="button"
                       className="audit-log-button"
@@ -309,7 +318,7 @@ export default function AuditLog() {
                     >
                       Försök igen
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               ) : auditLog ? (
                 <>

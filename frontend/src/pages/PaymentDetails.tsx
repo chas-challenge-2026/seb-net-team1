@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { FiArrowLeft, FiMinus } from "react-icons/fi";
-import { getAuditLog } from "../api/auditLogApi";
+import { AuditLogApiError, getAuditLog } from "../api/auditLogApi";
 import PaymentsLayout from "../components/payments/PaymentsLayout";
 import Button from "../components/shared/Button";
 import Card from "../components/shared/Card";
 import StatusBadge from "../components/shared/StatusBadge";
 import { usePaymentOverview } from "../hooks/usePaymentOverview";
 import type { AuditEntry } from "../types/AuditLog";
+import { canReadAuditLog } from "../utils/auditAccess";
 import {
   formatPaymentAmount,
   formatPaymentId,
@@ -26,9 +27,10 @@ export default function PaymentDetails() {
     : undefined;
   const [activity, setActivity] = useState<ActivityState | null>(null);
   const selectedId = payment?.id;
+  const canViewActivity = canReadAuditLog(data?.user?.role);
 
   useEffect(() => {
-    if (selectedId === undefined) return;
+    if (selectedId === undefined || !canViewActivity) return;
     const controller = new AbortController();
 
     getAuditLog({ limit: 50, signal: controller.signal })
@@ -43,14 +45,20 @@ export default function PaymentDetails() {
           });
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (!controller.signal.aborted) {
-          setActivity({ paymentId: selectedId, entries: [], error: "Kunde inte hämta aktivitetsloggen." });
+          setActivity({
+            paymentId: selectedId,
+            entries: [],
+            error: error instanceof AuditLogApiError && error.status === 403
+              ? error.message
+              : "Kunde inte hämta aktivitetsloggen.",
+          });
         }
       });
 
     return () => controller.abort();
-  }, [selectedId]);
+  }, [selectedId, canViewActivity]);
 
   const currentActivity = activity?.paymentId === selectedId ? activity : null;
   const status = getPaymentStatus(payment?.status ?? null);
@@ -116,7 +124,7 @@ export default function PaymentDetails() {
             </div>
           </div>
         </Card>
-        <Card className="payments-detail-card">
+        {canViewActivity && <Card className="payments-detail-card">
           <h2 id="payments-activity-heading" title="Matchande händelser bland de 50 senaste loggposterna.">Aktivitetslogg</h2>
           <p id="payments-activity-scope" className="payments-sr-only">
             Matchande händelser bland de 50 senaste loggposterna, inte fullständig betalningshistorik.
@@ -143,7 +151,7 @@ export default function PaymentDetails() {
               </p>
             )}
           </div>
-        </Card>
+        </Card>}
       </div>
 
       <Card className="payments-approval-bar">
