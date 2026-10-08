@@ -215,6 +215,7 @@ public class ApprovalServiceTests
 
         SeedPendingPayment(db, paymentId: 42, amount: 250000m, reference: "Faktura 2026-114");
         SeedStep(db, stepId: 501, paymentId: 42, attestantId: AttestantId);
+        db.ChangeTracker.Clear();
 
         var service = CreateApprovalService(db);
 
@@ -227,11 +228,64 @@ public class ApprovalServiceTests
         Assert.Equal("250000.00", pending.Amount);
         Assert.Equal("SEK", pending.Currency);
         Assert.Equal("Faktura 2026-114", pending.Reference);
+        Assert.Equal(new DateTime(2026, 8, 30, 9, 15, 0, DateTimeKind.Utc), pending.CreatedAt);
         Assert.Equal("Lisa Persson", pending.CreatedByName);
         Assert.Equal("Driftkonto", pending.FromAccountName);
         Assert.Equal(1, pending.CurrentStep);
         Assert.Equal(2, pending.TotalSteps);
         Assert.True(pending.RequiresDoubleApproval);
+        var attestant = Assert.Single(pending.Attestants);
+        Assert.Equal(1, attestant.StepNumber);
+        Assert.Equal("Johan Berg", attestant.Name);
+    }
+
+    [Fact]
+    public async Task GetInboxAsync_ReturnsAllPaymentAttestantsOrderedByStepAndId()
+    {
+        using var db = CreateContext();
+        SeedUsersAndAccount(db);
+
+        SeedPendingPayment(db, paymentId: 42, amount: 250000m);
+        SeedStep(db, stepId: 503, paymentId: 42, attestantId: OtherAttestantId, stepNumber: 2);
+        SeedStep(db, stepId: 502, paymentId: 42, attestantId: AdminId, stepNumber: 2);
+        SeedStep(
+            db, stepId: 500, paymentId: 42, attestantId: OtherAttestantId,
+            stepNumber: 1, status: ApprovalStatuses.Approved);
+        SeedStep(db, stepId: 501, paymentId: 42, attestantId: AttestantId, stepNumber: 1);
+        db.ChangeTracker.Clear();
+
+        var service = CreateApprovalService(db);
+        var inbox = await service.GetInboxAsync(TenantId, AttestantId, UserRoles.Attestant);
+
+        var pending = Assert.Single(inbox.Pending);
+        Assert.Equal(TestIds.Step(501), pending.ApprovalStepId);
+        Assert.Collection(
+            pending.Attestants,
+            attestant => { Assert.Equal(1, attestant.StepNumber); Assert.Equal("Eva Nord", attestant.Name); },
+            attestant => { Assert.Equal(1, attestant.StepNumber); Assert.Equal("Johan Berg", attestant.Name); },
+            attestant => { Assert.Equal(2, attestant.StepNumber); Assert.Equal("Sara Ek", attestant.Name); },
+            attestant => { Assert.Equal(2, attestant.StepNumber); Assert.Equal("Eva Nord", attestant.Name); });
+    }
+
+    [Fact]
+    public async Task GetInboxAsync_WithUnassignedApprovalStep_ReturnsNullAttestantName()
+    {
+        using var db = CreateContext();
+        SeedUsersAndAccount(db);
+
+        SeedPendingPayment(db, paymentId: 42, amount: 250000m);
+        SeedStep(db, stepId: 501, paymentId: 42, attestantId: AttestantId);
+        SeedStep(db, stepId: 502, paymentId: 42, attestantId: null, stepNumber: 2);
+        db.ChangeTracker.Clear();
+
+        var service = CreateApprovalService(db);
+        var inbox = await service.GetInboxAsync(TenantId, AttestantId, UserRoles.Attestant);
+
+        var pending = Assert.Single(inbox.Pending);
+        Assert.Collection(
+            pending.Attestants,
+            attestant => { Assert.Equal(1, attestant.StepNumber); Assert.Equal("Johan Berg", attestant.Name); },
+            attestant => { Assert.Equal(2, attestant.StepNumber); Assert.Null(attestant.Name); });
     }
 
     /// <summary>

@@ -292,6 +292,15 @@ public class ApprovalService(
             CreatedAt = payment.CreatedAt,
             CreatedByName = payment.CreatedBy?.Name ?? "Okänd",
             FromAccountName = payment.FromAccount?.AccountName ?? "Okänt konto",
+            Attestants = payment.ApprovalSteps
+                .OrderBy(approvalStep => approvalStep.StepNumber)
+                .ThenBy(approvalStep => approvalStep.Id)
+                .Select(approvalStep => new ApprovalAttestantDto
+                {
+                    StepNumber = approvalStep.StepNumber,
+                    Name = approvalStep.Attestant?.Name
+                })
+                .ToList(),
             CurrentStep = step.StepNumber,
             TotalSteps = Math.Max(payment.ApprovalSteps.Count, requiredSteps),
             RequiresDoubleApproval = paymentService.RequiresDoubleApproval(payment.Amount)

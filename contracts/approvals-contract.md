@@ -35,6 +35,10 @@ No request body, no query parameters for MVP.
       "createdAt": "2026-08-30T09:15:00Z",
       "createdByName": "Lisa Andersson",
       "fromAccountName": "Företagskonto",
+      "attestants": [
+        { "stepNumber": 1, "name": "Johan Berg" },
+        { "stepNumber": 2, "name": "Eva Nord" }
+      ],
       "currentStep": 1,
       "totalSteps": 2,
       "requiresDoubleApproval": true
@@ -65,6 +69,9 @@ No request body, no query parameters for MVP.
 | `pending[].createdAt` | string (ISO 8601) | When the payment was created |
 | `pending[].createdByName` | string | Name of the user who created the payment |
 | `pending[].fromAccountName` | string | Display name of the source account |
+| `pending[].attestants` | array | Attestants for all existing approval steps of this payment, including handled and unassigned steps, ordered by step number |
+| `pending[].attestants[].stepNumber` | number | Approval step number (1-indexed) |
+| `pending[].attestants[].name` | string or null | Assigned attestant's display name; null when the step is unassigned |
 | `pending[].currentStep` | number | Which approval step this is (1-indexed) |
 | `pending[].totalSteps` | number | Total approval steps required for this payment |
 | `pending[].requiresDoubleApproval` | boolean | Whether this payment needs a second attestant. Backend-computed. Frontend must not infer this from the amount itself |
@@ -186,6 +193,7 @@ Returned when the JWT is missing, invalid, or expired.
 
 Frontend can use this contract to:
 - render the pending approvals list with the "Dubbel attest krävs" badge driven by `requiresDoubleApproval`, not a hardcoded amount check
+- show payment details, creator and assigned attestants using the pending item's fields; show an unassigned label when an attestant name is null
 - render the recently handled table
 - submit approve/reject decisions with an optional comment
 - create mock approval data for the Attestkorg page before the backend is ready

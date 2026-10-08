@@ -263,6 +263,107 @@ public class ApprovalsApiIntegrationTests
     }
 
     [Fact]
+    public async Task GetApprovals_SerializesAllAttestantsInStepOrderIncludingUnassignedSteps()
+    {
+        using var factory = new ApprovalApiFactory();
+        await SeedApprovalScenarioAsync(factory);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SebDbContext>();
+            db.ApprovalSteps.AddRange(
+                new ApprovalStep
+                {
+                    Id = 503, PublicId = TestIds.Step(503), PaymentId = 42,
+                    AttestantId = null, StepNumber = 3
+                },
+                new ApprovalStep
+                {
+                    Id = 502, PublicId = TestIds.Step(502), PaymentId = 42,
+                    AttestantId = OtherAttestantId, StepNumber = 2
+                });
+            await db.SaveChangesAsync();
+        }
+
+        var client = CreateClient(factory);
+        var response = await client.GetAsync("/api/approvals");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var pending = Assert.Single(body.RootElement.GetProperty("pending").EnumerateArray());
+        var attestants = pending.GetProperty("attestants").EnumerateArray().ToArray();
+
+        Assert.Equal("Lisa Persson", pending.GetProperty("createdByName").GetString());
+        Assert.Equal("SE8550000000054910000004", pending.GetProperty("toIban").GetString());
+        Assert.Equal("75000.00", pending.GetProperty("amount").GetString());
+        Assert.Equal("Faktura #1043", pending.GetProperty("reference").GetString());
+        Assert.Equal(new[] { 1, 2, 3 }, attestants.Select(a => a.GetProperty("stepNumber").GetInt32()));
+        Assert.Equal("Johan Berg", attestants[0].GetProperty("name").GetString());
+        Assert.Equal("Eva Nord", attestants[1].GetProperty("name").GetString());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, attestants[2].GetProperty("name").ValueKind);
+        Assert.All(attestants, attestant => Assert.Equal(
+            new[] { "name", "stepNumber" },
+            attestant.EnumerateObject().Select(property => property.Name).OrderBy(name => name)));
+    }
+
+    [Fact]
+    public async Task GetApprovals_WithAttestantDetails_PreservesAssignmentAndTenantIsolation()
+    {
+        using var factory = new ApprovalApiFactory();
+        await SeedApprovalScenarioAsync(factory);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SebDbContext>();
+            db.Tenants.Add(new Tenant { Id = 2, Name = "Annat Bolag AB" });
+            db.Users.Add(new User
+            {
+                Id = 22, TenantId = 2, Name = "Vera Secret", Role = UserRoles.Initiator
+            });
+            db.Payments.AddRange(
+                new Payment
+                {
+                    Id = 43, TenantId = TenantId, FromAccountId = AccountId,
+                    CreatedById = InitiatorId, Amount = 75000m
+                },
+                new Payment
+                {
+                    Id = 44, TenantId = 2, FromAccountId = AccountId,
+                    CreatedById = 22, Amount = 75000m
+                });
+            db.ApprovalSteps.AddRange(
+                new ApprovalStep
+                {
+                    Id = 502, PublicId = TestIds.Step(502), PaymentId = 43,
+                    AttestantId = OtherAttestantId
+                },
+                new ApprovalStep
+                {
+                    Id = 503, PublicId = TestIds.Step(503), PaymentId = 44,
+                    AttestantId = AttestantId
+                });
+            await db.SaveChangesAsync();
+        }
+
+        var attestantClient = CreateClient(factory);
+        var attestantResponse = await attestantClient.GetAsync("/api/approvals");
+        Assert.Equal(HttpStatusCode.OK, attestantResponse.StatusCode);
+        var attestantInbox = await attestantResponse.Content.ReadFromJsonAsync<ApprovalInboxResponse>();
+        Assert.NotNull(attestantInbox);
+        var pending = Assert.Single(attestantInbox.Pending);
+        Assert.Equal(42, pending.PaymentId);
+        Assert.Equal("Johan Berg", Assert.Single(pending.Attestants).Name);
+
+        var adminClient = CreateClient(factory, role: UserRoles.Admin);
+        var adminResponse = await adminClient.GetAsync("/api/approvals");
+        Assert.Equal(HttpStatusCode.OK, adminResponse.StatusCode);
+        var adminInbox = await adminResponse.Content.ReadFromJsonAsync<ApprovalInboxResponse>();
+        Assert.NotNull(adminInbox);
+        Assert.Equal(new[] { 42, 43 }, adminInbox.Pending.Select(item => item.PaymentId).OrderBy(id => id));
+        Assert.DoesNotContain(adminInbox.Pending, item => item.CreatedByName == "Vera Secret");
+    }
+
+    [Fact]
     public async Task PostDecision_Approve_ReturnsOkAndCompletesPayment()
     {
         using var factory = new ApprovalApiFactory();

@@ -41,7 +41,7 @@ Jag testade följande:
 - Jag simulerade tom lista, långsam hämtning och serverfel i webbläsartestet. Meddelandena visades och Försök igen hämtade riktig data igen.
 - Jag simulerade saknad inloggning (401) och saknad behörighet (403). Sidan visade rätt meddelande och inga betalningsrader.
 
-Story 1 är klar. Nästa steg är story 2: visa betalningens uppgifter, skapare och attestanter.
+Story 1 är klar.
 
 ### Test med testkontot
 
@@ -50,3 +50,23 @@ Jag ändrade det befintliga lokala kontot `test@malmobygg.se` från `initiator` 
 Jag verifierade datan i databasen och kontrollerade Docker-backendens `GET /api/approvals` med en tillfällig testtoken för testkontots identitet och roll. Svaret var 200 och innehöll den egna testbetalningen, utan Johans betalning.
 
 Testkontot behöver logga ut och in igen eftersom rollen sparas i inloggningstoken. Rollen `attestant` används för att granska och godkänna betalningar och ger inte behörighet att skapa nya betalningar.
+
+## Story 2 – Betalningsuppgifter, skapare och attestanter
+
+Datum: 2026-10-08
+
+Jag kompletterade `GET /api/approvals` så att varje väntande betalning innehåller attestanternas namn och stegnummer. Backend hämtar personerna som är kopplade till betalningens atteststeg och sorterar dem i stegordning. API-kontraktet är uppdaterat med fältet `attestants`.
+
+I frontend går det nu att klicka på betalningens referens under Godkännanden. En detaljvy öppnas med belopp, status, avsändarkonto, mottagarkonto, referens, skapandetid, skapare och attestanter. Om ett atteststeg inte har tilldelats någon visas Inte tilldelad.
+
+Jag gjorde detta för att attestanten ska kunna kontrollera betalningen och vilka personer som är inblandade innan hon fattar ett beslut.
+
+Jag testade följande:
+
+- 58 riktade backendtester för ApprovalService, ApprovalsController och ApprovalsApiIntegration gick igenom. Fyra nya automatiska tester kontrollerar attestanternas namn, ordning, ej tilldelade steg och att behörighetsgränserna mellan användare och företag fortfarande gäller.
+- `npm.cmd run build` och `npm.cmd run lint` gick igenom. Backend byggdes också utan fel eller varningar.
+- Jag startade om den lokala backenden på port 5010 och testade detaljvyn mot riktig data. Faktura #1043 visade Lisa Persson som skapare och Johan Berg som attestant.
+- Jag kontrollerade detaljvyn i dator- och mobilstorlek och att tangentbordsfokus stannar i dialogen. Stängknapparna och Escape stänger dialogen och lämnar tillbaka fokus till betalningen.
+- Jag simulerade flera attestanter, ett ej tilldelat steg och saknade uppgifter i webbläsartestet. Rätt namn och reservtexter visades utan fel.
+
+Story 2 är klar. Nästa steg är story 3: godkänna eller avvisa betalningar och se statusen uppdateras.

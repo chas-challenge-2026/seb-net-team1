@@ -32,6 +32,7 @@ public class ApprovalRepository(SebDbContext dbContext)
             .Include(step => step.Payment!).ThenInclude(payment => payment.CreatedBy)
             .Include(step => step.Payment!).ThenInclude(payment => payment.FromAccount)
             .Include(step => step.Payment!).ThenInclude(payment => payment.ApprovalSteps)
+                .ThenInclude(approvalStep => approvalStep.Attestant)
             .Where(step =>
                 step.Status == ApprovalStatuses.Pending &&
                 step.Payment != null &&

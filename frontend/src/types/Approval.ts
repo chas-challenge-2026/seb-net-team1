@@ -1,3 +1,8 @@
+export type ApprovalAttestant = {
+  stepNumber: number;
+  name: string | null;
+};
+
 export type PendingApproval = {
   paymentId: number;
   approvalStepId: string;
@@ -11,6 +16,7 @@ export type PendingApproval = {
   currentStep: number;
   totalSteps: number;
   requiresDoubleApproval: boolean;
+  attestants: ApprovalAttestant[];
 };
 
 export type HandledApproval = {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { FiCheckCircle, FiClock, FiRefreshCw } from "react-icons/fi";
 import { ApprovalApiError, getApprovalInbox } from "../api/approvalsApi";
+import ApprovalDetails from "../components/approvals/ApprovalDetails";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import Sidebar from "../components/dashboard/Sidebar";
 import Button from "../components/shared/Button";
@@ -39,6 +40,8 @@ export default function ApprovalInbox() {
   const [pending, setPending] = useState<PendingApproval[] | null>(null);
   const [error, setError] = useState<InboxError | null>(null);
   const [requestVersion, setRequestVersion] = useState(0);
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  const selectedApproval = pending?.find((approval) => approval.approvalStepId === selectedStepId);
   const isLoading = pending === null && error === null;
 
   useEffect(() => {
@@ -68,6 +71,7 @@ export default function ApprovalInbox() {
   }, [requestVersion]);
 
   function refreshInbox() {
+    setSelectedStepId(null);
     setPending(null);
     setError(null);
     setRequestVersion((version) => version + 1);
@@ -160,7 +164,17 @@ export default function ApprovalInbox() {
                     <tbody>
                       {pending?.map((approval) => (
                         <tr key={approval.approvalStepId}>
-                          <td className="approval-inbox-reference">{approval.reference || `Betalning #${approval.paymentId}`}</td>
+                          <td className="approval-inbox-reference">
+                            <button
+                              type="button"
+                              className="approval-inbox-reference-button"
+                              onClick={() => setSelectedStepId(approval.approvalStepId)}
+                              aria-label={`Visa detaljer för ${approval.reference || `betalning #${approval.paymentId}`}`}
+                              aria-haspopup="dialog"
+                            >
+                              {approval.reference || `Betalning #${approval.paymentId}`}
+                            </button>
+                          </td>
                           <td className="approval-inbox-iban">{approval.toIban}</td>
                           <td className="approval-inbox-amount">{formatAmount(approval.amount, approval.currency)}</td>
                           <td><time dateTime={approval.createdAt}>{formatDate(approval.createdAt)}</time></td>
@@ -175,6 +189,9 @@ export default function ApprovalInbox() {
           </section>
         </div>
       </main>
+      {selectedApproval && (
+        <ApprovalDetails approval={selectedApproval} onClose={() => setSelectedStepId(null)} />
+      )}
     </div>
   );
 }
