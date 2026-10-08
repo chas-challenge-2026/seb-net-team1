@@ -11,15 +11,18 @@ import type {
   CreatePaymentRequest,
   CreatePaymentResponse,
 } from "../types/Payment";
+import { PAYMENT_AMOUNT_ERROR, parsePaymentAmount } from "../utils/paymentAmount";
 import "../styles/dashboard.css";
 import "../styles/newPayment.css";
+
+type PaymentFormState = Omit<CreatePaymentRequest, "amount"> & { amount: string };
 
 function NewPayment() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
   const [accountLoadError, setAccountLoadError] = useState<string | null>(null);
-  const [paymentForm, setPaymentForm] = useState<CreatePaymentRequest>({
+  const [paymentForm, setPaymentForm] = useState<PaymentFormState>({
     fromAccountId: 0,
     toIban: "",
     amount: "",
@@ -78,10 +81,17 @@ function NewPayment() {
       return;
     }
 
+    const amount = parsePaymentAmount(paymentForm.amount);
+    if (amount === null) {
+      setSubmitError(PAYMENT_AMOUNT_ERROR);
+      setCreatedPayment(null);
+      return;
+    }
+
     const paymentToCreate: CreatePaymentRequest = {
       fromAccountId: paymentForm.fromAccountId,
-      toIban: paymentForm.toIban.trim(),
-      amount: paymentForm.amount,
+      toIban: paymentForm.toIban.replace(/\s/g, "").toUpperCase(),
+      amount,
       reference: paymentForm.reference?.trim() || undefined,
     };
 
@@ -93,8 +103,12 @@ function NewPayment() {
       const payment = await createPayment(paymentToCreate);
 
       setCreatedPayment(payment);
-    } catch {
-      setSubmitError("Kunde inte skapa betalningen. Försök igen.");
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Kunde inte skapa betalningen. Försök igen."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -259,7 +273,7 @@ function NewPayment() {
 
                 {createdPayment ? (
                   <small role="status">
-                    Betalning skapad i mock-API med ID {createdPayment.id}.
+                    {getPaymentSuccessMessage(createdPayment)}
                   </small>
                 ) : null}
 
@@ -271,6 +285,14 @@ function NewPayment() {
       </main>
     </div>
   );
+}
+
+function getPaymentSuccessMessage(payment: CreatePaymentResponse): string {
+  if (payment.status === "pending_approval") {
+    return `Betalning skapad och väntar på godkännande. ID ${payment.id}.`;
+  }
+
+  return `Betalning skapad och genomförd. ID ${payment.id}.`;
 }
 
 export default NewPayment;

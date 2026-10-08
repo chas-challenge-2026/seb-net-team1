@@ -39,7 +39,7 @@ export default function QuickActions() {
 			description: "Gå till betalningsöversikten",
 			icon: <LuList />,
 			variant: "purple",
-			to: "/audit-log",
+			to: "/payments",
 		},
 	];
 
