@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
 import "./styles/global.css";
 import Dashboard from "./pages/Dashboard";
 import NewPayment from "./pages/NewPayment";
@@ -19,6 +20,7 @@ import Logout from "./pages/Logout";
 
 const pageTitles: Record<string, string> = {
   "/": "Logga in",
+  "/forgot-password": "Glömt lösenord",
   "/dashboard": "Översikt",
   "/new-payment": "Betalningar",
   "/payments": "Betalningar",
@@ -47,6 +49,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/new-payment" element={<NewPayment />} />
       <Route path="/payments" element={<Payments />} />
