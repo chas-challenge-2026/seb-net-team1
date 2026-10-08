@@ -8,6 +8,7 @@ import Accounts  from "./pages/Accounts";
 import BatchFiles from "./pages/BatchFiles";
 import AuditLog from "./pages/AuditLog";
 import ApprovalInbox from "./pages/ApprovalInbox";
+import Reports from "./pages/Reports";
 
 const pageTitles: Record<string, string> = {
   "/": "Logga in",
@@ -37,7 +38,7 @@ function App() {
       <Route path="/batch-upload" element={<BatchFiles />} />
       <Route path="/audit-log" element={<AuditLog />} />
       <Route path="/approval-inbox" element={<ApprovalInbox />} />
-      {/* TODO: Lägg till React-route när rapportsidan har flyttats hit. */}
+      <Route path="/reports" element={<Reports />} />
     </Routes>
   );
 }

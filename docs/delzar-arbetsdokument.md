@@ -152,3 +152,40 @@ Jag testade följande:
 - Jag kontrollerade sidan i webbläsaren med det nya kontot, i dator- och mobilstorlek. Markeringen, regeltexten och båda tilldelade personerna visades från den riktiga backenden. Escape stängde dialogen och återställde fokus.
 
 Story 5 är klar.
+
+## Story 6 – Välja period för rapporten
+
+Datum: 2026-10-08
+
+Jag byggde sidan `Reports.tsx` och kopplade Rapporter i menyn till `/reports`. Där väljer användaren Från-datum och Till-datum och klickar på Visa rapport. Första visningen använder perioden från månadens första dag till dagens datum enligt svensk tid.
+
+Rapporten visar företagets betalningar som skapats under den valda perioden, oavsett status. Båda datumen räknas med, inklusive betalningar sent på sista dagen. Tabellen visar referens, avsändarkonto, mottagarkonto, belopp, skapandetid och status. Jag gjorde detta för att användaren ska kunna hitta betalningar från rätt dagar utan att vara begränsad till översiktens senaste 20 betalningar.
+
+Jag lade till `GET /api/reports/payments?from=YYYY-MM-DD&to=YYYY-MM-DD`. Backend hämtar användarens företag från inloggningen och filtrerar betalningarna i databasen. Alla inloggade roller kan läsa företagets rapport, så de befintliga testkontona kan användas. Ogiltiga eller omvända datum ger ett valideringsfel.
+
+Datumgränserna följer `Europe/Stockholm` och räknas om var för sig till UTC, så att hela dagen inkluderas även vid byte mellan sommar- och vintertid. Rapportfrågan använder samma timestamp-typ som den befintliga databasens kolumn. API-svaret anger UTC och frontend visar svensk tid.
+
+När datum ändras döljs föregående rapport tills den nya perioden hämtats. Ett tidigare anrop avbryts så att ett sent svar inte ersätter den nya rapporten. Sidan visar också laddning, tom period, valideringsfel, inloggningsfel och möjlighet att försöka igen vid hämtningsfel.
+
+Jag lade in fem nya betalningar i den lokala testdatabasen. De har Lisa som skapare och ett väntande steg tilldelat `test@malmobygg.se`. De kan visas i rapporten även med `test2@malmobygg.se`, eftersom båda kontona tillhör samma företag.
+
+| Referens | Svenskt skapandedatum | Belopp | Visas vid 1–8 oktober |
+| --- | --- | --- | --- |
+| Test - rapport 30 september (#17) | 2026-09-30 12:00 | 75 000 kr | Nej |
+| Test - rapport 1 oktober (#18) | 2026-10-01 00:00 | 76 000 kr | Ja |
+| Test - rapport 4 oktober (#19) | 2026-10-04 12:00 | 77 000 kr | Ja |
+| Test - rapport 8 oktober (#20) | 2026-10-08 23:59:59,999 | 78 000 kr | Ja |
+| Test - rapport 9 oktober (#21) | 2026-10-09 00:00 | 79 000 kr | Nej |
+
+Perioden visar också de befintliga betalningar som skapats under samma dagar. Testbetalningarna vid midnatt och sent på sista dagen kontrollerar att datumgränserna är rätt.
+
+Jag testade följande:
+
+- 35 nya backendtester gick igenom: 32 HTTP- och servicetester samt tre tester mot en separat PostgreSQL-databas. De kontrollerar datumgränser, samma dag, båda tidsomställningarna, annan tidszon i databasen, företagsgränser, alla roller, alla statusar, tomma perioder, fler än 20 betalningar och valideringsfel.
+- 69 nya frontendtester gick igenom med `npm.cmd run test:reports`. De kontrollerar periodval, datumvalidering, månadsskifte enligt svensk tid, cookies, API-anrop, fel och felaktiga svar. De 40 tidigare frontendtesterna för attestflödet gick också igenom.
+- Frontendens `npm.cmd run build` och `npm.cmd run lint` gick igenom. Backend byggdes utan fel eller varningar.
+- Efter omstart av den lokala backenden på port 5010 gick tolv kontroller mot det riktiga API:et igenom med vanlig inloggning. Perioden 1–8 oktober inkluderade testbetalningarna från 1, 4 och 8 oktober och uteslöt 30 september och 9 oktober. Samma dag, tom period, ogiltiga datum, alla roller och UTC i svaret kontrollerades också.
+- Tolv webbläsarkontroller gick igenom på den riktiga rapportsidan. Jag kontrollerade menylänken, standardperioden, svenska tider, datumval, tom period, valideringsfel, serverfel med nytt försök och inloggnings- och behörighetsmeddelanden. Ett fördröjt gammalt svar kunde inte ersätta den nya periodens rapport. Sidan fungerade i dator- och mobilstorlek, med tabellscrollning på mobil.
+- En avslutande databaskontroll visade att de fem nya testbetalningarna fortfarande väntar på beslut och att tidigare betalningar, atteststeg, saldon, transaktioner och användare motsvarade kontrollen före testningen.
+
+Story 6 är klar.

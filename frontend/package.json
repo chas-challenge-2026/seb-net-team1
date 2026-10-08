@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test:approvals": "node --experimental-vm-modules --test tests/*.test.mjs",
+    "test:reports": "node --experimental-vm-modules --test tests/reports*.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
