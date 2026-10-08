@@ -6,6 +6,9 @@ import Dashboard from "./pages/Dashboard";
 import NewPayment from "./pages/NewPayment";
 import Accounts  from "./pages/Accounts";
 import BatchFiles from "./pages/BatchFiles";
+import BatchFilesOverview from "./pages/BatchFilesOverview";
+import BatchFileDetails from "./pages/BatchFileDetails";
+import BatchLayout from "./components/batch/BatchLayout";
 import AuditLog from "./pages/AuditLog";
 import ApprovalInbox from "./pages/ApprovalInbox";
 import Reports from "./pages/Reports";
@@ -20,6 +23,7 @@ const pageTitles: Record<string, string> = {
   "/accounts": "Konton",
   "/approval-inbox": "Godkännanden",
   "/batch-upload": "Batchfiler",
+  "/batch-files": "Batchfiler",
   "/reports": "Rapporter",
   "/audit-log": "Audit-logg",
   "/settings": "Inställningar",
@@ -31,7 +35,9 @@ function App() {
   useEffect(() => {
     const title = pathname.startsWith("/payments/")
       ? "Betalningar – Detaljer"
-      : pageTitles[pathname] ?? "Cash Management";
+      : pathname.startsWith("/batch-files/")
+        ? "Batchfil – detaljer"
+        : pageTitles[pathname] ?? "Cash Management";
     document.title = `${title} | SEB`;
   }, [pathname]);
 
@@ -43,7 +49,11 @@ function App() {
       <Route path="/payments" element={<Payments />} />
       <Route path="/payments/:id" element={<PaymentDetails />} />
       <Route path="/accounts" element={<Accounts />}/>
-      <Route path="/batch-upload" element={<BatchFiles />} />
+      <Route element={<BatchLayout />}>
+        <Route path="/batch-files" element={<BatchFilesOverview />} />
+        <Route path="/batch-files/:batchId" element={<BatchFileDetails />} />
+        <Route path="/batch-upload" element={<BatchFiles />} />
+      </Route>
       <Route path="/audit-log" element={<AuditLog />} />
       <Route path="/approval-inbox" element={<ApprovalInbox />} />
       <Route path="/reports" element={<Reports />} />

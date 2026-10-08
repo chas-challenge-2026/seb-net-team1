@@ -17,11 +17,15 @@ export const BATCH_MAX_FILE_SIZE_BYTES = 1024 * 1024;
 
 type CsvParseResult = {
   records: string[][];
+  sourceLines: number[];
   error: string | null;
 };
 
 function parseCsv(content: string): CsvParseResult {
   const records: string[][] = [];
+  const sourceLines: number[] = [];
+  let sourceLine = 1;
+  let recordStartLine = 1;
   let row: string[] = [];
   let field = "";
   let inQuotes = false;
@@ -32,6 +36,7 @@ function parseCsv(content: string): CsvParseResult {
     const nextChar = content[index + 1];
 
     if (inQuotes) {
+      if (char === "\n" || (char === "\r" && nextChar !== "\n")) sourceLine += 1;
       if (char === '"' && nextChar === '"') {
         field += '"';
         index += 1;
@@ -56,6 +61,7 @@ function parseCsv(content: string): CsvParseResult {
 
       return {
         records,
+        sourceLines,
         error: "CSV-filen innehåller ett ogiltigt citationstecken.",
       };
     }
@@ -67,6 +73,7 @@ function parseCsv(content: string): CsvParseResult {
 
       return {
         records,
+        sourceLines,
         error: "CSV-filen innehåller tecken efter ett avslutat citerat fält.",
       };
     }
@@ -81,6 +88,9 @@ function parseCsv(content: string): CsvParseResult {
     if (char === "\n" || char === "\r") {
       row.push(field);
       records.push(row);
+      sourceLines.push(recordStartLine);
+      sourceLine += 1;
+      recordStartLine = sourceLine;
       row = [];
       field = "";
       fieldStartedWithQuote = false;
@@ -98,6 +108,7 @@ function parseCsv(content: string): CsvParseResult {
   if (inQuotes) {
     return {
       records,
+      sourceLines,
       error: "CSV-filen saknar avslutande citationstecken.",
     };
   }
@@ -105,15 +116,10 @@ function parseCsv(content: string): CsvParseResult {
   if (field.length > 0 || row.length > 0) {
     row.push(field);
     records.push(row);
+    sourceLines.push(recordStartLine);
   }
 
-  return { records, error: null };
-}
-
-function removeEmptyRows(records: string[][]): string[][] {
-  return records.filter((record) =>
-    record.some((field) => field.trim().length > 0)
-  );
+  return { records, sourceLines, error: null };
 }
 
 function normalizeHeaderCell(cell: string): string {
@@ -143,7 +149,7 @@ function validateHeader(header: string[] | undefined): string[] {
       ];
 }
 
-function validateRow(record: string[], rowNumber: number): BatchPaymentRow {
+function validateRow(record: string[], rowNumber: number, recordNumber: number): BatchPaymentRow {
   const errors: string[] = [];
   const [fromAccountId = "", toIban = "", amount = "", reference = ""] = record;
   const trimmedFromAccountId = fromAccountId.trim();
@@ -202,6 +208,7 @@ function validateRow(record: string[], rowNumber: number): BatchPaymentRow {
 
   return {
     rowNumber,
+    recordNumber,
     fromAccountId: trimmedFromAccountId,
     toIban: trimmedToIban,
     amount: trimmedAmount,
@@ -249,8 +256,11 @@ export function validateBatchCsv(content: string): BatchValidationResult {
     };
   }
 
-  const records = removeEmptyRows(parseResult.records);
-  const [headerRecord, ...dataRecords] = records;
+  const records = parseResult.records
+    .map((record, index) => ({ record, sourceLine: parseResult.sourceLines[index] }))
+    .filter(({ record }) => record.some((field) => field.trim().length > 0));
+  const [header, ...dataRecords] = records;
+  const headerRecord = header?.record;
   const headerErrors = validateHeader(headerRecord);
   const fileErrors = [...headerErrors];
   const canValidateRows = headerErrors.length === 0;
@@ -268,7 +278,7 @@ export function validateBatchCsv(content: string): BatchValidationResult {
   }
 
   const rows = canValidateRows
-    ? dataRecords.map((record, index) => validateRow(record, index + 2))
+    ? dataRecords.map(({ record, sourceLine }, index) => validateRow(record, sourceLine, index + 1))
     : [];
   const summary = canValidateRows
     ? createSummary(rows)
