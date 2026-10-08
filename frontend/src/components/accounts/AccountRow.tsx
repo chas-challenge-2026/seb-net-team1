@@ -1,12 +1,5 @@
 import { LuBuilding2, LuChevronRight } from "react-icons/lu";
-
-type Account = {
-  id: number;
-  name: string;
-  iban: string;
-  balance: string;
-  currency: string;
-};
+import type { Account } from "../../types/Account";
 
 type AccountRowProps = {
   account: Account;
@@ -20,12 +13,17 @@ const AccountRow = ({ account }: AccountRowProps) => {
       </div>
 
       <div className="account-row-info">
-        <h3>{account.name}</h3>
+        <h3>{account.accountName}</h3>
         <p>{account.iban}</p>
       </div>
 
       <div className="account-row-balance">
-        <strong>{account.balance}</strong>
+        <strong>
+          {Number(account.balance).toLocaleString("sv-SE", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </strong>
         <span>{account.currency}</span>
       </div>
 

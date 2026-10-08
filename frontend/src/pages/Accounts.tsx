@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getAccounts } from "../api/accountsApi";
+import type { Account } from "../types/Account";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import Sidebar from "../components/dashboard/Sidebar";
 import AccountSummary from "../components/accounts/AccountSummary";
@@ -15,6 +17,32 @@ import "../styles/accounts.css";
 
 const Accounts = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [accounts, setAccounts] = useState<Account[] | null>(null);
+  const [accountsError, setAccountsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    getAccounts()
+      .then((data) => {
+        if (isCurrent) setAccounts(data);
+      })
+      .catch((error: unknown) => {
+        if (!isCurrent) return;
+
+        setAccountsError(
+          error instanceof TypeError
+            ? "Kunde inte nå backend-API:t. Kontrollera anslutningen och försök igen."
+            : error instanceof Error
+              ? error.message
+              : "Kunde inte hämta konton."
+        );
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   return (
     <div className="dashboard-layout">
@@ -35,20 +63,19 @@ const Accounts = () => {
         <DashboardHeader
           title="Konton"
           subtitle="Här ser du en samlad bild av företagets konton och saldo."
-          user={{
-            id: 1,
-            tenantId: 1,
-            name: "Användarnamn",
-            email: "anvandarnamn@seb.se",
-            role: "admin",
-          }}
         />
 
         <div className="dashboard-content">
+          {accountsError && (
+            <p className="dashboard-data-error" role="alert">
+              {accountsError}
+            </p>
+          )}
+
           <div className="accounts-main">
             <section className="accounts-content">
-              <AccountSummary />
-              <AccountList />
+              <AccountSummary accounts={accounts} />
+              <AccountList accounts={accounts} />
             </section>
 
             <aside className="accounts-aside">

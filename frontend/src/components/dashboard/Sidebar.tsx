@@ -62,6 +62,7 @@ export default function DashboardSidebar({
     const batchFilesClassName = `dashboard-sidebar-link${pathname === "/batch-upload" || pathname === "/batch-files" || pathname.startsWith("/batch-files/") ? " active" : ""}`;
     const reportsClassName = `dashboard-sidebar-link${pathname === "/reports" ? " active" : ""}`;
     const auditLogClassName = `dashboard-sidebar-link${pathname === "/audit-log" ? " active" : ""}`;
+    const settingsClassName = `dashboard-sidebar-link${pathname === "/settings" ? " active" : ""}`;
 
     async function handleLogout() {
       setIsLoggingOut(true);
@@ -70,7 +71,7 @@ export default function DashboardSidebar({
       try {
         await logout();
         localStorage.removeItem("user");
-        navigate("/", { replace: true });
+        navigate("/logout", { replace: true });
       } catch {
         setLogoutError("Kunde inte logga ut. Försök igen.");
       } finally {
@@ -152,10 +153,10 @@ export default function DashboardSidebar({
           <span>Audit-logg</span>
         </Link>
 
-        <a href="#" className="dashboard-sidebar-link">
+        <Link to="/settings" className={settingsClassName}>
           <FiSettings />
           <span>Inställningar</span>
-        </a>
+        </Link>
 
       </nav>
 

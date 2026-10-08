@@ -15,6 +15,8 @@ import ApprovalInbox from "./pages/ApprovalInbox";
 import Reports from "./pages/Reports";
 import Payments from "./pages/Payments";
 import PaymentDetails from "./pages/PaymentDetails";
+import Settings from "./pages/Settings";
+import Logout from "./pages/Logout";
 
 const pageTitles: Record<string, string> = {
   "/": "Logga in",
@@ -29,6 +31,7 @@ const pageTitles: Record<string, string> = {
   "/reports": "Rapporter",
   "/audit-log": "Audit-logg",
   "/settings": "Inställningar",
+  "/logout": "Utloggad",
 };
 
 function App() {
@@ -60,6 +63,8 @@ function App() {
       <Route path="/audit-log" element={<AuditLog />} />
       <Route path="/approval-inbox" element={<ApprovalInbox />} />
       <Route path="/reports" element={<Reports />} />
+      <Route path="/settings" element={<Settings />} />
+      <Route path="/logout" element={<Logout />} />
     </Routes>
   );
 }
