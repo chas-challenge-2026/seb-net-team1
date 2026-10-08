@@ -320,31 +320,105 @@
   line-height: 1.4;
 }
 
-.approval-details-attestants {
+.approval-timeline {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   list-style: none;
 }
 
-.approval-details-attestants li {
+.approval-timeline-step {
+  display: flex;
+  gap: 12px;
+  padding-bottom: 20px;
+  position: relative;
+}
+
+.approval-timeline-step:last-child {
+  padding-bottom: 0;
+}
+
+.approval-timeline-step:not(:last-child)::before {
+  background: var(--border-color);
+  bottom: 0;
+  content: "";
+  left: 15px;
+  position: absolute;
+  top: 32px;
+  width: 2px;
+}
+
+.approval-timeline-marker {
+  align-items: center;
+  background: var(--light-gray);
+  border-radius: var(--radius-full);
+  color: var(--medium-gray);
+  display: flex;
+  flex-shrink: 0;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.approval-timeline-marker svg {
+  font-size: 18px;
+}
+
+.approval-timeline-step--approved .approval-timeline-marker {
+  background: var(--light-green);
+  color: var(--seb-deep-green);
+}
+
+.approval-timeline-step--rejected .approval-timeline-marker {
+  background: #fee9e7;
+  color: #b42318;
+}
+
+.approval-timeline-step--pending .approval-timeline-marker {
+  background: #fff1da;
+  color: #805500;
+}
+
+.approval-timeline-content {
   background: var(--light-gray);
   border-radius: var(--radius-sm);
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: space-between;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
   padding: 14px;
 }
 
-.approval-details-attestants li span,
+.approval-timeline-step-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.approval-timeline-step-number,
+.approval-timeline-time {
+  color: var(--medium-gray);
+  font-size: 12px;
+}
+
+.approval-timeline-content p {
+  font-size: 13px;
+}
+
+.approval-timeline-comment,
 .approval-details-missing {
   color: var(--medium-gray);
 }
 
-.approval-details-attestants strong {
+.approval-timeline strong {
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+.approval-details-footer.approval-history-footer {
+  justify-content: flex-end;
 }
 
 .approval-details-footer {

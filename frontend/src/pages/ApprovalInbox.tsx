@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { FiCheckCircle, FiClock, FiRefreshCw } from "react-icons/fi";
 import { ApprovalApiError, getApprovalInbox } from "../api/approvalsApi";
 import ApprovalDetails from "../components/approvals/ApprovalDetails";
+import ApprovalHistoryDetails from "../components/approvals/ApprovalHistoryDetails";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import Sidebar from "../components/dashboard/Sidebar";
 import Button from "../components/shared/Button";
@@ -43,6 +44,7 @@ export default function ApprovalInbox() {
   const [error, setError] = useState<InboxError | null>(null);
   const [requestVersion, setRequestVersion] = useState(0);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  const [selectedHistory, setSelectedHistory] = useState<HandledApproval | null>(null);
   const selectedApproval = pending?.find((approval) => approval.approvalStepId === selectedStepId);
   const isLoading = pending === null && error === null;
 
@@ -75,6 +77,7 @@ export default function ApprovalInbox() {
 
   function refreshInbox() {
     setSelectedStepId(null);
+    setSelectedHistory(null);
     setPending(null);
     setRecentlyHandled(null);
     setError(null);
@@ -187,7 +190,10 @@ export default function ApprovalInbox() {
                             <button
                               type="button"
                               className="approval-inbox-reference-button"
-                              onClick={() => setSelectedStepId(approval.approvalStepId)}
+                              onClick={() => {
+                                setSelectedHistory(null);
+                                setSelectedStepId(approval.approvalStepId);
+                              }}
                               aria-label={`Visa detaljer för ${approval.reference || `betalning #${approval.paymentId}`}`}
                               aria-haspopup="dialog"
                             >
@@ -233,9 +239,22 @@ export default function ApprovalInbox() {
                       <tbody>
                         {recentlyHandled.map((approval, index) => (
                           <tr key={`${approval.paymentId}-${approval.decidedAt}-${index}`}>
-                            <td>Betalning #{approval.paymentId}</td>
+                            <td>
+                              <button
+                                type="button"
+                                className="approval-inbox-reference-button"
+                                aria-haspopup="dialog"
+                                aria-label={`Visa attesthistorik för betalning #${approval.paymentId}`}
+                                onClick={() => {
+                                  setSelectedStepId(null);
+                                  setSelectedHistory(approval);
+                                }}
+                              >
+                                Betalning #{approval.paymentId}
+                              </button>
+                            </td>
                             <td className="approval-inbox-amount">{formatAmount(approval.amount, "SEK")}</td>
-                            <td><StatusBadge status={approval.status === "approved" ? "success" : "rejected"}>{approval.status === "approved" ? "Godkänd" : "Avvisad"}</StatusBadge></td>
+                            <td><StatusBadge status={approval.decisionSource === "payment_rejected" ? "processing" : approval.status === "approved" ? "success" : "rejected"}>{approval.decisionSource === "payment_rejected" ? "Avbruten" : approval.status === "approved" ? "Godkänd" : "Avvisad"}</StatusBadge></td>
                             <td>{approval.decidedAt ? <time dateTime={approval.decidedAt}>{formatDate(approval.decidedAt)}</time> : "—"}</td>
                             <td className="approval-inbox-comment">{approval.comment || "—"}</td>
                           </tr>
@@ -260,6 +279,9 @@ export default function ApprovalInbox() {
             refreshInbox();
           }}
         />
+      )}
+      {selectedHistory && (
+        <ApprovalHistoryDetails approval={selectedHistory} onClose={() => setSelectedHistory(null)} />
       )}
     </div>
   );

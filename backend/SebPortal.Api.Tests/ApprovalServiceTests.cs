@@ -984,4 +984,211 @@ public class ApprovalServiceTests
         Assert.Equal(1059, inbox.RecentlyHandled[0].PaymentId);
         Assert.Equal(1010, inbox.RecentlyHandled[49].PaymentId);
     }
+
+    [Fact]
+    public async Task GetInboxAsync_TimelineOrdersAllStepsAndDoesNotInventLegacyDecisionActors()
+    {
+        using var db = CreateContext();
+        SeedUsersAndAccount(db);
+        SeedPendingPayment(db, paymentId: 42, amount: 300000m);
+
+        // Insert out of order, with a tie, to verify the stable display order.
+        SeedStep(db, stepId: 504, paymentId: 42, attestantId: null, stepNumber: 3);
+        SeedStep(db, stepId: 503, paymentId: 42, attestantId: OtherAttestantId, stepNumber: 2);
+        SeedStep(db, stepId: 502, paymentId: 42, attestantId: AttestantId, stepNumber: 2);
+        var legacyDecisionAt = new DateTime(2026, 8, 30, 10, 0, 0, DateTimeKind.Utc);
+        var legacy = SeedStep(
+            db, stepId: 500, paymentId: 42, attestantId: OtherAttestantId,
+            stepNumber: 1, status: ApprovalStatuses.Approved, decidedAt: legacyDecisionAt);
+        legacy.Comment = "Äldre beslut";
+        db.SaveChanges();
+        db.ChangeTracker.Clear();
+
+        var inbox = await CreateApprovalService(db).GetInboxAsync(
+            TenantId, AttestantId, UserRoles.Attestant);
+        var timeline = Assert.Single(inbox.Pending).Timeline;
+
+        Assert.Equal(new[] { 500, 502, 503, 504 }.Select(TestIds.Step),
+            timeline.Select(step => step.ApprovalStepId));
+        Assert.Equal(new[] { 1, 2, 2, 3 }, timeline.Select(step => step.StepNumber));
+        Assert.Equal(ApprovalStatuses.Approved, timeline[0].Status);
+        Assert.Equal("Eva Nord", timeline[0].AttestantName);
+        Assert.Equal(legacyDecisionAt, timeline[0].DecidedAt);
+        Assert.Equal("Äldre beslut", timeline[0].Comment);
+        Assert.Null(timeline[0].DecidedByName);
+        Assert.Null(timeline[0].DecisionSource);
+        Assert.Null(timeline[3].AttestantName);
+        Assert.Null(timeline[3].DecidedByName);
+        Assert.Null(timeline[3].DecidedAt);
+        Assert.Null(timeline[3].DecisionSource);
+        Assert.Equal(ApprovalStatuses.Pending, timeline[3].Status);
+    }
+
+    [Fact]
+    public async Task DecideAsync_AdminApprovalTimelineNamesActualActorAndAppearsInTheirHistory()
+    {
+        using var db = CreateContext();
+        SeedUsersAndAccount(db, balance: 500000m);
+        SeedPendingPayment(db, paymentId: 42, amount: 300000m);
+        SeedStep(db, stepId: 501, paymentId: 42, attestantId: OtherAttestantId, stepNumber: 1);
+        SeedStep(db, stepId: 502, paymentId: 42, attestantId: AttestantId, stepNumber: 2);
+        var service = CreateApprovalService(db);
+
+        var decision = await service.DecideAsync(
+            TestIds.Step(501), Approve("Granskat av administratör"),
+            TenantId, AdminId, UserRoles.Admin);
+        Assert.Equal(PaymentStatuses.PendingApproval, decision.PaymentStatus);
+        db.ChangeTracker.Clear();
+
+        var inbox = await service.GetInboxAsync(TenantId, AdminId, UserRoles.Admin);
+        var handled = Assert.Single(inbox.RecentlyHandled);
+        var timeline = Assert.Single(inbox.Pending).Timeline;
+        var approved = timeline[0];
+
+        Assert.Equal("Eva Nord", approved.AttestantName);
+        Assert.Equal("Sara Ek", approved.DecidedByName);
+        Assert.Equal("manual", approved.DecisionSource);
+        Assert.NotNull(approved.DecidedAt);
+        Assert.Equal("Granskat av administratör", approved.Comment);
+        Assert.Equal(AdminId, (await db.ApprovalSteps.FindAsync(501))!.DecidedById);
+        Assert.Equal("manual", handled.DecisionSource);
+        Assert.Equal(approved.DecidedByName, handled.Timeline[0].DecidedByName);
+        Assert.Equal(approved.DecidedAt, handled.Timeline[0].DecidedAt);
+        Assert.Equal(new[] { ApprovalStatuses.Approved, ApprovalStatuses.Pending },
+            handled.Timeline.Select(step => step.Status));
+    }
+
+    [Fact]
+    public async Task DecideAsync_RejectTimelineDistinguishesManualDecisionFromAutomaticallyStoppedSteps()
+    {
+        using var db = CreateContext();
+        SeedUsersAndAccount(db, balance: 500000m);
+        SeedPendingPayment(db, paymentId: 42, amount: 300000m);
+        SeedStep(db, stepId: 501, paymentId: 42, attestantId: AttestantId, stepNumber: 1);
+        SeedStep(db, stepId: 502, paymentId: 42, attestantId: OtherAttestantId, stepNumber: 2);
+        var service = CreateApprovalService(db);
+
+        await service.DecideAsync(
+            TestIds.Step(501), Reject("Fel mottagare"), TenantId, AttestantId, UserRoles.Attestant);
+        db.ChangeTracker.Clear();
+
+        var actorInbox = await service.GetInboxAsync(TenantId, AttestantId, UserRoles.Attestant);
+        var timeline = Assert.Single(actorInbox.RecentlyHandled).Timeline;
+        Assert.Empty(actorInbox.Pending);
+        Assert.Equal("Johan Berg", timeline[0].DecidedByName);
+        Assert.Equal("manual", timeline[0].DecisionSource);
+        Assert.Equal("Fel mottagare", timeline[0].Comment);
+        Assert.Equal("Eva Nord", timeline[1].AttestantName);
+        Assert.Null(timeline[1].DecidedByName);
+        Assert.Null(timeline[1].Comment);
+        Assert.Equal("payment_rejected", timeline[1].DecisionSource);
+        Assert.Equal(timeline[0].DecidedAt, timeline[1].DecidedAt);
+        Assert.All(timeline, step => Assert.Equal(ApprovalStatuses.Rejected, step.Status));
+
+        var otherInbox = await service.GetInboxAsync(TenantId, OtherAttestantId, UserRoles.Attestant);
+        var stopped = Assert.Single(otherInbox.RecentlyHandled);
+        Assert.Equal("payment_rejected", stopped.DecisionSource);
+        Assert.Null((await db.ApprovalSteps.FindAsync(502))!.DecidedById);
+        Assert.Equal("Johan Berg", stopped.Timeline[0].DecidedByName);
+    }
+
+    [Fact]
+    public async Task GetInboxAsync_AfterOwnApprovalStillReturnsWholeTimelineWhileNextAttestantWaits()
+    {
+        using var db = CreateContext();
+        SeedUsersAndAccount(db, balance: 500000m);
+        SeedPendingPayment(db, paymentId: 42, amount: 300000m);
+        SeedStep(db, stepId: 501, paymentId: 42, attestantId: AttestantId, stepNumber: 1);
+        SeedStep(db, stepId: 502, paymentId: 42, attestantId: OtherAttestantId, stepNumber: 2);
+        var service = CreateApprovalService(db);
+
+        await service.DecideAsync(
+            TestIds.Step(501), Approve(), TenantId, AttestantId, UserRoles.Attestant);
+        db.ChangeTracker.Clear();
+
+        var actorInbox = await service.GetInboxAsync(TenantId, AttestantId, UserRoles.Attestant);
+        Assert.Empty(actorInbox.Pending);
+        var timeline = Assert.Single(actorInbox.RecentlyHandled).Timeline;
+        Assert.Equal(2, timeline.Count);
+        Assert.Equal("Johan Berg", timeline[0].DecidedByName);
+        Assert.Equal(ApprovalStatuses.Approved, timeline[0].Status);
+        Assert.Equal("Eva Nord", timeline[1].AttestantName);
+        Assert.Equal(ApprovalStatuses.Pending, timeline[1].Status);
+        Assert.Null(timeline[1].DecidedByName);
+        Assert.Null(timeline[1].DecidedAt);
+
+        var nextInbox = await service.GetInboxAsync(TenantId, OtherAttestantId, UserRoles.Attestant);
+        Assert.Equal(timeline[0].DecidedByName, Assert.Single(nextInbox.Pending).Timeline[0].DecidedByName);
+        Assert.Equal(timeline[0].DecidedAt, nextInbox.Pending[0].Timeline[0].DecidedAt);
+    }
+
+    [Fact]
+    public async Task GetInboxAsync_TimelinesRemainScopedToAssignmentOrActorAndTenant()
+    {
+        using var db = CreateContext();
+        SeedUsersAndAccount(db, balance: 500000m);
+        SeedPendingPayment(db, paymentId: 42, amount: 75000m);
+        SeedPendingPayment(db, paymentId: 43, amount: 75000m);
+        SeedPendingPayment(db, paymentId: 44, amount: 75000m, tenantId: OtherTenantId);
+        SeedStep(db, stepId: 501, paymentId: 42, attestantId: AttestantId);
+        var otherAssigned = SeedStep(
+            db, stepId: 502, paymentId: 43, attestantId: OtherAttestantId,
+            status: ApprovalStatuses.Approved, decidedAt: DateTime.UtcNow);
+        otherAssigned.DecidedById = OtherAttestantId;
+        otherAssigned.DecisionSource = "manual";
+        var foreign = SeedStep(
+            db, stepId: 503, paymentId: 44, attestantId: AttestantId,
+            status: ApprovalStatuses.Approved, decidedAt: DateTime.UtcNow);
+        // Even a matching actor/assignment cannot bypass the payment's tenant.
+        foreign.DecidedById = AttestantId;
+        foreign.DecisionSource = "manual";
+        db.SaveChanges();
+        var service = CreateApprovalService(db);
+
+        await service.DecideAsync(
+            TestIds.Step(501), Approve(), TenantId, AttestantId, UserRoles.Attestant);
+        db.ChangeTracker.Clear();
+
+        var inbox = await service.GetInboxAsync(TenantId, AttestantId, UserRoles.Attestant);
+        Assert.Empty(inbox.Pending);
+        var handled = Assert.Single(inbox.RecentlyHandled);
+        Assert.Equal(42, handled.PaymentId);
+        Assert.Equal(TestIds.Step(501), Assert.Single(handled.Timeline).ApprovalStepId);
+        Assert.DoesNotContain(inbox.RecentlyHandled, item => item.PaymentId is 43 or 44);
+    }
+
+    [Fact]
+    public async Task GetInboxAsync_PostgresUnspecifiedDecisionTimeIsReturnedAsUtcWithoutChangingItsValue()
+    {
+        using var db = CreateContext();
+        SeedUsersAndAccount(db);
+        SeedPendingPayment(db, paymentId: 42, amount: 300000m);
+        // PostgreSQL TIMESTAMP WITHOUT TIME ZONE reloads these UTC-written
+        // values as Unspecified. Mapping must retain UTC rather than local time.
+        var databaseTimestamp = new DateTime(2026, 10, 8, 12, 30, 0, DateTimeKind.Unspecified);
+        var decided = SeedStep(
+            db, stepId: 501, paymentId: 42, attestantId: AttestantId,
+            status: ApprovalStatuses.Approved, decidedAt: databaseTimestamp);
+        decided.DecidedById = AttestantId;
+        decided.DecisionSource = "manual";
+        SeedStep(db, stepId: 502, paymentId: 42, attestantId: OtherAttestantId, stepNumber: 2);
+        db.SaveChanges();
+        db.ChangeTracker.Clear();
+        var service = CreateApprovalService(db);
+
+        var actorInbox = await service.GetInboxAsync(TenantId, AttestantId, UserRoles.Attestant);
+        var handled = Assert.Single(actorInbox.RecentlyHandled);
+        Assert.NotNull(handled.DecidedAt);
+        Assert.Equal(DateTimeKind.Utc, handled.DecidedAt.Value.Kind);
+        Assert.Equal(databaseTimestamp.Ticks, handled.DecidedAt.Value.Ticks);
+        Assert.Equal(DateTimeKind.Utc, handled.Timeline[0].DecidedAt!.Value.Kind);
+        Assert.Equal(handled.DecidedAt, handled.Timeline[0].DecidedAt);
+
+        var nextInbox = await service.GetInboxAsync(TenantId, OtherAttestantId, UserRoles.Attestant);
+        var nextTimeline = Assert.Single(nextInbox.Pending).Timeline;
+        Assert.Equal(DateTimeKind.Utc, nextTimeline[0].DecidedAt!.Value.Kind);
+        Assert.Equal(databaseTimestamp.Ticks, nextTimeline[0].DecidedAt!.Value.Ticks);
+        Assert.Null(nextTimeline[1].DecidedAt);
+        Assert.Equal(DateTimeKind.Unspecified, (await db.ApprovalSteps.FindAsync(501))!.DecidedAt!.Value.Kind);
+    }
 }

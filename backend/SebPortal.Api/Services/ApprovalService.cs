@@ -28,7 +28,7 @@ public class ApprovalService(
 
     /// <summary>
     /// Builds the attestant's inbox: steps still waiting for them, plus the ones
-    /// they have already decided.
+    /// assigned to or directly handled by them.
     /// </summary>
     /// <param name="tenantId">Tenant from the JWT.</param>
     /// <param name="userId">User from the JWT. Never a client supplied id (BUG-011).</param>
@@ -136,6 +136,8 @@ public class ApprovalService(
     private async Task ApproveAsync(ApprovalStep step, Payment payment, int userId, string? comment)
     {
         step.Status = ApprovalStatuses.Approved;
+        step.DecidedById = userId;
+        step.DecisionSource = ApprovalDecisionSources.Manual;
         step.DecidedAt = DateTime.UtcNow;
         step.Comment = comment;
 
@@ -194,6 +196,8 @@ public class ApprovalService(
         var decidedAt = DateTime.UtcNow;
 
         step.Status = ApprovalStatuses.Rejected;
+        step.DecidedById = userId;
+        step.DecisionSource = ApprovalDecisionSources.Manual;
         step.DecidedAt = decidedAt;
         step.Comment = comment;
 
@@ -206,6 +210,8 @@ public class ApprovalService(
         foreach (var remaining in steps.Where(s => s.Status == ApprovalStatuses.Pending))
         {
             remaining.Status = ApprovalStatuses.Rejected;
+            remaining.DecidedById = null;
+            remaining.DecisionSource = ApprovalDecisionSources.PaymentRejected;
             remaining.DecidedAt = decidedAt;
         }
 
@@ -301,6 +307,7 @@ public class ApprovalService(
                     Name = approvalStep.Attestant?.Name
                 })
                 .ToList(),
+            Timeline = ToTimeline(payment),
             CurrentStep = step.StepNumber,
             TotalSteps = Math.Max(payment.ApprovalSteps.Count, requiredSteps),
             RequiresDoubleApproval = paymentService.RequiresDoubleApproval(payment.Amount)
@@ -312,9 +319,43 @@ public class ApprovalService(
         PaymentId = step.PaymentId,
         Amount = FormatAmount(step.Payment?.Amount ?? 0m),
         Status = step.Status,
-        DecidedAt = step.DecidedAt,
-        Comment = step.Comment ?? ""
+        DecidedAt = ToUtcTimestamp(step.DecidedAt),
+        Comment = step.Comment ?? "",
+        DecisionSource = step.DecisionSource,
+        Timeline = ToTimeline(step.Payment!)
     };
+
+    private static List<ApprovalTimelineStepDto> ToTimeline(Payment payment) =>
+        payment.ApprovalSteps
+            .OrderBy(step => step.StepNumber)
+            .ThenBy(step => step.Id)
+            .Select(step => new ApprovalTimelineStepDto
+            {
+                ApprovalStepId = step.PublicId,
+                StepNumber = step.StepNumber,
+                Status = step.Status,
+                AttestantName = step.Attestant?.Name,
+                DecidedByName = step.DecidedBy?.Name,
+                DecidedAt = ToUtcTimestamp(step.DecidedAt),
+                Comment = step.Comment,
+                DecisionSource = step.DecisionSource
+            })
+            .ToList();
+
+    private static DateTime? ToUtcTimestamp(DateTime? value)
+    {
+        if (!value.HasValue) return null;
+
+        // Existing PostgreSQL TIMESTAMP columns lose the kind when reading times
+        // that the approval service wrote in UTC. Preserve that instant in JSON.
+        var timestamp = value.Value;
+        return timestamp.Kind switch
+        {
+            DateTimeKind.Unspecified => DateTime.SpecifyKind(timestamp, DateTimeKind.Utc),
+            DateTimeKind.Local => timestamp.ToUniversalTime(),
+            _ => timestamp
+        };
+    }
 
     /// <summary>Money always crosses the API as a decimal string, never as a float.</summary>
     private static string FormatAmount(decimal amount) =>

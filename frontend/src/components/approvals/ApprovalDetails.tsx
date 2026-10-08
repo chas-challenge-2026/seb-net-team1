@@ -4,6 +4,7 @@ import { FiX } from "react-icons/fi";
 import { ApprovalDecisionApiError, decideApproval } from "../../api/approvalsApi";
 import Button from "../shared/Button";
 import StatusBadge from "../shared/StatusBadge";
+import ApprovalTimeline from "./ApprovalTimeline";
 import type { ApprovalDecisionRequest, ApprovalDecisionResponse, PendingApproval } from "../../types/Approval";
 
 type ApprovalDetailsProps = {
@@ -126,21 +127,7 @@ export default function ApprovalDetails({ approval, onClose, onDecision, onRefre
           <p>{approval.createdByName || "Okänd"}</p>
         </section>
 
-        <section aria-labelledby="approval-details-attestants-heading">
-          <h3 id="approval-details-attestants-heading">Attestanter</h3>
-          {approval.attestants?.length ? (
-            <ol className="approval-details-attestants">
-              {approval.attestants.map((attestant, index) => (
-                <li key={`${attestant.stepNumber}-${index}`}>
-                  <span>Atteststeg {attestant.stepNumber}</span>
-                  <strong>{attestant.name ?? "Inte tilldelad"}</strong>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p className="approval-details-missing">Uppgifter om attestanter saknas.</p>
-          )}
-        </section>
+        <ApprovalTimeline timeline={approval.timeline} />
 
         <section className="approval-details-decision" aria-labelledby="approval-details-decision-heading" aria-busy={isSaving}>
           <h3 id="approval-details-decision-heading">Ditt beslut</h3>

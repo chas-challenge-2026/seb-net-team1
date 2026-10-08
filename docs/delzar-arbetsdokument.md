@@ -96,4 +96,32 @@ Jag testade följande:
 - Jag simulerade valideringsfel, redan hanterat steg, nätverksfel och långsam sparning i webbläsaren. Dubbelklick skickade bara ett beslut, Escape kunde inte stänga dialogen under sparning och alla stängningsvägar hämtade listan igen efter ett osäkert svar.
 - Jag kontrollerade detaljvyn i dator- och mobilstorlek och att ett godkänt första steg visas som väntande på nästa attestant, utan att betalningen felaktigt påstås vara genomförd.
 
-Story 3 är klar. Nästa steg är story 4: tidslinjen med vem som godkänt och vem som ska godkänna.
+Story 3 är klar.
+
+## Story 4 – Tidslinje för atteststegen
+
+Datum: 2026-10-08
+
+Jag lade till en attesttidslinje i betalningens detaljvy. Den visar stegordning, tilldelad attestant, status, faktisk beslutsfattare, beslutstid och eventuell kommentar. Det går också att klicka på betalningsnumret under Senast hanterade och öppna hela tidslinjen efter ett beslut.
+
+Jag kompletterade `GET /api/approvals` med `timeline` för både väntande och hanterade betalningar. Backend sparar nu den faktiska beslutsfattaren i `approval_steps.decided_by`, eftersom en admin kan fatta beslut på någon annans tilldelade steg. Fältet `decision_source` skiljer ett direkt beslut från steg som automatiskt avslutats efter en avvisning.
+
+Jag gjorde detta för att attestanten ska kunna följa ärendet och se vem som har fattat beslut och vem som fortfarande väntar på att attestera. Automatiskt avslutade steg visas som Avbruten eftersom betalningen avvisades. Äldre beslut utan sparad beslutsfattare visar att uppgiften saknas, så att den tilldelade attestanten inte felaktigt påstås ha fattat beslutet.
+
+Jag uppdaterade API-kontraktet och databasens startskript. Det återkörbara uppgraderingsskriptet `infra/migrations/20261008_approval_timeline.sql` lägger till de två nya fälten i en befintlig databas. Det är applicerat i den lokala testdatabasen.
+
+Jag lade till betalningen `Test - attesttidslinje` på 250 000 kr med Johan på steg 1 och `test@malmobygg.se` på steg 2. Beloppet valdes för att den befintliga backendregeln ska skapa ett flöde med två attestanter. Beloppsgränsen ändras i story 5.
+
+Vid testning mot den lokala databasen upptäckte jag att äldre timestamp-kolumner lämnar tillbaka beslutstider utan tidszon. Backend markerar nu dessa lagrade UTC-tider som UTC innan API-svaret skickas, så att frontend visar rätt lokalt klockslag.
+
+Jag testade följande:
+
+- 83 backendtester gick igenom för attestflödet och auditservicen. Tio nya tester kontrollerar hela tidslinjen, stegordning, verklig beslutsfattare vid adminbeslut, automatiskt avbrutna steg, äldre okända beslut, företag och tilldelning samt UTC i API-svaren.
+- 39 frontendtester gick igenom med `npm.cmd run test:approvals`. Tolv nya tester kontrollerar den riktiga tidslinjekomponentens namn, status, beslutstider, kommentarer, saknade uppgifter och automatiskt avbrutna steg.
+- `npm.cmd run build` och `npm.cmd run lint` gick igenom.
+- Uppgraderingsskriptet kunde köras igen utan att tidigare beslut ändrades. Det uppdaterade startskriptet testades i ett separat schema och återställdes med rollback.
+- Jag godkände Johans första steg på testbetalning #8 i webbläsaren. Databasen sparade Johan som beslutsfattare, kommentar och beslutstid, medan testkontots steg 2 ligger kvar väntande. Betalningen genomfördes inte och ingen transaktion skapades.
+- Jag simulerade adminbeslut, ej tilldelad attestant, automatiskt avbrutet steg och äldre uppgifter som saknar beslutsfattare. Både detaljvyn och historiken visade rätt texter. Stängknapparna och Escape återställde fokus till betalningen.
+- Slutkontrollen mot den riktiga databasen visade UTC med `Z` i både tidslinjen och historiken. Webbläsaren visade rätt klockslag för Stockholm. Tidslinjen fungerade efter omladdning och i mobilstorlek.
+
+Story 4 är klar. Nästa steg är story 5: två attestanter för belopp över 100 000 kr.

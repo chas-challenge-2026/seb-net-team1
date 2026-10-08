@@ -33,6 +33,8 @@ public class ApprovalRepository(SebDbContext dbContext)
             .Include(step => step.Payment!).ThenInclude(payment => payment.FromAccount)
             .Include(step => step.Payment!).ThenInclude(payment => payment.ApprovalSteps)
                 .ThenInclude(approvalStep => approvalStep.Attestant)
+            .Include(step => step.Payment!).ThenInclude(payment => payment.ApprovalSteps)
+                .ThenInclude(approvalStep => approvalStep.DecidedBy)
             .Where(step =>
                 step.Status == ApprovalStatuses.Pending &&
                 step.Payment != null &&
@@ -41,13 +43,16 @@ public class ApprovalRepository(SebDbContext dbContext)
             .OrderBy(step => step.Payment!.CreatedAt);
 
     /// <summary>
-    /// The steps this attestant has already decided, newest decision first.
+    /// Handled steps assigned to this user or directly decided by them, newest first.
     /// </summary>
     public Task<List<ApprovalStep>> GetHandledStepsForAttestantAsync(int userId, int tenantId, int limit) =>
         dbContext.ApprovalSteps
-            .Include(step => step.Payment)
+            .Include(step => step.Payment!).ThenInclude(payment => payment.ApprovalSteps)
+                .ThenInclude(approvalStep => approvalStep.Attestant)
+            .Include(step => step.Payment!).ThenInclude(payment => payment.ApprovalSteps)
+                .ThenInclude(approvalStep => approvalStep.DecidedBy)
             .Where(step =>
-                step.AttestantId == userId &&
+                (step.AttestantId == userId || step.DecidedById == userId) &&
                 step.Status != ApprovalStatuses.Pending &&
                 step.Payment != null &&
                 step.Payment.TenantId == tenantId)

@@ -3,6 +3,19 @@ export type ApprovalAttestant = {
   name: string | null;
 };
 
+export type ApprovalDecisionSource = "manual" | "payment_rejected";
+
+export type ApprovalTimelineStep = {
+  approvalStepId: string;
+  stepNumber: number;
+  status: "pending" | "approved" | "rejected";
+  attestantName: string | null;
+  decidedByName: string | null;
+  decidedAt: string | null;
+  comment: string | null;
+  decisionSource: ApprovalDecisionSource | null;
+};
+
 export type PendingApproval = {
   paymentId: number;
   approvalStepId: string;
@@ -17,6 +30,7 @@ export type PendingApproval = {
   totalSteps: number;
   requiresDoubleApproval: boolean;
   attestants: ApprovalAttestant[];
+  timeline: ApprovalTimelineStep[];
 };
 
 export type HandledApproval = {
@@ -25,6 +39,8 @@ export type HandledApproval = {
   status: "approved" | "rejected";
   decidedAt: string | null;
   comment: string;
+  decisionSource: ApprovalDecisionSource | null;
+  timeline: ApprovalTimelineStep[];
 };
 
 export type ApprovalInboxResponse = {
