@@ -8,7 +8,7 @@ Returns a paginated list of audit entries for the logged-in user's tenant.
 
 Frontend uses this endpoint to render the Granskningslogg page.
 
-Requires a valid JWT (`Authorization: Bearer <token>`).
+Requires a valid JWT (`Authorization: Bearer <token>`) and the role `attestant` or `admin`. An `initiator` gets `403`.
 
 ---
 
@@ -75,6 +75,10 @@ Returned when the JWT is missing, invalid, or expired.
 }
 ```
 
+### `403 Forbidden`
+
+Returned when the logged-in user is an `initiator`. The audit log shows who approved or rejected what, so only `attestant` and `admin` can read it. The response has no body (framework default for role-based authorization), so frontend should handle `403` by status code.
+
 ---
 
 ## Frontend Notes
@@ -93,6 +97,7 @@ Backend should use this contract to:
 - return only entries belonging to the logged-in user's tenant. v1 had no tenant filtering on audit entries at all, so any logged-in user could see every tenant's activity if they guessed the URL. Fixing this likely needs a schema change (linking entries to a tenant, not just a user), which belongs to the data model work in US-06, not this contract
 - write every auditable action to one place. v1 wrote some actions to the database and others only to a local file, so entries like batch payments and partial approvals never showed up in this endpoint at all (BUG-008). This contract assumes a single source of truth going forward. Whoever implements the write side of audit logging should make sure nothing is file-only anymore
 - respect `limit`/`cursor` and return `nextCursor` accordingly. v1 hardcoded a limit of 200 with no way to page further
+- restrict the endpoint to `attestant` and `admin` (`UserRoles.ApproverRoles`), same as the approval endpoints
 - return consistent ProblemDetails error responses (status, title, detail) per the format above
 
 ---
