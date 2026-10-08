@@ -21,3 +21,6 @@ pgdata/
 
 ## Local Docker secrets
 infra/.env
+
+## Local work document
+/docs/delzar-arbetsdokument.md

@@ -92,6 +92,7 @@ public sealed class PaymentAuditAtomicityIntegrationTests
 
 	[Theory]
 	[InlineData(60000)]
+	[InlineData(150000)]
 	[InlineData(500)]
 	public async Task CreatePayment_WhenAuditStepFails_SavesNoPaymentAndKeepsBalance(decimal amount)
 	{
@@ -117,6 +118,7 @@ public sealed class PaymentAuditAtomicityIntegrationTests
 		var db = scope.ServiceProvider.GetRequiredService<SebDbContext>();
 
 		Assert.Empty(await db.Payments.AsNoTracking().ToListAsync());
+		Assert.Empty(await db.ApprovalSteps.AsNoTracking().ToListAsync());
 		Assert.Empty(await db.Transactions.AsNoTracking().ToListAsync());
 		Assert.Empty(await db.AuditEntries.AsNoTracking().ToListAsync());
 		Assert.Equal(
@@ -124,8 +126,10 @@ public sealed class PaymentAuditAtomicityIntegrationTests
 			(await db.Accounts.AsNoTracking().SingleAsync(a => a.Id == 1)).Balance);
 	}
 
-	[Fact]
-	public async Task CreatePayment_WhenEverythingWorks_SavesPaymentAndAuditEntryTogether()
+	[Theory]
+	[InlineData(60000, 1)]
+	[InlineData(150000, 2)]
+	public async Task CreatePayment_WhenEverythingWorks_SavesPaymentAndAuditEntryTogether(decimal amount, int expectedSteps)
 	{
 		var (factory, token) = await SeedAsync();
 		using var _ = factory;
@@ -134,7 +138,7 @@ public sealed class PaymentAuditAtomicityIntegrationTests
 		client.DefaultRequestHeaders.Authorization =
 			new AuthenticationHeaderValue("Bearer", token);
 
-		var response = await client.PostAsJsonAsync("/api/payments", Request(60000m));
+		var response = await client.PostAsJsonAsync("/api/payments", Request(amount));
 
 		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
@@ -147,5 +151,6 @@ public sealed class PaymentAuditAtomicityIntegrationTests
 		Assert.Equal("CREATE_PAYMENT", entry.Action);
 		Assert.Equal(payment.Id, entry.EntityId);
 		Assert.Equal("GENESIS", entry.PreviousSignature);
+		Assert.Equal(expectedSteps, await db.ApprovalSteps.CountAsync());
 	}
 }

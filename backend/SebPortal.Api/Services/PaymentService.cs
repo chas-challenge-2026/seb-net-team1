@@ -54,11 +54,12 @@ public class PaymentService(
         };
 
         // 3. Determine the payment flow from the configured approval threshold.
-        var requiresApproval = amount > paymentRules.Value.ApprovalThreshold;
+        var requiresApproval = amount > paymentRules.Value.ApprovalThreshold ||
+            RequiresDoubleApproval(amount);
 
         if (requiresApproval)
         {
-            await AddInitialApprovalStepAsync(payment);
+            await AddInitialApprovalStepsAsync(payment);
         }
         else
         {
@@ -110,7 +111,7 @@ public class PaymentService(
         return payment;
     }
 
-    private async Task AddInitialApprovalStepAsync(Payment payment)
+    private async Task AddInitialApprovalStepsAsync(Payment payment)
     {
         var excludedUserIds = new List<int>();
 
@@ -119,16 +120,24 @@ public class PaymentService(
             excludedUserIds.Add(payment.CreatedById.Value);
         }
 
-        var attestantId = await approvalRepository.FindNextAttestantIdAsync(
-            payment.TenantId,
-            excludedUserIds);
-
-        payment.ApprovalSteps.Add(new ApprovalStep
+        for (var stepNumber = 1; stepNumber <= RequiredApprovalSteps(payment.Amount); stepNumber++)
         {
-            AttestantId = attestantId,
-            StepNumber = 1,
-            Status = ApprovalStatuses.Pending
-        });
+            var attestantId = await approvalRepository.FindNextAttestantIdAsync(
+                payment.TenantId,
+                excludedUserIds);
+
+            payment.ApprovalSteps.Add(new ApprovalStep
+            {
+                AttestantId = attestantId,
+                StepNumber = stepNumber,
+                Status = ApprovalStatuses.Pending
+            });
+
+            if (attestantId.HasValue)
+            {
+                excludedUserIds.Add(attestantId.Value);
+            }
+        }
     }
 
     /// <summary>

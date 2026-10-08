@@ -7,6 +7,8 @@ import NewPayment from "./pages/NewPayment";
 import Accounts  from "./pages/Accounts";
 import BatchFiles from "./pages/BatchFiles";
 import AuditLog from "./pages/AuditLog";
+import ApprovalInbox from "./pages/ApprovalInbox";
+import Reports from "./pages/Reports";
 import Payments from "./pages/Payments";
 import PaymentDetails from "./pages/PaymentDetails";
 
@@ -43,7 +45,8 @@ function App() {
       <Route path="/accounts" element={<Accounts />}/>
       <Route path="/batch-upload" element={<BatchFiles />} />
       <Route path="/audit-log" element={<AuditLog />} />
-      {/* TODO: Lägg till React-routes när sidorna för godkännanden och rapporter har flyttats hit. */}
+      <Route path="/approval-inbox" element={<ApprovalInbox />} />
+      <Route path="/reports" element={<Reports />} />
     </Routes>
   );
 }

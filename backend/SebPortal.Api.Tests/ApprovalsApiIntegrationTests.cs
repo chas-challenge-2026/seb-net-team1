@@ -263,6 +263,271 @@ public class ApprovalsApiIntegrationTests
     }
 
     [Fact]
+    public async Task GetApprovals_SerializesAllAttestantsInStepOrderIncludingUnassignedSteps()
+    {
+        using var factory = new ApprovalApiFactory();
+        await SeedApprovalScenarioAsync(factory);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SebDbContext>();
+            db.ApprovalSteps.AddRange(
+                new ApprovalStep
+                {
+                    Id = 503, PublicId = TestIds.Step(503), PaymentId = 42,
+                    AttestantId = null, StepNumber = 3
+                },
+                new ApprovalStep
+                {
+                    Id = 502, PublicId = TestIds.Step(502), PaymentId = 42,
+                    AttestantId = OtherAttestantId, StepNumber = 2
+                });
+            await db.SaveChangesAsync();
+        }
+
+        var client = CreateClient(factory);
+        var response = await client.GetAsync("/api/approvals");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var pending = Assert.Single(body.RootElement.GetProperty("pending").EnumerateArray());
+        var attestants = pending.GetProperty("attestants").EnumerateArray().ToArray();
+
+        Assert.Equal("Lisa Persson", pending.GetProperty("createdByName").GetString());
+        Assert.Equal("SE8550000000054910000004", pending.GetProperty("toIban").GetString());
+        Assert.Equal("75000.00", pending.GetProperty("amount").GetString());
+        Assert.Equal("Faktura #1043", pending.GetProperty("reference").GetString());
+        Assert.Equal(new[] { 1, 2, 3 }, attestants.Select(a => a.GetProperty("stepNumber").GetInt32()));
+        Assert.Equal("Johan Berg", attestants[0].GetProperty("name").GetString());
+        Assert.Equal("Eva Nord", attestants[1].GetProperty("name").GetString());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, attestants[2].GetProperty("name").ValueKind);
+        Assert.All(attestants, attestant => Assert.Equal(
+            new[] { "name", "stepNumber" },
+            attestant.EnumerateObject().Select(property => property.Name).OrderBy(name => name)));
+    }
+
+    [Fact]
+    public async Task GetApprovals_WithAttestantDetails_PreservesAssignmentAndTenantIsolation()
+    {
+        using var factory = new ApprovalApiFactory();
+        await SeedApprovalScenarioAsync(factory);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SebDbContext>();
+            db.Tenants.Add(new Tenant { Id = 2, Name = "Annat Bolag AB" });
+            db.Users.Add(new User
+            {
+                Id = 22, TenantId = 2, Name = "Vera Secret", Role = UserRoles.Initiator
+            });
+            db.Payments.AddRange(
+                new Payment
+                {
+                    Id = 43, TenantId = TenantId, FromAccountId = AccountId,
+                    CreatedById = InitiatorId, Amount = 75000m
+                },
+                new Payment
+                {
+                    Id = 44, TenantId = 2, FromAccountId = AccountId,
+                    CreatedById = 22, Amount = 75000m
+                });
+            db.ApprovalSteps.AddRange(
+                new ApprovalStep
+                {
+                    Id = 502, PublicId = TestIds.Step(502), PaymentId = 43,
+                    AttestantId = OtherAttestantId
+                },
+                new ApprovalStep
+                {
+                    Id = 503, PublicId = TestIds.Step(503), PaymentId = 44,
+                    AttestantId = AttestantId
+                });
+            await db.SaveChangesAsync();
+        }
+
+        var attestantClient = CreateClient(factory);
+        var attestantResponse = await attestantClient.GetAsync("/api/approvals");
+        Assert.Equal(HttpStatusCode.OK, attestantResponse.StatusCode);
+        var attestantInbox = await attestantResponse.Content.ReadFromJsonAsync<ApprovalInboxResponse>();
+        Assert.NotNull(attestantInbox);
+        var pending = Assert.Single(attestantInbox.Pending);
+        Assert.Equal(42, pending.PaymentId);
+        Assert.Equal("Johan Berg", Assert.Single(pending.Attestants).Name);
+        Assert.Equal(TestIds.Step(501), Assert.Single(pending.Timeline).ApprovalStepId);
+
+        var adminClient = CreateClient(factory, role: UserRoles.Admin);
+        var adminResponse = await adminClient.GetAsync("/api/approvals");
+        Assert.Equal(HttpStatusCode.OK, adminResponse.StatusCode);
+        var adminInbox = await adminResponse.Content.ReadFromJsonAsync<ApprovalInboxResponse>();
+        Assert.NotNull(adminInbox);
+        Assert.Equal(new[] { 42, 43 }, adminInbox.Pending.Select(item => item.PaymentId).OrderBy(id => id));
+        Assert.DoesNotContain(adminInbox.Pending, item => item.CreatedByName == "Vera Secret");
+        Assert.DoesNotContain(adminInbox.Pending.SelectMany(item => item.Timeline),
+            step => step.ApprovalStepId == TestIds.Step(503));
+    }
+
+    [Fact]
+    public async Task GetApprovals_AfterApprovalSerializesFullTimelineForHandledAndNextPendingStep()
+    {
+        using var factory = new ApprovalApiFactory();
+        await SeedApprovalScenarioAsync(factory);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SebDbContext>();
+            db.ApprovalSteps.Add(new ApprovalStep
+            {
+                Id = 502, PublicId = TestIds.Step(502), PaymentId = 42,
+                AttestantId = OtherAttestantId, StepNumber = 2
+            });
+            await db.SaveChangesAsync();
+        }
+        var actorClient = CreateClient(factory);
+        var decisionResponse = await actorClient.PostAsJsonAsync(
+            $"/api/approvals/{TestIds.Step(501)}/decision",
+            new ApprovalDecisionRequestDto { Action = "approve", Comment = "Granskat ärende" });
+        Assert.Equal(HttpStatusCode.OK, decisionResponse.StatusCode);
+
+        var actorResponse = await actorClient.GetAsync("/api/approvals");
+        Assert.Equal(HttpStatusCode.OK, actorResponse.StatusCode);
+        using var actorBody = System.Text.Json.JsonDocument.Parse(await actorResponse.Content.ReadAsStringAsync());
+        Assert.Empty(actorBody.RootElement.GetProperty("pending").EnumerateArray());
+        var handled = Assert.Single(actorBody.RootElement.GetProperty("recentlyHandled").EnumerateArray());
+        Assert.Equal("manual", handled.GetProperty("decisionSource").GetString());
+        var actorTimeline = handled.GetProperty("timeline").EnumerateArray().ToArray();
+
+        var nextClient = CreateClient(factory, userId: OtherAttestantId);
+        var nextResponse = await nextClient.GetAsync("/api/approvals");
+        Assert.Equal(HttpStatusCode.OK, nextResponse.StatusCode);
+        using var nextBody = System.Text.Json.JsonDocument.Parse(await nextResponse.Content.ReadAsStringAsync());
+        var nextPending = Assert.Single(nextBody.RootElement.GetProperty("pending").EnumerateArray());
+        var nextTimeline = nextPending.GetProperty("timeline").EnumerateArray().ToArray();
+        Assert.Equal(2, nextTimeline.Length);
+        Assert.Equal(new[] { 1, 2 }, nextTimeline.Select(step => step.GetProperty("stepNumber").GetInt32()));
+        Assert.Equal(actorTimeline.Select(step => step.GetRawText()), nextTimeline.Select(step => step.GetRawText()));
+        Assert.All(nextTimeline, step => Assert.Equal(
+            new[] { "approvalStepId", "attestantName", "comment", "decidedAt", "decidedByName", "decisionSource", "status", "stepNumber" },
+            step.EnumerateObject().Select(property => property.Name).OrderBy(name => name)));
+
+        Assert.Equal(TestIds.Step(501), nextTimeline[0].GetProperty("approvalStepId").GetGuid());
+        Assert.Equal("approved", nextTimeline[0].GetProperty("status").GetString());
+        Assert.Equal("Johan Berg", nextTimeline[0].GetProperty("attestantName").GetString());
+        Assert.Equal("Johan Berg", nextTimeline[0].GetProperty("decidedByName").GetString());
+        Assert.Equal("manual", nextTimeline[0].GetProperty("decisionSource").GetString());
+        Assert.Equal("Granskat ärende", nextTimeline[0].GetProperty("comment").GetString());
+        Assert.Equal(DateTimeKind.Utc, nextTimeline[0].GetProperty("decidedAt").GetDateTime().Kind);
+        Assert.Equal("pending", nextTimeline[1].GetProperty("status").GetString());
+        Assert.Equal("Eva Nord", nextTimeline[1].GetProperty("attestantName").GetString());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, nextTimeline[1].GetProperty("decidedByName").ValueKind);
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, nextTimeline[1].GetProperty("decidedAt").ValueKind);
+    }
+
+    [Fact]
+    public async Task GetApprovals_AfterRejectionSerializesAutomaticClosureWithoutClaimingAnotherActor()
+    {
+        using var factory = new ApprovalApiFactory();
+        await SeedApprovalScenarioAsync(factory);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SebDbContext>();
+            db.ApprovalSteps.Add(new ApprovalStep
+            {
+                Id = 502, PublicId = TestIds.Step(502), PaymentId = 42,
+                AttestantId = OtherAttestantId, StepNumber = 2
+            });
+            await db.SaveChangesAsync();
+        }
+        var actorClient = CreateClient(factory);
+        var decisionResponse = await actorClient.PostAsJsonAsync(
+            $"/api/approvals/{TestIds.Step(501)}/decision",
+            new ApprovalDecisionRequestDto { Action = "reject", Comment = "Fel mottagare" });
+        Assert.Equal(HttpStatusCode.OK, decisionResponse.StatusCode);
+
+        var otherClient = CreateClient(factory, userId: OtherAttestantId);
+        var response = await otherClient.GetAsync("/api/approvals");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var inbox = await response.Content.ReadFromJsonAsync<ApprovalInboxResponse>();
+        Assert.NotNull(inbox);
+        Assert.Empty(inbox.Pending);
+        var stopped = Assert.Single(inbox.RecentlyHandled);
+        Assert.Equal("payment_rejected", stopped.DecisionSource);
+        var manual = stopped.Timeline[0];
+        var automatic = stopped.Timeline[1];
+        Assert.Equal("Johan Berg", manual.DecidedByName);
+        Assert.Equal("manual", manual.DecisionSource);
+        Assert.Equal("Fel mottagare", manual.Comment);
+        Assert.Equal("Eva Nord", automatic.AttestantName);
+        Assert.Equal("rejected", automatic.Status);
+        Assert.Equal("payment_rejected", automatic.DecisionSource);
+        Assert.Null(automatic.DecidedByName);
+        Assert.Null(automatic.Comment);
+        Assert.NotNull(automatic.DecidedAt);
+    }
+
+    [Fact]
+    public async Task GetApprovals_LegacyTimelineKeepsUnknownActorAndUnassignedAttestantNull()
+    {
+        using var factory = new ApprovalApiFactory();
+        await SeedApprovalScenarioAsync(factory);
+        var legacyDecisionAt = new DateTime(2026, 8, 29, 12, 0, 0, DateTimeKind.Utc);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SebDbContext>();
+            db.ApprovalSteps.AddRange(
+                new ApprovalStep
+                {
+                    Id = 502, PublicId = TestIds.Step(502), PaymentId = 42,
+                    AttestantId = OtherAttestantId, StepNumber = 2,
+                    Status = ApprovalStatuses.Approved, DecidedAt = legacyDecisionAt
+                },
+                new ApprovalStep
+                {
+                    Id = 503, PublicId = TestIds.Step(503), PaymentId = 42,
+                    AttestantId = null, StepNumber = 3
+                });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await CreateClient(factory).GetAsync("/api/approvals");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var pending = Assert.Single(body.RootElement.GetProperty("pending").EnumerateArray());
+        var timeline = pending.GetProperty("timeline").EnumerateArray().ToArray();
+        Assert.Equal(new[] { 1, 2, 3 }, timeline.Select(step => step.GetProperty("stepNumber").GetInt32()));
+        Assert.Equal("approved", timeline[1].GetProperty("status").GetString());
+        Assert.Equal("Eva Nord", timeline[1].GetProperty("attestantName").GetString());
+        Assert.Equal(legacyDecisionAt, timeline[1].GetProperty("decidedAt").GetDateTime());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, timeline[1].GetProperty("decidedByName").ValueKind);
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, timeline[1].GetProperty("decisionSource").ValueKind);
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, timeline[2].GetProperty("attestantName").ValueKind);
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, timeline[2].GetProperty("decidedByName").ValueKind);
+    }
+
+    [Fact]
+    public async Task GetApprovals_PostgresUnspecifiedDecisionTimeSerializesWithUtcSuffixInHistoryAndTimeline()
+    {
+        using var factory = new ApprovalApiFactory();
+        await SeedApprovalScenarioAsync(factory, stepStatus: ApprovalStatuses.Approved);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SebDbContext>();
+            var step = await db.ApprovalSteps.FindAsync(501);
+            Assert.NotNull(step);
+            step.DecidedAt = new DateTime(2026, 10, 8, 12, 30, 0, DateTimeKind.Unspecified);
+            await db.SaveChangesAsync();
+        }
+
+        var response = await CreateClient(factory).GetAsync("/api/approvals");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var handled = Assert.Single(body.RootElement.GetProperty("recentlyHandled").EnumerateArray());
+        var timeline = Assert.Single(handled.GetProperty("timeline").EnumerateArray());
+        Assert.Equal("2026-10-08T12:30:00Z", handled.GetProperty("decidedAt").GetString());
+        Assert.Equal("2026-10-08T12:30:00Z", timeline.GetProperty("decidedAt").GetString());
+        Assert.Equal(DateTimeKind.Utc, handled.GetProperty("decidedAt").GetDateTime().Kind);
+        Assert.Equal(DateTimeKind.Utc, timeline.GetProperty("decidedAt").GetDateTime().Kind);
+    }
+
+    [Fact]
     public async Task PostDecision_Approve_ReturnsOkAndCompletesPayment()
     {
         using var factory = new ApprovalApiFactory();

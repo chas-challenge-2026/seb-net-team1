@@ -10,6 +10,11 @@ public class ApprovalStepAlreadyDecidedException(Guid approvalStepId, string cur
         userMessage: "Det här atteststeget är redan hanterat.",
         technicalMessage: $"ApprovalStep {approvalStepId} has status '{currentStatus}', expected 'pending'.");
 
+public class DuplicateApprovalDecisionException(int paymentId, int attemptedByUserId)
+    : ConflictException(
+        userMessage: "Du har redan godkänt den här betalningen. En annan attestant måste godkänna nästa steg.",
+        technicalMessage: $"User {attemptedByUserId} already approved another step of Payment {paymentId}, which requires two different decision makers.");
+
 /// <summary>
 /// Fixes BUG-011 (IDOR in attestkorgen): v1 let any attestant approve any
 /// step just by knowing its id. This exception is thrown when a step exists

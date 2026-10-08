@@ -123,12 +123,19 @@ public class SebDbContext : DbContext
             entity.Property(e => e.AttestantId).HasColumnName("attestant_id");
             entity.Property(e => e.StepNumber).HasColumnName("step_number");
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
+            entity.Property(e => e.DecidedById).HasColumnName("decided_by");
+            entity.Property(e => e.DecisionSource).HasColumnName("decision_source").HasMaxLength(30);
             entity.Property(e => e.DecidedAt).HasColumnName("decided_at");
             entity.Property(e => e.Comment).HasColumnName("comment").HasMaxLength(255);
 
             entity.HasOne(e => e.Attestant)
                 .WithMany()
                 .HasForeignKey(e => e.AttestantId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.DecidedBy)
+                .WithMany()
+                .HasForeignKey(e => e.DecidedById)
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
