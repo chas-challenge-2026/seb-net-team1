@@ -206,6 +206,23 @@
   padding: 6px 10px;
 }
 
+.approval-inbox-statuses {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.approval-details-double-approval {
+  background: var(--light-green);
+  border-radius: var(--radius-sm);
+  color: var(--seb-deep-green);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 18px;
+  padding: 12px 14px;
+}
+
 .approval-inbox-button:focus-visible,
 .approval-inbox-reference-button:focus-visible,
 .approval-details-close:focus-visible,

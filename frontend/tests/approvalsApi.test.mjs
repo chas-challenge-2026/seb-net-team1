@@ -134,8 +134,9 @@ for (const status of [400, 401, 403, 404, 409, 500]) {
 for (const [status, detail] of [
   [400, "Kontot har inte tillräckligt saldo för denna betalning."],
   [409, "Det här atteststeget är redan hanterat."],
+  [409, "Du har redan godkänt den här betalningen. En annan attestant måste godkänna nästa steg."],
 ]) {
-  test(`HTTP ${status} displays the known business error`, async () => {
+  test(`HTTP ${status} displays the known business error: ${detail}`, async () => {
     const { api, calls } = await loadApi([
       { body: { requestToken: "fresh-token" } },
       { status, body: { status, detail } },

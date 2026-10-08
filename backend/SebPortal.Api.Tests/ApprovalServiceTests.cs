@@ -39,7 +39,7 @@ public class ApprovalServiceTests
     private static ApprovalService CreateApprovalService(
         SebDbContext db,
         decimal approvalThreshold = 50000m,
-        decimal doubleApprovalThreshold = 200000m)
+        decimal doubleApprovalThreshold = 100000m)
     {
         var paymentRules = Microsoft.Extensions.Options.Options.Create(
             new PaymentRulesOptions

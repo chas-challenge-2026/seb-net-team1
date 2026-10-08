@@ -56,6 +56,7 @@ const decisionBusinessMessages: Record<number, readonly string[]> = {
   ],
   409: [
     "Det här atteststeget är redan hanterat.",
+    "Du har redan godkänt den här betalningen. En annan attestant måste godkänna nästa steg.",
     "Betalningen är inte längre under granskning.",
     "Kontot ändrades av en annan betalning. Uppdatera och försök igen.",
   ],

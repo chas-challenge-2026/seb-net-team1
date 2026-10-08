@@ -124,4 +124,31 @@ Jag testade följande:
 - Jag simulerade adminbeslut, ej tilldelad attestant, automatiskt avbrutet steg och äldre uppgifter som saknar beslutsfattare. Både detaljvyn och historiken visade rätt texter. Stängknapparna och Escape återställde fokus till betalningen.
 - Slutkontrollen mot den riktiga databasen visade UTC med `Z` i både tidslinjen och historiken. Webbläsaren visade rätt klockslag för Stockholm. Tidslinjen fungerade efter omladdning och i mobilstorlek.
 
-Story 4 är klar. Nästa steg är story 5: två attestanter för belopp över 100 000 kr.
+Story 4 är klar.
+
+## Story 5 – Två attestanter för belopp över 100 000 kr
+
+Datum: 2026-10-08
+
+Jag ändrade backendens gemensamma beloppsgräns till 100 000 kr. Regeln gäller strikt över gränsen: 100 000,00 kr kräver ett godkännande och 100 000,01 kr kräver två. Nya betalningar över gränsen får två atteststeg direkt, tilldelade olika personer inom samma företag. Skaparen väljs inte som attestant. Om en andra person saknas lämnas steget ej tilldelat och betalningen väntande.
+
+Backend räknar två olika faktiska beslutsfattare, inte bara två godkända steg eller två tilldelade namn. Även en admin som kan hantera andras steg får därför inte godkänna båda stegen själv. Det första godkännandet flyttar inga pengar. Det andra godkännandet genomför betalningen och skapar en transaktion. En avvisning stoppar betalningen.
+
+Jag gjorde detta för att betalningsregeln ska följas även vid adminbeslut och äldre väntande betalningar. Äldre godkännanden utan sparad beslutsfattare behålls men räknas inte som en av två kända personer. Vid behov skapar backend ett extra väntande steg. Redan genomförda betalningar öppnas inte igen.
+
+Frontend visar Två attestanter krävs i attestkorgen och förklarar regeln i detaljvyn. Båda texterna använder backendens regelmarkering. API-kontraktet beskriver den nya gränsen och konfliktmeddelandet när samma person försöker godkänna igen.
+
+Jag skapade det lokala testkontot `test2@malmobygg.se` som andra attestant. Det befintliga `test@malmobygg.se` används som första attestant. Två nya betalningar på 150 000 kr, `Test - dubbel attest godkann` (#11) och `Test - dubbel attest avvisa` (#12), har ett steg tilldelat vardera kontot och är avsedda för manuell testning.
+
+Jag testade följande:
+
+- 120 riktade backendtester gick igenom. De kontrollerar beloppsgränsen, två olika tilldelningar, saknad andra attestant, två olika verkliga beslutsfattare, äldre beslut, behörigheter, första godkännandet utan saldoförändring, slutligt godkännande med en transaktion och avvisning. PostgreSQL-tester kontrollerar också att betalning, atteststeg och logg återställs tillsammans om sparningen misslyckas.
+- 40 frontendtester gick igenom med `npm.cmd run test:approvals`, inklusive det nya konfliktmeddelandet.
+- `npm.cmd run build` och `npm.cmd run lint` gick igenom.
+- Jag startade om den lokala backenden på port 5010 med ändringarna och loggade in normalt med det nya testkontot. Det såg båda manuella testbetalningarna med två väntande steg. Kontroller mot det riktiga API:et visade ett steg för 100 000 kr och två steg för 100 000,01 kr.
+- På en separat betalning på 150 000 kr godkände Johan först och Sara sedan. Databasen visade väntande betalning utan saldoförändring eller transaktion efter det första beslutet, och genomförd betalning med exakt en transaktion efter det andra. Ett upprepat beslut gav 409 utan ytterligare saldoförändring.
+- På en annan separat betalning godkände Sara ett steg och försökte sedan godkänna det andra. API:et svarade 409 och databasen ändrades inte. Johan avvisade därefter sitt steg, vilket avvisade betalningen utan utbetalning. Ett försök från ett konto utan tilldelning gav 403 utan databasändringar.
+- Båda betalningarna för `test@malmobygg.se` och `test2@malmobygg.se` lämnades med två väntande steg, så att de kan testas manuellt.
+- Jag kontrollerade sidan i webbläsaren med det nya kontot, i dator- och mobilstorlek. Markeringen, regeltexten och båda tilldelade personerna visades från den riktiga backenden. Escape stängde dialogen och återställde fokus.
+
+Story 5 är klar.

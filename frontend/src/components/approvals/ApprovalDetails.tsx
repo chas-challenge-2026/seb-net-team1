@@ -120,6 +120,11 @@ export default function ApprovalDetails({ approval, onClose, onDecision, onRefre
               <dd><time dateTime={approval.createdAt}>{Number.isNaN(createdAt.getTime()) ? "—" : dateTimeFormatter.format(createdAt)}</time></dd>
             </div>
           </dl>
+          {approval.requiresDoubleApproval && (
+            <p className="approval-details-double-approval">
+              Två olika attestanter behöver godkänna betalningen innan den genomförs.
+            </p>
+          )}
         </section>
 
         <section aria-labelledby="approval-details-creator-heading">

@@ -135,17 +135,33 @@ public class ApprovalService(
 
     private async Task ApproveAsync(ApprovalStep step, Payment payment, int userId, string? comment)
     {
+        var steps = await approvalRepository.GetStepsForPaymentAsync(payment.Id);
+        var requiresDoubleApproval = paymentService.RequiresDoubleApproval(payment.Amount);
+
+        // Assignment does not identify the actual actor: an admin may decide
+        // someone else's step. Check the authenticated decision maker before
+        // changing any tracked payment, approval step, account or audit entry.
+        if (requiresDoubleApproval && steps.Any(existing =>
+            existing.Status == ApprovalStatuses.Approved && existing.DecidedById == userId))
+        {
+            throw new DuplicateApprovalDecisionException(payment.Id, userId);
+        }
+
         step.Status = ApprovalStatuses.Approved;
         step.DecidedById = userId;
         step.DecisionSource = ApprovalDecisionSources.Manual;
         step.DecidedAt = DateTime.UtcNow;
         step.Comment = comment;
 
-        // Tracked by the same DbContext, so this list already reflects the change above.
-        var steps = await approvalRepository.GetStepsForPaymentAsync(payment.Id);
-
         var requiredSteps = paymentService.RequiredApprovalSteps(payment.Amount);
-        var approvedSteps = steps.Count(s => s.Status == ApprovalStatuses.Approved);
+        // Unknown legacy decision makers cannot establish two different people.
+        // Keep those rows unchanged and request an additional known approval.
+        var approvedSteps = requiresDoubleApproval
+            ? steps.Where(s => s.Status == ApprovalStatuses.Approved && s.DecidedById.HasValue)
+                .Select(s => s.DecidedById!.Value)
+                .Distinct()
+                .Count()
+            : steps.Count(s => s.Status == ApprovalStatuses.Approved);
         var pendingSteps = steps.Count(s => s.Status == ApprovalStatuses.Pending);
 
         // Safety net for a payment that was created with fewer steps than the double
@@ -235,6 +251,7 @@ public class ApprovalService(
     {
         var excludedUserIds = steps
             .Select(s => s.AttestantId)
+            .Concat(steps.Select(s => s.DecidedById))
             .Append(payment.CreatedById)
             .Where(id => id.HasValue)
             .Select(id => id!.Value)
@@ -248,7 +265,7 @@ public class ApprovalService(
         {
             PaymentId = payment.Id,
             AttestantId = nextAttestantId,
-            StepNumber = steps.Count + 1,
+            StepNumber = steps.Count == 0 ? 1 : steps.Max(s => s.StepNumber) + 1,
             Status = ApprovalStatuses.Pending
         });
     }

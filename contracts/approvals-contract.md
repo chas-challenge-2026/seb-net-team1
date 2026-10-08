@@ -230,7 +230,9 @@ Returned when the approval step doesn't exist, or when `{approvalStepId}` is not
 
 ### `409 Conflict`
 
-Returned when the approval step has already been decided.
+Returned when the approval step has already been decided, the payment can no
+longer be decided, or the caller has already approved another step of a payment
+that requires two different decision makers.
 
 ```json
 {
@@ -239,6 +241,12 @@ Returned when the approval step has already been decided.
   "detail": "Det här atteststeget är redan hanterat."
 }
 ```
+
+For a duplicate decision maker, `detail` is
+`Du har redan godkänt den här betalningen. En annan attestant måste godkänna nästa steg.`
+This also applies to an admin acting on steps assigned to different users. The
+refused attempt does not update the pending step, balance, transaction history
+or audit log. The caller may still reject a remaining pending step when authorized.
 
 ### `401 Unauthorized`
 
@@ -269,7 +277,7 @@ Backend should use this contract to:
 - load the complete timeline for each visible payment without extending visibility beyond the caller's own tenant and assigned or directly handled steps
 - record the authenticated decision maker separately from the assigned attestant; preserve null provenance for older rows
 - return consistent ProblemDetails error responses (status, title, detail) per the format above
-- throw the matching custom exception (ApprovalStepNotFoundException, ApprovalStepAccessDeniedException, ApprovalStepAlreadyDecidedException) rather than returning ad-hoc error objects. The global exception handler converts these to the responses shown above automatically
+- throw the matching custom exception (ApprovalStepNotFoundException, ApprovalStepAccessDeniedException, ApprovalStepAlreadyDecidedException, DuplicateApprovalDecisionException) rather than returning ad-hoc error objects. The global exception handler converts these to the responses shown above automatically
 
 **Out of scope for this contract (belongs to other tickets):**
 - Creating approval steps when a payment is first submitted (US-21/US-22)
@@ -282,13 +290,17 @@ Backend should use this contract to:
 
 Implemented in `backend/SebPortal.Api` as `ApprovalsController` → `ApprovalService` → `ApprovalRepository`. The controller reads the caller's id, tenant and role from the JWT only, and never accepts any of them from the request. Four things are worth knowing on top of the contract above:
 
-- **The double approval threshold now lives in configuration**, `PaymentRules:DoubleApprovalThreshold` (200 000 SEK in `appsettings.json`), next to the existing `ApprovalThreshold`. `requiresDoubleApproval` and `totalSteps` are both derived from it. This is the consolidation BUG-006 called for: payment creation, the approval flow and the frontend badge all read the same value, and changing the rule means changing one setting.
+- **The double approval threshold lives in configuration**, `PaymentRules:DoubleApprovalThreshold` (100 000 SEK by default and in `appsettings.json`), next to the existing `ApprovalThreshold`. The comparison is strict: 100 000.00 SEK needs one attestant; 100 000.01 SEK needs two. `requiresDoubleApproval` and `totalSteps` are both derived from this setting. Payment creation, the approval flow and the frontend badge read the same value. A configured double-approval requirement always takes precedence over direct execution, even if `ApprovalThreshold` is raised above it.
+- **New payments requiring double approval receive two steps immediately.** Eligible attestants or admins are selected inside the payment's tenant, excluding the creator and the other step's assigned user. If there is no second eligible user, that step stays unassigned and the payment stays pending until an authorized different person approves it.
+- **Completion requires two distinct authenticated decision makers.** The backend checks recorded `decided_by` values rather than counting assigned users or merely counting approved rows. An admin can approve a step assigned to someone else, but cannot supply both approvals themselves.
 - **Admins see the whole tenant's pending list**, attestants only steps assigned to them. This carries over v1's behaviour and matches the `403` rule above, which already exempts `admin`.
 - **Approval steps are addressed by a random public id (uuid), not by the database counter.** The counter (`approval_steps.id`) stays inside the database. `approval_steps.public_id` is what the API sends and accepts, so a client cannot guess the next step from the one it has. Tenant and assignment checks are unchanged and still apply to every request.
 - **A step in another tenant answers `404`, not `403`**, even for an admin. Answering `403` would confirm that the id exists somewhere, which leaks across tenants. v1 let an admin decide steps in any tenant at all.
 - **Every decision is audited to the database** as `APPROVE_PAYMENT`, `APPROVE_PAYMENT_STEP` (a step approved while others remain) or `REJECT_PAYMENT`. v1 wrote partial approvals to `/tmp/audit.log` only, so they never reached the audit log UI.
 
-The final approval completes the payment through the same `PaymentService.CompletePaymentOrThrow` a direct payment uses, so status, balance, execution timestamp and transaction history stay consistent between the two paths. If a payment ever reaches its last approval with fewer approvals than the threshold requires, the service creates the missing step (assigned to an attestant who has neither decided nor created the payment) instead of completing early or leaving the payment stuck.
+The final required approval completes the payment through the same `PaymentService.CompletePaymentOrThrow` a direct payment uses, so status, balance, execution timestamp and transaction history stay consistent between the two paths. A first approval of a double-approval payment returns `paymentStatus: "pending_approval"` and does not move money. Completion records one withdrawal and one payment transaction; a rejection stops the payment and closes remaining pending steps as before.
+
+Existing pending payments are evaluated against the same configured threshold on each decision. If there are fewer required approvals and no pending step remains, the service creates a replacement step instead of completing early. Its assignment excludes the creator, existing assigned users and known actual decision makers. Legacy approved steps with an unknown decision maker are preserved but cannot establish one of the two distinct approvals. The backend never fills their actor from assignment or historical audit descriptions, and already completed historical payments are not reopened.
 
 ### Timeline database upgrade
 

@@ -203,7 +203,12 @@ export default function ApprovalInbox() {
                           <td className="approval-inbox-iban">{approval.toIban}</td>
                           <td className="approval-inbox-amount">{formatAmount(approval.amount, approval.currency)}</td>
                           <td><time dateTime={approval.createdAt}>{formatDate(approval.createdAt)}</time></td>
-                          <td><StatusBadge status="pending">Väntar på godkännande</StatusBadge></td>
+                          <td>
+                            <div className="approval-inbox-statuses">
+                              <StatusBadge status="pending">Väntar på godkännande</StatusBadge>
+                              {approval.requiresDoubleApproval && <StatusBadge status="processing">Två attestanter krävs</StatusBadge>}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
