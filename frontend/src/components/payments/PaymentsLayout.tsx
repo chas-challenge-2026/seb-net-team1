@@ -1,6 +1,5 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { FiSearch } from "react-icons/fi";
 import DashboardHeader from "../dashboard/DashboardHeader";
 import Sidebar from "../dashboard/Sidebar";
 import type { PaymentOverview } from "../../types/Payment";
@@ -9,12 +8,13 @@ import "../../styles/payments.css";
 
 type PaymentsLayoutProps = {
   title: string;
+  subtitle?: string;
   overview: PaymentOverview | null;
   children: ReactNode;
   contentClassName: string;
 };
 
-export default function PaymentsLayout({ title, overview, children, contentClassName }: PaymentsLayoutProps) {
+export default function PaymentsLayout({ title, subtitle = "", overview, children, contentClassName }: PaymentsLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
@@ -34,13 +34,7 @@ export default function PaymentsLayout({ title, overview, children, contentClass
         aria-label="Stäng meny"
       />
       <main className="dashboard-main payments-main">
-        <div className="payments-header">
-          <DashboardHeader title={title} subtitle="" showSearch={false} />
-          <div className="payments-header-search" title="Betalningssökning är inte tillgänglig">
-            <FiSearch aria-hidden="true" />
-            <input type="search" placeholder="Sök betalningar, konton..." aria-label="Sök betalningar och konton, ej tillgängligt" disabled />
-          </div>
-        </div>
+        <DashboardHeader title={title} subtitle={subtitle} showSearch={false} />
         <div className={`dashboard-content payments-content ${contentClassName}`}>
           {children}
         </div>
