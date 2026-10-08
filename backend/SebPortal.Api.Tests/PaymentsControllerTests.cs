@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.Controllers;
 using SebPortal.Api.DTOs;
 using SebPortal.Api.Services;
+using SebPortal.Api.Signing;
 using Microsoft.EntityFrameworkCore;
 using SebPortal.Api.Data;
 using SebPortal.Api.Models;
@@ -30,12 +31,20 @@ public class PaymentsControllerTests
     private static PaymentService CreatePaymentService(SebDbContext db)
     {
         var repository = new PaymentRepository(db);
+        var approvalRepository = new ApprovalRepository(db);
         var paymentRules = Microsoft.Extensions.Options.Options.Create(new PaymentRulesOptions
         {
             ApprovalThreshold = 50000m
         });
 
-        return new PaymentService(repository, paymentRules);
+        return new PaymentService(
+            repository,
+            approvalRepository,
+            paymentRules,
+            new AuditService(
+                new AuditRepository(db),
+                new AuditLockProvider(),
+                new UnsignedPlaceholderAuditSigner()));
     }
 
     /// <summary>

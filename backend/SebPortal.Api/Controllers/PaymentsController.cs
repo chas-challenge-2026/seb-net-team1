@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.Auth;
 using SebPortal.Api.DTOs;
+using SebPortal.Api.Models;
 using SebPortal.Api.Services;
 
 namespace SebPortal.Api.Controllers;
@@ -26,9 +27,11 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
     /// <returns>
     /// 201 Created with the created payment data when the request is valid,
     /// 401 Unauthorized when the token is missing required user information,
+    /// 403 Forbidden when the user's role is not initiator or admin,
     /// otherwise 400 Bad Request with a validation message.
     /// </returns>
     [HttpPost]
+    [Authorize(Roles = UserRoles.CreatorRoles)]
     public async Task<IActionResult> CreatePayment(CreatePaymentRequestDto request)
     {
         var userId = User.GetUserId();

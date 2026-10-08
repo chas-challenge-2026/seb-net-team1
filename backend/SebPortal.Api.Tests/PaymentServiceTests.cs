@@ -5,6 +5,7 @@ using SebPortal.Api.Models;
 using SebPortal.Api.Services;
 using SebPortal.Api.Exceptions;
 using SebPortal.Api.Options;
+using SebPortal.Api.Signing;
 
 namespace SebPortal.Api.Tests;
 
@@ -23,12 +24,16 @@ public class PaymentServiceTests
         return new SebDbContext(options);
     }
 
+    private static AuditService CreateAuditService(SebDbContext db) =>
+        new(new AuditRepository(db), new AuditLockProvider(), new UnsignedPlaceholderAuditSigner());
+
     private static PaymentService CreatePaymentService(
         SebDbContext db,
         decimal approvalThreshold = 50000m,
         decimal doubleApprovalThreshold = 200000m)
     {
         var repository = new PaymentRepository(db);
+        var approvalRepository = new ApprovalRepository(db);
 
         var paymentRules = Microsoft.Extensions.Options.Options.Create(
             new PaymentRulesOptions
@@ -37,7 +42,11 @@ public class PaymentServiceTests
                 DoubleApprovalThreshold = doubleApprovalThreshold
             });
 
-        return new PaymentService(repository, paymentRules);
+        return new PaymentService(
+            repository,
+            approvalRepository,
+            paymentRules,
+            CreateAuditService(db));
     }
 
     /// <summary>
@@ -201,9 +210,33 @@ public class PaymentServiceTests
                 createdById: 1));
     }
     [Fact]
-    public async Task CreatePaymentAsync_CreatesPendingPayment_WhenApprovalIsRequired()
+    public async Task CreatePaymentAsync_WhenApprovalIsRequired_CreatesPendingPaymentAndApprovalStep()
     {
         using var db = CreateContext();
+
+        db.Tenants.Add(new Tenant
+        {
+            Id = 1,
+            Name = "Testföretaget"
+        });
+
+        db.Users.AddRange(
+            new User
+            {
+                Id = 1,
+                TenantId = 1,
+                Name = "Lisa",
+                Email = "lisa@example.com",
+                Role = UserRoles.Initiator
+            },
+            new User
+            {
+                Id = 2,
+                TenantId = 1,
+                Name = "Johan",
+                Email = "johan@example.com",
+                Role = UserRoles.Attestant
+            });
 
         db.Accounts.Add(new Account
         {
@@ -219,21 +252,23 @@ public class PaymentServiceTests
 
         var service = CreatePaymentService(db);
 
-        var result = await service.CreatePaymentAsync(
+        var payment = await service.CreatePaymentAsync(
             tenantId: 1,
             fromAccountId: 1,
             toIban: "SE4550000000054910000099",
-            amount: 50001m,
+            amount: 75000m,
             currency: "SEK",
             reference: "Testbetalning",
             createdById: 1);
 
-        Assert.NotNull(result);
-        Assert.Equal(PaymentStatuses.PendingApproval, result.Status);
-        Assert.Equal(50001m, result.Amount);
-        Assert.Equal("SEK", result.Currency);
+        Assert.Equal(PaymentStatuses.PendingApproval, payment.Status);
 
-        Assert.Single(db.Payments);
+        var approvalStep = await db.ApprovalSteps.SingleAsync();
+
+        Assert.Equal(payment.Id, approvalStep.PaymentId);
+        Assert.Equal(2, approvalStep.AttestantId);
+        Assert.Equal(1, approvalStep.StepNumber);
+        Assert.Equal(ApprovalStatuses.Pending, approvalStep.Status);
     }
 
     [Theory]
@@ -456,5 +491,106 @@ public class PaymentServiceTests
 
         Assert.False(service.RequiresDoubleApproval(300000m));
         Assert.Equal(1, service.RequiredApprovalSteps(300000m));
+    }
+
+    /// <summary>
+    /// A payment that needs approval must leave one CREATE_PAYMENT audit entry that
+    /// points at the payment and says it is waiting for an attestant.
+    /// </summary>
+    [Fact]
+    public async Task CreatePaymentAsync_WhenApprovalIsRequired_WritesCreatePaymentAuditEntry()
+    {
+        using var db = CreateContext();
+
+        db.Accounts.Add(new Account
+        {
+            Id = 1,
+            TenantId = 1,
+            AccountName = "Företagskonto",
+            Iban = "SE3550000000054910000003",
+            Balance = 100000m,
+            Currency = "SEK"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = CreatePaymentService(db);
+
+        var payment = await service.CreatePaymentAsync(
+            tenantId: 1,
+            fromAccountId: 1,
+            toIban: "SE4550000000054910000099",
+            amount: 60000m,
+            currency: "SEK",
+            reference: "Över gränsen",
+            createdById: 7);
+
+        var entry = Assert.Single(db.AuditEntries);
+        Assert.Equal("CREATE_PAYMENT", entry.Action);
+        Assert.Equal(1, entry.TenantId);
+        Assert.Equal(7, entry.UserId);
+        Assert.Equal("payment", entry.EntityType);
+        Assert.Equal(payment.Id, entry.EntityId);
+        Assert.Contains("Väntar på attest", entry.Description);
+    }
+
+    /// <summary>
+    /// A payment that completes straight away must be audited too, and the entry
+    /// must say it was executed directly. 50000 is exactly the threshold.
+    /// </summary>
+    [Fact]
+    public async Task CreatePaymentAsync_WhenCompletedDirectly_WritesCreatePaymentAuditEntry()
+    {
+        using var db = CreateContext();
+
+        db.Accounts.Add(new Account
+        {
+            Id = 1,
+            TenantId = 1,
+            AccountName = "Företagskonto",
+            Iban = "SE3550000000054910000003",
+            Balance = 100000m,
+            Currency = "SEK"
+        });
+
+        await db.SaveChangesAsync();
+
+        var service = CreatePaymentService(db);
+
+        var payment = await service.CreatePaymentAsync(
+            tenantId: 1,
+            fromAccountId: 1,
+            toIban: "SE4550000000054910000099",
+            amount: 50000m,
+            currency: "SEK",
+            reference: "Exakt på gränsen",
+            createdById: 7);
+
+        var entry = Assert.Single(db.AuditEntries);
+        Assert.Equal("CREATE_PAYMENT", entry.Action);
+        Assert.Equal(payment.Id, entry.EntityId);
+        Assert.Contains("Genomförd direkt", entry.Description);
+    }
+
+    /// <summary>
+    /// When the payment cannot be created (unknown account) nothing may be audited.
+    /// </summary>
+    [Fact]
+    public async Task CreatePaymentAsync_WhenAccountNotFound_WritesNoAuditEntry()
+    {
+        using var db = CreateContext();
+        var service = CreatePaymentService(db);
+
+        await Assert.ThrowsAsync<AccountNotFoundException>(() =>
+            service.CreatePaymentAsync(
+                tenantId: 1,
+                fromAccountId: 99,
+                toIban: "SE4550000000054910000099",
+                amount: 250m,
+                currency: "SEK",
+                reference: null,
+                createdById: 7));
+
+        Assert.Empty(db.AuditEntries);
     }
 }
