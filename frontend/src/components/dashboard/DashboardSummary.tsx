@@ -1,6 +1,7 @@
 import {LuWalletCards,LuCircleCheck,LuArrowUpRight,LuTriangleAlert,} from "react-icons/lu";
 import { Link } from "react-router-dom";
 import type { DashboardData } from "../../api/dashboardApi";
+import { canReadAuditLog } from "../../utils/auditAccess";
 
 interface DashboardSummaryProps {
   data: DashboardData | null;
@@ -53,7 +54,11 @@ return (
         </span>
       </Link>
 
-      <Link to="/audit-log" className="card summary-card" aria-label="Visa betalningar">
+      <Link
+        to={canReadAuditLog(data?.user.role) ? "/audit-log" : "/payments"}
+        className="card summary-card"
+        aria-label="Visa betalningar"
+      >
         <div className="summary-card__icon">
           <LuArrowUpRight />
         </div>

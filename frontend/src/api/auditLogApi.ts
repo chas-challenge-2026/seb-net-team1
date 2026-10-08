@@ -14,7 +14,9 @@ export class AuditLogApiError extends Error {
     super(
       status === 401
         ? "Åtkomst nekad. Logga in igen."
-        : "Kunde inte hämta granskningsloggen. Försök igen."
+        : status === 403
+          ? "Du saknar behörighet"
+          : "Kunde inte hämta granskningsloggen. Försök igen."
     );
     this.name = "AuditLogApiError";
     this.status = status;
