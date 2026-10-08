@@ -1,0 +1,194 @@
+.approval-inbox-main .dashboard-header {
+  flex-shrink: 0;
+}
+
+.approval-inbox-main .approval-inbox-content {
+  padding: 24px;
+}
+
+.approval-inbox-card {
+  overflow: hidden;
+}
+
+.approval-inbox-card-header,
+.approval-inbox-title {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.approval-inbox-card-header {
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  justify-content: space-between;
+  padding: 20px;
+}
+
+.approval-inbox-title > svg {
+  color: var(--seb-deep-green);
+  flex-shrink: 0;
+  font-size: 20px;
+}
+
+.approval-inbox-title h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.approval-inbox-count {
+  background: var(--light-green);
+  border-radius: var(--radius-full);
+  color: var(--seb-deep-green);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+}
+
+.approval-inbox-button {
+  align-items: center;
+  background: var(--seb-deep-green);
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--white);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 8px;
+  min-height: 38px;
+  padding: 10px 14px;
+}
+
+.approval-inbox-button:hover:not(:disabled) {
+  background: var(--green-hover);
+}
+
+.approval-inbox-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.approval-inbox-state {
+  align-items: center;
+  color: var(--medium-gray);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+  min-height: 220px;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.approval-inbox-state h3 {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.approval-inbox-empty-icon {
+  color: var(--seb-deep-green);
+  font-size: 28px;
+}
+
+.approval-inbox-error {
+  color: var(--error);
+}
+
+.approval-inbox-link {
+  color: var(--seb-deep-green);
+  font-weight: 600;
+}
+
+.approval-inbox-table-scroll {
+  overflow-x: auto;
+}
+
+.approval-inbox-table {
+  border-collapse: collapse;
+  min-width: 780px;
+  width: 100%;
+}
+
+.approval-inbox-table th,
+.approval-inbox-table td {
+  padding: 18px 20px;
+  text-align: left;
+}
+
+.approval-inbox-table th {
+  background: var(--light-gray);
+  color: var(--medium-gray);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.approval-inbox-table td {
+  border-top: 1px solid var(--border-color);
+  font-size: 13px;
+}
+
+.approval-inbox-reference {
+  font-weight: 600;
+  max-width: 280px;
+  overflow-wrap: anywhere;
+}
+
+.approval-inbox-iban,
+.approval-inbox-table .approval-inbox-amount,
+.approval-inbox-table time,
+.approval-inbox-table .status-badge {
+  white-space: nowrap;
+}
+
+.approval-inbox-table .approval-inbox-amount {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.approval-inbox-table .status-badge--pending {
+  color: #805500;
+  font-size: 11px;
+  padding: 6px 10px;
+}
+
+.approval-inbox-button:focus-visible,
+.approval-inbox-link:focus-visible,
+.approval-inbox-table-scroll:focus-visible {
+  outline: 2px solid var(--seb-green);
+  outline-offset: 3px;
+}
+
+.approval-inbox-sr-only {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+@media (max-width: 700px) {
+  .approval-inbox-main .dashboard-header {
+    align-items: center;
+    flex-direction: row;
+    min-height: var(--header-height);
+    padding: 16px 16px 16px 60px;
+  }
+
+  .approval-inbox-main .dashboard-header-actions {
+    width: auto;
+  }
+
+  .approval-inbox-main .approval-inbox-content {
+    padding: 20px 16px;
+  }
+
+  .approval-inbox-card-header {
+    padding: 16px;
+  }
+
+  .approval-inbox-title h2 {
+    font-size: 16px;
+  }
+}
