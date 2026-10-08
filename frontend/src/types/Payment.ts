@@ -1,16 +1,16 @@
-export type PaymentStatus = "completed" | "pending_approval";
+import type { User } from "./User";
 
-export type PaymentId = number | string;
+export type PaymentStatus = "completed" | "pending_approval";
 
 export type CreatePaymentRequest = {
   fromAccountId: number;
   toIban: string;
-  amount: string;
+  amount: number;
   reference?: string;
 };
 
 export type CreatePaymentResponse = {
-  id: PaymentId;
+  id: number;
   status: PaymentStatus;
   fromAccountId: number;
   toIban: string;
@@ -18,4 +18,22 @@ export type CreatePaymentResponse = {
   currency: string;
   reference: string;
   createdAt: string;
+};
+
+// Dashboard summaries are not a payment-detail response.
+export type RecentPaymentSummary = {
+  id: number;
+  toIban: string | null;
+  amount: string | null;
+  currency: string | null;
+  reference: string | null;
+  status: string | null;
+  createdAt: string;
+};
+
+export type PaymentOverview = {
+  recentPayments: RecentPaymentSummary[];
+  user: User | null;
+  tenantName: string | null;
+  pendingApprovalCount?: number;
 };

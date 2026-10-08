@@ -14,7 +14,7 @@ public class PaymentRulesOptions
     public decimal ApprovalThreshold { get; set; }
 
     /// <summary>
-    /// Payments above this amount require two approval steps instead of one.
+    /// Payments strictly above this amount require two different decision makers.
     ///
     /// Single source of truth for the double approval rule (fixes BUG-006). v1 kept
     /// this number in two places with two different values: NewPayment.cs created a
@@ -22,5 +22,5 @@ public class PaymentRulesOptions
     /// so a 300 000 SEK payment could never reach "completed". Payment creation,
     /// approval and the frontend badge all read this one value.
     /// </summary>
-    public decimal DoubleApprovalThreshold { get; set; }
+    public decimal DoubleApprovalThreshold { get; set; } = 100000m;
 }

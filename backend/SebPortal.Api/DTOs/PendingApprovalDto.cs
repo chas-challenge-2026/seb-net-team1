@@ -8,7 +8,7 @@ public class PendingApprovalDto
     public int PaymentId { get; set; }
 
     /// <summary>Id of this specific step. Passed back to POST /api/approvals/{id}/decision.</summary>
-    public int ApprovalStepId { get; set; }
+    public Guid ApprovalStepId { get; set; }
 
     public string ToIban { get; set; } = string.Empty;
 
@@ -20,6 +20,12 @@ public class PendingApprovalDto
     public DateTime CreatedAt { get; set; }
     public string CreatedByName { get; set; } = string.Empty;
     public string FromAccountName { get; set; } = string.Empty;
+
+    /// <summary>Attestants for all existing approval steps, ordered by step number.</summary>
+    public List<ApprovalAttestantDto> Attestants { get; set; } = [];
+
+    /// <summary>All existing steps and their decisions, ordered by step number.</summary>
+    public List<ApprovalTimelineStepDto> Timeline { get; set; } = [];
 
     /// <summary>Which step this is, 1-indexed.</summary>
     public int CurrentStep { get; set; }

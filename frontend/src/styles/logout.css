@@ -1,0 +1,70 @@
+.login-page .logout-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  text-align: center;
+}
+
+.login-page .logout-content h1,
+.login-page .logout-copy {
+  width: 100%;
+  text-align: center;
+}
+
+.login-page .logout-success-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 24px;
+  border-radius: 50%;
+  background: var(--light-green);
+  color: var(--seb-deep-green);
+}
+
+.login-page .logout-success-icon svg {
+  width: 32px;
+  height: 32px;
+  stroke-width: 2;
+}
+
+.login-page .logout-copy {
+  margin-top: 12px;
+  color: #536278;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.login-page .logout-copy p + p {
+  margin-top: 8px;
+}
+
+.login-page .logout-relogin-button {
+  margin-top: 32px;
+  border-color: var(--seb-deep-green);
+  background: var(--seb-deep-green);
+  color: var(--white);
+  text-decoration: none;
+}
+
+.login-page .logout-relogin-button:hover {
+  background: var(--green-hover);
+}
+
+@media (max-width: 900px) {
+  .login-page .logout-success-icon {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 20px;
+  }
+
+  .login-page .logout-copy {
+    font-size: 14px;
+  }
+
+  .login-page .logout-relogin-button {
+    margin-top: 28px;
+  }
+}

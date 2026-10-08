@@ -1,6 +1,10 @@
 -- SEB Företagsbetalningar — seed data
 -- Run via: psql -U seb -d seb -f seed.sql
 
+-- gen_random_uuid() is built in from PostgreSQL 13. Our image is postgres:12,
+-- where it comes from pgcrypto.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE tenants (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100)
@@ -24,6 +28,16 @@ CREATE TABLE accounts (
     currency VARCHAR(3) DEFAULT 'SEK'
 );
 
+CREATE TABLE transactions (
+    id SERIAL PRIMARY KEY,
+    account_id INT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    amount DECIMAL(15,2) NOT NULL,
+    date TIMESTAMPTZ NOT NULL,
+    description VARCHAR(255),
+    transaction_type VARCHAR(50)
+);
+CREATE INDEX idx_transactions_account_id ON transactions (account_id);
+
 CREATE TABLE payments (
     id SERIAL PRIMARY KEY,
     tenant_id INT REFERENCES tenants(id),
@@ -40,10 +54,13 @@ CREATE TABLE payments (
 
 CREATE TABLE approval_steps (
     id SERIAL PRIMARY KEY,
+    public_id UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE, -- the id clients see, the counter above stays internal
     payment_id INT REFERENCES payments(id),
     attestant_id INT REFERENCES users(id),
     step_number INT DEFAULT 1,
     status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
+    decided_by INT REFERENCES users(id) ON DELETE SET NULL,
+    decision_source VARCHAR(30), -- 'manual', 'payment_rejected'; NULL when provenance is unknown
     decided_at TIMESTAMP,
     comment VARCHAR(255)
 );

@@ -382,6 +382,7 @@ public sealed class CookieAuthenticationApiFactory : WebApplicationFactory<Progr
         builder.UseSetting("Jwt:Issuer", "CookieAuthenticationTests");
         builder.UseSetting("Jwt:Audience", "CookieAuthenticationTests");
         builder.UseSetting("Auth:AllowInsecureCookies", "false");
+        builder.UseSetting("RateLimiting:LoginPermitLimit", "1000");
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<SebDbContext>();

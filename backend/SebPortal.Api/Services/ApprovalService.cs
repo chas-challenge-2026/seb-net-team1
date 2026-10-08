@@ -28,7 +28,7 @@ public class ApprovalService(
 
     /// <summary>
     /// Builds the attestant's inbox: steps still waiting for them, plus the ones
-    /// they have already decided.
+    /// assigned to or directly handled by them.
     /// </summary>
     /// <param name="tenantId">Tenant from the JWT.</param>
     /// <param name="userId">User from the JWT. Never a client supplied id (BUG-011).</param>
@@ -58,7 +58,7 @@ public class ApprovalService(
     /// <param name="userId">User from the JWT.</param>
     /// <param name="role">Role from the JWT.</param>
     public async Task<ApprovalDecisionResponseDto> DecideAsync(
-        int approvalStepId,
+        Guid approvalStepId,
         ApprovalDecisionRequestDto request,
         int tenantId,
         int userId,
@@ -122,7 +122,7 @@ public class ApprovalService(
             return new ApprovalDecisionResponseDto
             {
                 PaymentId = payment.Id,
-                ApprovalStepId = step.Id,
+                ApprovalStepId = step.PublicId,
                 StepStatus = step.Status,
                 PaymentStatus = payment.Status
             };
@@ -135,15 +135,33 @@ public class ApprovalService(
 
     private async Task ApproveAsync(ApprovalStep step, Payment payment, int userId, string? comment)
     {
+        var steps = await approvalRepository.GetStepsForPaymentAsync(payment.Id);
+        var requiresDoubleApproval = paymentService.RequiresDoubleApproval(payment.Amount);
+
+        // Assignment does not identify the actual actor: an admin may decide
+        // someone else's step. Check the authenticated decision maker before
+        // changing any tracked payment, approval step, account or audit entry.
+        if (requiresDoubleApproval && steps.Any(existing =>
+            existing.Status == ApprovalStatuses.Approved && existing.DecidedById == userId))
+        {
+            throw new DuplicateApprovalDecisionException(payment.Id, userId);
+        }
+
         step.Status = ApprovalStatuses.Approved;
+        step.DecidedById = userId;
+        step.DecisionSource = ApprovalDecisionSources.Manual;
         step.DecidedAt = DateTime.UtcNow;
         step.Comment = comment;
 
-        // Tracked by the same DbContext, so this list already reflects the change above.
-        var steps = await approvalRepository.GetStepsForPaymentAsync(payment.Id);
-
         var requiredSteps = paymentService.RequiredApprovalSteps(payment.Amount);
-        var approvedSteps = steps.Count(s => s.Status == ApprovalStatuses.Approved);
+        // Unknown legacy decision makers cannot establish two different people.
+        // Keep those rows unchanged and request an additional known approval.
+        var approvedSteps = requiresDoubleApproval
+            ? steps.Where(s => s.Status == ApprovalStatuses.Approved && s.DecidedById.HasValue)
+                .Select(s => s.DecidedById!.Value)
+                .Distinct()
+                .Count()
+            : steps.Count(s => s.Status == ApprovalStatuses.Approved);
         var pendingSteps = steps.Count(s => s.Status == ApprovalStatuses.Pending);
 
         // Safety net for a payment that was created with fewer steps than the double
@@ -194,6 +212,8 @@ public class ApprovalService(
         var decidedAt = DateTime.UtcNow;
 
         step.Status = ApprovalStatuses.Rejected;
+        step.DecidedById = userId;
+        step.DecisionSource = ApprovalDecisionSources.Manual;
         step.DecidedAt = decidedAt;
         step.Comment = comment;
 
@@ -206,6 +226,8 @@ public class ApprovalService(
         foreach (var remaining in steps.Where(s => s.Status == ApprovalStatuses.Pending))
         {
             remaining.Status = ApprovalStatuses.Rejected;
+            remaining.DecidedById = null;
+            remaining.DecisionSource = ApprovalDecisionSources.PaymentRejected;
             remaining.DecidedAt = decidedAt;
         }
 
@@ -229,6 +251,7 @@ public class ApprovalService(
     {
         var excludedUserIds = steps
             .Select(s => s.AttestantId)
+            .Concat(steps.Select(s => s.DecidedById))
             .Append(payment.CreatedById)
             .Where(id => id.HasValue)
             .Select(id => id!.Value)
@@ -242,7 +265,7 @@ public class ApprovalService(
         {
             PaymentId = payment.Id,
             AttestantId = nextAttestantId,
-            StepNumber = steps.Count + 1,
+            StepNumber = steps.Count == 0 ? 1 : steps.Max(s => s.StepNumber) + 1,
             Status = ApprovalStatuses.Pending
         });
     }
@@ -284,7 +307,7 @@ public class ApprovalService(
         return new PendingApprovalDto
         {
             PaymentId = payment.Id,
-            ApprovalStepId = step.Id,
+            ApprovalStepId = step.PublicId,
             ToIban = payment.ToIban,
             Amount = FormatAmount(payment.Amount),
             Currency = payment.Currency,
@@ -292,6 +315,16 @@ public class ApprovalService(
             CreatedAt = payment.CreatedAt,
             CreatedByName = payment.CreatedBy?.Name ?? "Okänd",
             FromAccountName = payment.FromAccount?.AccountName ?? "Okänt konto",
+            Attestants = payment.ApprovalSteps
+                .OrderBy(approvalStep => approvalStep.StepNumber)
+                .ThenBy(approvalStep => approvalStep.Id)
+                .Select(approvalStep => new ApprovalAttestantDto
+                {
+                    StepNumber = approvalStep.StepNumber,
+                    Name = approvalStep.Attestant?.Name
+                })
+                .ToList(),
+            Timeline = ToTimeline(payment),
             CurrentStep = step.StepNumber,
             TotalSteps = Math.Max(payment.ApprovalSteps.Count, requiredSteps),
             RequiresDoubleApproval = paymentService.RequiresDoubleApproval(payment.Amount)
@@ -303,9 +336,43 @@ public class ApprovalService(
         PaymentId = step.PaymentId,
         Amount = FormatAmount(step.Payment?.Amount ?? 0m),
         Status = step.Status,
-        DecidedAt = step.DecidedAt,
-        Comment = step.Comment ?? ""
+        DecidedAt = ToUtcTimestamp(step.DecidedAt),
+        Comment = step.Comment ?? "",
+        DecisionSource = step.DecisionSource,
+        Timeline = ToTimeline(step.Payment!)
     };
+
+    private static List<ApprovalTimelineStepDto> ToTimeline(Payment payment) =>
+        payment.ApprovalSteps
+            .OrderBy(step => step.StepNumber)
+            .ThenBy(step => step.Id)
+            .Select(step => new ApprovalTimelineStepDto
+            {
+                ApprovalStepId = step.PublicId,
+                StepNumber = step.StepNumber,
+                Status = step.Status,
+                AttestantName = step.Attestant?.Name,
+                DecidedByName = step.DecidedBy?.Name,
+                DecidedAt = ToUtcTimestamp(step.DecidedAt),
+                Comment = step.Comment,
+                DecisionSource = step.DecisionSource
+            })
+            .ToList();
+
+    private static DateTime? ToUtcTimestamp(DateTime? value)
+    {
+        if (!value.HasValue) return null;
+
+        // Existing PostgreSQL TIMESTAMP columns lose the kind when reading times
+        // that the approval service wrote in UTC. Preserve that instant in JSON.
+        var timestamp = value.Value;
+        return timestamp.Kind switch
+        {
+            DateTimeKind.Unspecified => DateTime.SpecifyKind(timestamp, DateTimeKind.Utc),
+            DateTimeKind.Local => timestamp.ToUniversalTime(),
+            _ => timestamp
+        };
+    }
 
     /// <summary>Money always crosses the API as a decimal string, never as a float.</summary>
     private static string FormatAmount(decimal amount) =>

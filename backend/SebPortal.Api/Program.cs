@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SebPortal.Api.Data;
 using SebPortal.Api.Repositories;
 using SebPortal.Api.Services;
@@ -9,6 +11,7 @@ using SebPortal.Api.Middleware;
 using SebPortal.Api.Options;
 using SebPortal.Api.Signing;
 using System.Net;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,14 +33,64 @@ builder.Services.AddDbContext<SebDbContext>(options =>
 builder.Services.AddExceptionHandler<AppExceptionHandler>();
 builder.Services.AddProblemDetails();
 
-// Only configured proxies (and the framework's loopback defaults) may supply the HTTPS scheme.
+// Only configured proxies (and the framework's loopback defaults) may supply the HTTPS scheme
+// and the client's IP address. With no proxies configured, X-Forwarded-For is ignored.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor;
     foreach (var address in builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
     {
         options.KnownProxies.Add(IPAddress.Parse(address));
     }
+});
+
+// Limits login attempts per client IP address, so passwords cannot be tried at full speed.
+// A sliding window counts the attempts made during the last minute, so there is no moment
+// (like the start of a new minute) where the counter resets and a burst gets through.
+// The limit is read from configuration so it can be raised in tests or for a demo.
+var loginPermitLimit = builder.Configuration.GetValue("RateLimiting:LoginPermitLimit", 10);
+var loginWindow = TimeSpan.FromMinutes(1);
+const int loginWindowSegments = 6;
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("login", httpContext =>
+        RateLimitPartition.GetSlidingWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = loginPermitLimit,
+                Window = loginWindow,
+                SegmentsPerWindow = loginWindowSegments,
+                QueueLimit = 0
+            }));
+
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        var response = context.HttpContext.Response;
+        response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+        // The sliding window limiter gives no retry time of its own. One segment is the
+        // earliest moment a permit can be freed up, so that is what we tell the client.
+        var retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var fromLimiter)
+            ? fromLimiter
+            : loginWindow / loginWindowSegments;
+        response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+
+        var problemDetails = context.HttpContext.RequestServices
+            .GetRequiredService<IProblemDetailsService>();
+
+        await problemDetails.TryWriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = context.HttpContext,
+            ProblemDetails = new ProblemDetails
+            {
+                Status = StatusCodes.Status429TooManyRequests,
+                Title = "TooManyRequests",
+                Detail = "För många inloggningsförsök. Vänta en minut och försök igen."
+            }
+        });
+    };
 });
 
 builder.Services.AddAntiforgery(options =>
@@ -65,6 +118,8 @@ builder.Services.AddScoped<PaymentRepository>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<DashboardRepository>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<ReportRepository>();
+builder.Services.AddScoped<ReportService>();
 
 builder.Services.AddScoped<ApprovalRepository>();
 builder.Services.AddScoped<ApprovalService>();
@@ -134,6 +189,8 @@ if (app.Environment.IsDevelopment())
 app.UseExceptionHandler();
 
 app.UseCors("AllowFrontend");
+
+app.UseRateLimiter();
 
 app.UseHttpsRedirection();
 

@@ -54,6 +54,7 @@ public class SebDbContext : DbContext
         {
             entity.ToTable("accounts");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Version).IsRowVersion();
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.TenantId).HasColumnName("tenant_id");
             entity.Property(e => e.AccountName).HasColumnName("account_name").HasMaxLength(100);
@@ -116,16 +117,25 @@ public class SebDbContext : DbContext
             entity.ToTable("approval_steps");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.PublicId).HasColumnName("public_id");
+            entity.HasIndex(e => e.PublicId).IsUnique();
             entity.Property(e => e.PaymentId).HasColumnName("payment_id");
             entity.Property(e => e.AttestantId).HasColumnName("attestant_id");
             entity.Property(e => e.StepNumber).HasColumnName("step_number");
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20);
+            entity.Property(e => e.DecidedById).HasColumnName("decided_by");
+            entity.Property(e => e.DecisionSource).HasColumnName("decision_source").HasMaxLength(30);
             entity.Property(e => e.DecidedAt).HasColumnName("decided_at");
             entity.Property(e => e.Comment).HasColumnName("comment").HasMaxLength(255);
 
             entity.HasOne(e => e.Attestant)
                 .WithMany()
                 .HasForeignKey(e => e.AttestantId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.DecidedBy)
+                .WithMany()
+                .HasForeignKey(e => e.DecidedById)
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
@@ -141,7 +151,7 @@ public class SebDbContext : DbContext
             entity.Property(e => e.EntityType).HasColumnName("entity_type").HasMaxLength(50);
             entity.Property(e => e.EntityId).HasColumnName("entity_id");
             entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at");            
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.Signature).HasColumnName("signature");
             entity.Property(e => e.PreviousSignature).HasColumnName("previous_signature");
             entity.HasOne<Tenant>()
@@ -171,4 +181,3 @@ public class SebDbContext : DbContext
         });
     }
 }
-

@@ -32,6 +32,9 @@ public class ApprovalRepository(SebDbContext dbContext)
             .Include(step => step.Payment!).ThenInclude(payment => payment.CreatedBy)
             .Include(step => step.Payment!).ThenInclude(payment => payment.FromAccount)
             .Include(step => step.Payment!).ThenInclude(payment => payment.ApprovalSteps)
+                .ThenInclude(approvalStep => approvalStep.Attestant)
+            .Include(step => step.Payment!).ThenInclude(payment => payment.ApprovalSteps)
+                .ThenInclude(approvalStep => approvalStep.DecidedBy)
             .Where(step =>
                 step.Status == ApprovalStatuses.Pending &&
                 step.Payment != null &&
@@ -40,13 +43,16 @@ public class ApprovalRepository(SebDbContext dbContext)
             .OrderBy(step => step.Payment!.CreatedAt);
 
     /// <summary>
-    /// The steps this attestant has already decided, newest decision first.
+    /// Handled steps assigned to this user or directly decided by them, newest first.
     /// </summary>
     public Task<List<ApprovalStep>> GetHandledStepsForAttestantAsync(int userId, int tenantId, int limit) =>
         dbContext.ApprovalSteps
-            .Include(step => step.Payment)
+            .Include(step => step.Payment!).ThenInclude(payment => payment.ApprovalSteps)
+                .ThenInclude(approvalStep => approvalStep.Attestant)
+            .Include(step => step.Payment!).ThenInclude(payment => payment.ApprovalSteps)
+                .ThenInclude(approvalStep => approvalStep.DecidedBy)
             .Where(step =>
-                step.AttestantId == userId &&
+                (step.AttestantId == userId || step.DecidedById == userId) &&
                 step.Status != ApprovalStatuses.Pending &&
                 step.Payment != null &&
                 step.Payment.TenantId == tenantId)
@@ -55,14 +61,14 @@ public class ApprovalRepository(SebDbContext dbContext)
             .ToListAsync();
 
     /// <summary>
-    /// One step with everything needed to decide it: the payment and the account
+    /// One step, found by the id clients see (PublicId), with everything needed to decide it: the payment and the account
     /// the money would leave (including its transactions, so completing the payment
     /// can append one).
     /// </summary>
-    public Task<ApprovalStep?> GetStepWithPaymentAsync(int approvalStepId) =>
+    public Task<ApprovalStep?> GetStepWithPaymentAsync(Guid approvalStepId) =>
         dbContext.ApprovalSteps
             .Include(step => step.Payment!).ThenInclude(payment => payment.FromAccount!).ThenInclude(account => account.Transactions)
-            .FirstOrDefaultAsync(step => step.Id == approvalStepId);
+            .FirstOrDefaultAsync(step => step.PublicId == approvalStepId);
 
     /// <summary>All steps belonging to one payment, ordered by step number.</summary>
     public Task<List<ApprovalStep>> GetStepsForPaymentAsync(int paymentId) =>

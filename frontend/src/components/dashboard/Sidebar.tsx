@@ -56,12 +56,13 @@ export default function DashboardSidebar({
       .map((part) => part[0])
       .join("") ?? "?";
     const overviewClassName = `dashboard-sidebar-link${pathname === "/dashboard" ? " active" : ""}`;
-    const paymentsClassName = `dashboard-sidebar-link${pathname === "/new-payment" ? " active" : ""}`;
+    const paymentsClassName = `dashboard-sidebar-link${pathname === "/new-payment" || pathname === "/payments" || pathname.startsWith("/payments/") ? " active" : ""}`;
     const accountsClassName = `dashboard-sidebar-link${pathname === "/accounts" ? " active" : ""}`;
     const approvalsClassName = `dashboard-sidebar-link${pathname === "/approval-inbox" ? " active" : ""}`;
-    const batchFilesClassName = `dashboard-sidebar-link${pathname === "/batch-upload" ? " active" : ""}`;
+    const batchFilesClassName = `dashboard-sidebar-link${pathname === "/batch-upload" || pathname === "/batch-files" || pathname.startsWith("/batch-files/") ? " active" : ""}`;
     const reportsClassName = `dashboard-sidebar-link${pathname === "/reports" ? " active" : ""}`;
     const auditLogClassName = `dashboard-sidebar-link${pathname === "/audit-log" ? " active" : ""}`;
+    const settingsClassName = `dashboard-sidebar-link${pathname === "/settings" ? " active" : ""}`;
 
     async function handleLogout() {
       setIsLoggingOut(true);
@@ -70,7 +71,7 @@ export default function DashboardSidebar({
       try {
         await logout();
         localStorage.removeItem("user");
-        navigate("/", { replace: true });
+        navigate("/logout", { replace: true });
       } catch {
         setLogoutError("Kunde inte logga ut. Försök igen.");
       } finally {
@@ -118,7 +119,7 @@ export default function DashboardSidebar({
           <span>Översikt</span>
         </Link>
 
-        <Link to="/new-payment" className={paymentsClassName}>
+        <Link to="/payments" className={paymentsClassName}>
           <FiCreditCard />
           <span>Betalningar</span>
         </Link>
@@ -137,7 +138,7 @@ export default function DashboardSidebar({
           <span>Konton</span>
         </Link>
 
-        <Link to="/batch-upload" className={batchFilesClassName}>
+        <Link to="/batch-files" className={batchFilesClassName}>
           <FiFileText />
           <span>Batchfiler</span>
         </Link>
@@ -152,10 +153,10 @@ export default function DashboardSidebar({
           <span>Audit-logg</span>
         </Link>
 
-        <a href="#" className="dashboard-sidebar-link">
+        <Link to="/settings" className={settingsClassName}>
           <FiSettings />
           <span>Inställningar</span>
-        </a>
+        </Link>
 
       </nav>
 

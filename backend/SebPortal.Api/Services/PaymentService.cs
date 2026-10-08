@@ -1,3 +1,4 @@
+using System.Globalization;
 using SebPortal.Api.Exceptions;
 using SebPortal.Api.Models;
 using SebPortal.Api.Repositories;
@@ -6,7 +7,11 @@ using SebPortal.Api.Options;
 
 namespace SebPortal.Api.Services;
 
-public class PaymentService(PaymentRepository paymentRepository, IOptions<PaymentRulesOptions> paymentRules)
+public class PaymentService(
+    PaymentRepository paymentRepository,
+    ApprovalRepository approvalRepository,
+    IOptions<PaymentRulesOptions> paymentRules,
+    AuditService auditService)
 {
     /// <summary>
     /// Creates a payment, validates the source account and tenant,
@@ -49,17 +54,90 @@ public class PaymentService(PaymentRepository paymentRepository, IOptions<Paymen
         };
 
         // 3. Determine the payment flow from the configured approval threshold.
-        var requiresApproval = amount > paymentRules.Value.ApprovalThreshold;
+        var requiresApproval = amount > paymentRules.Value.ApprovalThreshold ||
+            RequiresDoubleApproval(amount);
 
-        if (!requiresApproval)
+        if (requiresApproval)
+        {
+            await AddInitialApprovalStepsAsync(payment);
+        }
+        else
         {
             CompletePaymentOrThrow(payment, account);
         }
 
-        // 4. Persist the payment together with any balance and transaction changes.
-        await paymentRepository.AddPaymentAsync(payment);
+        // 4. Persist the payment, any balance and transaction changes, and the audit entry
+        // as ONE unit: a payment must never exist without its CREATE_PAYMENT audit entry,
+        // and an audit entry must never describe a payment that was not saved.
+        //
+        // The payment id comes from the database, so the payment has to be saved before
+        // the audit entry can name it. Both saves run inside one database transaction,
+        // and the transaction is only committed after the audit entry is saved. If
+        // anything fails in between, disposing the transaction rolls the payment back.
+        //
+        // The tenant's audit lock is held until the commit, so no other audit entry for
+        // this tenant can read the same "latest signature" and fork the chain.
+        var tenantLock = auditService.GetTenantLock(tenantId);
+        await tenantLock.WaitAsync();
+
+        try
+        {
+            await using var transaction = await paymentRepository.BeginTransactionAsync();
+
+            await paymentRepository.AddPaymentAsync(payment);
+
+            await auditService.AppendEntryAsync(
+                tenantId,
+                createdById,
+                "CREATE_PAYMENT",
+                "payment",
+                payment.Id,
+                $"Betalning skapad: {amount.ToString("F2", CultureInfo.InvariantCulture)} {currency} " +
+                $"till {toIban}. " +
+                (requiresApproval ? "Väntar på attest." : "Genomförd direkt."));
+
+            await paymentRepository.SaveChangesAsync();
+
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync();
+            }
+        }
+        finally
+        {
+            tenantLock.Release();
+        }
 
         return payment;
+    }
+
+    private async Task AddInitialApprovalStepsAsync(Payment payment)
+    {
+        var excludedUserIds = new List<int>();
+
+        if (payment.CreatedById.HasValue)
+        {
+            excludedUserIds.Add(payment.CreatedById.Value);
+        }
+
+        for (var stepNumber = 1; stepNumber <= RequiredApprovalSteps(payment.Amount); stepNumber++)
+        {
+            var attestantId = await approvalRepository.FindNextAttestantIdAsync(
+                payment.TenantId,
+                excludedUserIds);
+
+            payment.ApprovalSteps.Add(new ApprovalStep
+            {
+                AttestantId = attestantId,
+                StepNumber = stepNumber,
+                Status = ApprovalStatuses.Pending
+            });
+
+            if (attestantId.HasValue)
+            {
+                excludedUserIds.Add(attestantId.Value);
+            }
+        }
     }
 
     /// <summary>
