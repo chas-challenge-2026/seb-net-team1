@@ -59,21 +59,20 @@ export default function Payments() {
   }
 
   return (
-    <PaymentsLayout title="Betalningar" overview={data} contentClassName="payments-list-content">
-      <section className="payments-intro" aria-labelledby="payments-title">
-        <div>
-          <h2 id="payments-title">Hantering av betalningar</h2>
-          <p>Skapa, granska och spåra alla företagets utgående betalningar.</p>
-        </div>
-        <div className="payments-top-actions">
-          <Link to="/batch-upload" className="payments-action payments-action--secondary">
-            <FiUploadCloud aria-hidden="true" />Ladda upp betalfil
-          </Link>
-          <Link to="/new-payment" className="payments-action payments-action--primary">
-            <FiPlus aria-hidden="true" />Ny betalning
-          </Link>
-        </div>
-      </section>
+    <PaymentsLayout
+      title="Betalningar"
+      subtitle="Skapa, granska och spåra alla företagets utgående betalningar."
+      overview={data}
+      contentClassName="payments-list-content"
+    >
+      <div className="payments-top-actions">
+        <Link to="/batch-upload" className="payments-action payments-action--secondary">
+          <FiUploadCloud aria-hidden="true" />Ladda upp betalfil
+        </Link>
+        <Link to="/new-payment" className="payments-action payments-action--primary">
+          <FiPlus aria-hidden="true" />Ny betalning
+        </Link>
+      </div>
 
       <div className="payments-toolbar" role="group" aria-label="Filtrera de inlästa senaste betalningarna">
         <label className={`payments-filter${filters.status !== "all" ? " payments-filter--status-selected" : ""}`}>

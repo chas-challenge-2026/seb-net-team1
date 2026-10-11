@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
 import "./styles/global.css";
 import Dashboard from "./pages/Dashboard";
 import NewPayment from "./pages/NewPayment";
@@ -14,9 +15,12 @@ import ApprovalInbox from "./pages/ApprovalInbox";
 import Reports from "./pages/Reports";
 import Payments from "./pages/Payments";
 import PaymentDetails from "./pages/PaymentDetails";
+import Settings from "./pages/Settings";
+import Logout from "./pages/Logout";
 
 const pageTitles: Record<string, string> = {
   "/": "Logga in",
+  "/forgot-password": "Glömt lösenord",
   "/dashboard": "Översikt",
   "/new-payment": "Betalningar",
   "/payments": "Betalningar",
@@ -27,6 +31,7 @@ const pageTitles: Record<string, string> = {
   "/reports": "Rapporter",
   "/audit-log": "Audit-logg",
   "/settings": "Inställningar",
+  "/logout": "Utloggad",
 };
 
 function App() {
@@ -44,6 +49,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/new-payment" element={<NewPayment />} />
       <Route path="/payments" element={<Payments />} />
@@ -57,6 +63,8 @@ function App() {
       <Route path="/audit-log" element={<AuditLog />} />
       <Route path="/approval-inbox" element={<ApprovalInbox />} />
       <Route path="/reports" element={<Reports />} />
+      <Route path="/settings" element={<Settings />} />
+      <Route path="/logout" element={<Logout />} />
     </Routes>
   );
 }

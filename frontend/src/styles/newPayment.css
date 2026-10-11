@@ -1,6 +1,31 @@
 .new-payment-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   max-width: 720px;
   width: 100%;
+}
+
+.new-payment-back {
+  align-items: center;
+  color: var(--seb-deep-green);
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 600;
+  gap: 8px;
+  min-height: 36px;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.new-payment-back:hover {
+  color: var(--green-hover);
+  text-decoration: underline;
+}
+
+.new-payment-back:focus-visible {
+  outline: 2px solid var(--seb-green);
+  outline-offset: 3px;
 }
 
 .new-payment-card {
@@ -81,6 +106,27 @@
 
 .new-payment-submit:hover {
   background: #005429;
+}
+
+@media (min-width: 701px) {
+  .new-payment-layout .dashboard-header-actions {
+    flex: 0 1 308px;
+    min-width: 0;
+  }
+
+  .new-payment-layout .search-input-wrapper {
+    flex: 1 1 260px;
+    min-width: 0;
+  }
+
+  .new-payment-layout .search-input-wrapper input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .new-payment-layout .dashboard-notification-button {
+    flex: 0 0 38px;
+  }
 }
 
 @media (max-width: 700px) {

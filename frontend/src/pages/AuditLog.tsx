@@ -227,7 +227,11 @@ export default function AuditLog() {
 
       <main className="dashboard-main audit-log-main">
         <div className="audit-log-header">
-          <DashboardHeader title="Audit-logg" subtitle="" showSearch={false} />
+          <DashboardHeader
+            title="Audit-logg"
+            subtitle="Registrerade händelser för ditt företag."
+            showSearch={false}
+          />
           <label
             className="audit-log-header-search"
             title="Sökning är inte tillgänglig ännu."
@@ -239,11 +243,6 @@ export default function AuditLog() {
         </div>
 
         <div className="dashboard-content audit-log-content">
-          <div className="audit-log-intro">
-            <h2 id="audit-log-heading">Audit-logg</h2>
-            <p>Registrerade händelser för ditt företag.</p>
-          </div>
-
           <fieldset
             className="audit-log-toolbar"
             aria-describedby="audit-log-filter-availability"
@@ -295,7 +294,7 @@ export default function AuditLog() {
             </Button>
           </fieldset>
 
-          <section className="audit-log-results" aria-labelledby="audit-log-heading">
+          <section className="audit-log-results" aria-label="Registrerade audithändelser">
             <Card className="audit-log-card">
               {isLoading ? (
                 <p className="audit-log-state" role="status">

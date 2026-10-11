@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
-import { FiBell, FiSearch } from "react-icons/fi";
+import { Link } from "react-router-dom";
+import { FiArrowLeft, FiBell, FiSearch } from "react-icons/fi";
 import { getAccounts } from "../api/accountsApi";
 import { createPayment } from "../api/paymentsApi";
 import Sidebar from "../components/dashboard/Sidebar";
@@ -139,7 +140,7 @@ function NewPayment() {
   }
 
   return (
-    <div className="dashboard-layout">
+    <div className="dashboard-layout new-payment-layout">
       <Sidebar
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen((isOpen) => !isOpen)}
@@ -185,6 +186,10 @@ function NewPayment() {
             className="new-payment-content"
             aria-labelledby="new-payment-title"
           >
+            <Link to="/payments" className="new-payment-back">
+              <FiArrowLeft aria-hidden="true" />
+              Tillbaka
+            </Link>
             <Card className="new-payment-card">
               <div className="new-payment-card-header">
                 <h2 id="new-payment-title">Skapa betalning</h2>

@@ -4,10 +4,26 @@ import {
   LuBuilding2,
 } from "react-icons/lu";
 import Card from "../shared/Card";
+import type { Account } from "../../types/Account";
 
-const AccountSummary = () => {
+type AccountSummaryProps = {
+  accounts: Account[] | null;
+};
 
-  // TODO: Ersätt hårdkoden med data från API:t senare
+const AccountSummary = ({ accounts }: AccountSummaryProps) => {
+  const sekBalance = accounts?.reduce((total, account) => {
+    if (account.currency !== "SEK") return total;
+    const balance = Number(account.balance);
+    return total + (Number.isFinite(balance) ? balance : 0);
+  }, 0);
+  const currencies = new Set(accounts?.map((account) => account.currency) ?? []);
+  const formatBalance = (balance: number | undefined) =>
+    balance === undefined
+      ? "—"
+      : `${balance.toLocaleString("sv-SE", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} kr`;
 
   return (
     <section className="account-summary">
@@ -18,7 +34,7 @@ const AccountSummary = () => {
           </div>
           <div className="account-summary-copy">
             <p>Totalt saldo</p>
-            <h2>1 245 800 kr</h2>
+            <h2>{formatBalance(sekBalance)}</h2>
           </div>
         </div>
       </Card>
@@ -29,8 +45,8 @@ const AccountSummary = () => {
             <LuCircleDollarSign />
           </div>
           <div className="account-summary-copy">
-            <p>Tillgängligt saldo</p>
-            <h2>1 198 400 kr</h2>
+            <p>Valutor</p>
+            <h2>{accounts ? currencies.size : "—"}</h2>
           </div>
         </div>
       </Card>
@@ -42,7 +58,7 @@ const AccountSummary = () => {
           </div>
           <div className="account-summary-copy">
             <p>Antal konton</p>
-            <h2>3</h2>
+            <h2>{accounts ? accounts.length : "—"}</h2>
           </div>
         </div>
       </Card>
