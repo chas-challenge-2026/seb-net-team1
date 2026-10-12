@@ -54,7 +54,7 @@ public class PaymentService(
         };
 
         // 3. Determine the payment flow from the configured approval threshold.
-        var requiresApproval = amount > paymentRules.Value.ApprovalThreshold;
+        var requiresApproval = RequiresApproval(amount);
 
         if (requiresApproval)
         {
@@ -91,9 +91,7 @@ public class PaymentService(
                 "CREATE_PAYMENT",
                 "payment",
                 payment.Id,
-                $"Betalning skapad: {amount.ToString("F2", CultureInfo.InvariantCulture)} {currency} " +
-                $"till {toIban}. " +
-                (requiresApproval ? "Väntar på attest." : "Genomförd direkt."));
+                PaymentCreatedDescription(amount, currency, toIban, requiresApproval));
 
             await paymentRepository.SaveChangesAsync();
 
@@ -109,6 +107,112 @@ public class PaymentService(
 
         return payment;
     }
+
+    /// <summary>
+    /// Creates several payments as one unit for a validated batch file: either every
+    /// payment (with its balance changes, approval step and CREATE_PAYMENT audit entry)
+    /// is saved, or none is. The caller is expected to have validated the rows already;
+    /// a failure here (an account that changed since, insufficient funds) throws and
+    /// rolls everything back.
+    /// </summary>
+    /// <param name="payments">
+    /// Unsaved payments with FromAccountId, ToIban, Amount, Currency and Reference set.
+    /// Tenant, creator, timestamp and status are filled in here.
+    /// </param>
+    public async Task<IReadOnlyList<Payment>> CreatePaymentsAsync(
+        int tenantId,
+        int? createdById,
+        IReadOnlyList<Payment> payments)
+    {
+        // 1. Prepare every payment against one tracked copy of each account, so the
+        // balance of an account keeps going down across the rows paying from it.
+        var accounts = new Dictionary<int, Account>();
+        var approvalFlags = new List<bool>(payments.Count);
+
+        foreach (var payment in payments)
+        {
+            if (!accounts.TryGetValue(payment.FromAccountId, out var account))
+            {
+                // Same not-found for "missing" and "other tenant", as in CreatePaymentAsync.
+                account = await paymentRepository.GetAccountAsync(payment.FromAccountId, tenantId)
+                    ?? throw new AccountNotFoundException(payment.FromAccountId);
+                accounts[payment.FromAccountId] = account;
+            }
+
+            payment.TenantId = tenantId;
+            payment.CreatedById = createdById;
+            payment.CreatedAt = DateTime.UtcNow;
+            payment.Status = PaymentStatuses.PendingApproval;
+
+            var requiresApproval = RequiresApproval(payment.Amount);
+
+            if (requiresApproval)
+            {
+                await AddInitialApprovalStepAsync(payment);
+            }
+            else
+            {
+                CompletePaymentOrThrow(payment, account);
+            }
+
+            approvalFlags.Add(requiresApproval);
+        }
+
+        // 2. Persist. The tenant's audit lock is held until the commit, for the same
+        // reason as in CreatePaymentAsync, and every audit entry needs the previous
+        // one saved so the signature chain links instead of forking.
+        var tenantLock = auditService.GetTenantLock(tenantId);
+        await tenantLock.WaitAsync();
+
+        try
+        {
+            await using var transaction = await paymentRepository.BeginTransactionAsync();
+
+            // One save for all payments, balances and transactions. This also gives
+            // every payment its database id for the audit entries below.
+            paymentRepository.AddPayments(payments);
+            await paymentRepository.SaveChangesAsync();
+
+            for (var i = 0; i < payments.Count; i++)
+            {
+                var payment = payments[i];
+
+                await auditService.AppendEntryAsync(
+                    tenantId,
+                    createdById,
+                    "CREATE_PAYMENT",
+                    "payment",
+                    payment.Id,
+                    PaymentCreatedDescription(payment.Amount, payment.Currency, payment.ToIban, approvalFlags[i]));
+
+                await paymentRepository.SaveChangesAsync();
+            }
+
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync();
+            }
+        }
+        finally
+        {
+            tenantLock.Release();
+        }
+
+        return payments;
+    }
+
+    /// <summary>
+    /// Whether a payment of this amount must be approved by an attestant instead of
+    /// being completed directly. Reads the one configured threshold.
+    /// </summary>
+    public bool RequiresApproval(decimal amount) =>
+        amount > paymentRules.Value.ApprovalThreshold;
+
+    private static string PaymentCreatedDescription(
+        decimal amount, string currency, string toIban, bool requiresApproval) =>
+        $"Betalning skapad: {amount.ToString("F2", CultureInfo.InvariantCulture)} {currency} " +
+        $"till {toIban}. " +
+        (requiresApproval ? "Väntar på attest." : "Genomförd direkt.");
 
     private async Task AddInitialApprovalStepAsync(Payment payment)
     {
