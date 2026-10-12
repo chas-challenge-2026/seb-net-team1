@@ -542,24 +542,31 @@
 .account-overview__grid {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 10px;
+	gap: 14px;
 }
 
 .account-card {
-	background: var(--white);
-	border: 1px solid var(--border-color);
-	border-radius: var(--radius-sm);
+	background: linear-gradient(145deg, var(--white), #f8fbf9);
+	border: 1px solid color-mix(in srgb, var(--seb-green) 18%, var(--border-color));
+	border-radius: var(--radius-md, 12px);
+	box-shadow: 0 4px 14px color-mix(in srgb, var(--seb-deep-green) 6%, transparent);
 	display: flex;
 	flex-direction: column;
-	min-height: 82px;
+	min-height: 154px;
 	min-width: 0;
-	padding: 8px;
+	padding: 16px;
+	transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.account-card:hover {
+	box-shadow: 0 8px 22px color-mix(in srgb, var(--seb-deep-green) 12%, transparent);
+	transform: translateY(-2px);
 }
 
 .account-card__top {
 	align-items: center;
 	display: flex;
-	gap: 8px;
+	gap: 12px;
 }
 
 .account-card__icon {
@@ -569,45 +576,45 @@
 	color: var(--seb-green);
 	display: flex;
 	flex-shrink: 0;
-	height: 30px;
+	height: 40px;
 	justify-content: center;
-	width: 30px;
+	width: 40px;
 }
 
 .account-card__icon svg {
-	height: 16px;
+	height: 19px;
 	stroke-width: 1.8;
-	width: 16px;
+	width: 19px;
 }
 
 .account-card h3 {
 	color: var(--ink);
-	font-size: 12px;
+	font-size: 14px;
 	font-weight: 600;
-	margin: 0 0 2px;
+	margin: 0 0 4px;
 }
 
 .account-card__iban {
 	color: var(--medium-gray);
-	font-size: 10px;
+	font-size: 11px;
 }
 
 .account-card__balance {
 	display: flex;
 	flex-direction: column;
 	margin-top: auto;
-	padding-top: 9px;
+	padding-top: 16px;
 }
 
 .account-card__balance span {
 	color: var(--medium-gray);
-	font-size: 10px;
-	margin-bottom: 2px;
+	font-size: 11px;
+	margin-bottom: 4px;
 }
 
 .account-card__balance strong {
 	color: var(--ink);
-	font-size: 16px;
+	font-size: 20px;
 	font-weight: 600;
 	letter-spacing: -0.2px;
 }
@@ -1124,8 +1131,8 @@
 	}
 
 	.account-card {
-		min-height: 76px;
-		padding: 7px;
+		min-height: 132px;
+		padding: 12px;
 	}
 
 	.payment-status__row {

@@ -82,7 +82,7 @@ export default function UpcomingPayments({
                 <strong>{payment.reference}</strong>
 
                 <span>
-                  {formatDate(payment.createdAt)}
+                  Skapad {formatDate(payment.createdAt)}
                 </span>
               </div>
 

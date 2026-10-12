@@ -100,7 +100,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task GetDashboardAsync_LeavesPendingApprovalsEmpty_ForInitiator()
+    public async Task GetDashboardAsync_IncludesTheInitiatorsPendingPayment()
     {
         // Arrange: same payment/step setup, but user role is "initiator"
         using var db = CreateContext();
@@ -112,6 +112,7 @@ public class DashboardServiceTests
             FromAccountId = 1,
             ToIban = "SE4550000000054910000099",
             Amount = 8000m,
+            CreatedById = 1,
             Status = "pending_approval"
         });
         db.ApprovalSteps.Add(new ApprovalStep
@@ -130,7 +131,8 @@ public class DashboardServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Empty(result!.PendingApprovals);
+        Assert.Single(result!.PendingApprovals);
+        Assert.Equal(1, result.PendingApprovals[0].Id);
     }
 
     [Fact]

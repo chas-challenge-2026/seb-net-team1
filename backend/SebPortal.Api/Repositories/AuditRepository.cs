@@ -34,4 +34,14 @@ public class AuditRepository(SebDbContext dbContext)
             .Take(limit + 1)
             .ToListAsync();
     }
+
+    public Task<List<AuditEntry>> GetPaymentEntriesAsync(int paymentId, int tenantId) =>
+        dbContext.AuditEntries
+            .AsNoTracking()
+            .Include(entry => entry.User)
+            .Where(entry => entry.TenantId == tenantId &&
+                entry.EntityType == "payment" && entry.EntityId == paymentId)
+            .OrderBy(entry => entry.CreatedAt)
+            .ThenBy(entry => entry.Id)
+            .ToListAsync();
 }

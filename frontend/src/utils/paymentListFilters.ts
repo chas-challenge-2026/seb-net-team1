@@ -11,7 +11,7 @@ export type PaymentListFilters = {
 
 export const DEFAULT_PAYMENT_FILTERS: PaymentListFilters = {
   status: "all",
-  dateRange: "30",
+  dateRange: "all",
   amountRange: "all",
 };
 

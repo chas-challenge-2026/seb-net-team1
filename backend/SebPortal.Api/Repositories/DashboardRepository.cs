@@ -16,24 +16,69 @@ public class DashboardRepository(SebDbContext db)
             .Where(a => a.TenantId == tenantId)
             .ToListAsync();
 
-    public Task<List<Payment>> GetRecentPaymentsAsync(int tenantId, int count) =>
+    public Task<List<Payment>> GetPaymentsAsync(int tenantId) =>
         db.Payments
+            .AsNoTracking()
             .Where(p => p.TenantId == tenantId)
+            .Include(p => p.FromAccount)
+            .Include(p => p.CreatedBy)
             .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id)
+            .ToListAsync();
+
+    public Task<List<Payment>> GetPendingApprovalsAsync(int userId, int tenantId, string? role) =>
+        PendingPaymentsQuery(tenantId)
+            .Where(p => role == UserRoles.Admin ||
+                (role == UserRoles.Initiator
+                    ? p.CreatedById == userId
+                    : p.ApprovalSteps.Any(step =>
+                        step.AttestantId == userId && step.Status == ApprovalStatuses.Pending)))
+            .OrderBy(p => p.CreatedAt)
+            .ThenBy(p => p.Id)
+            .ToListAsync();
+
+    public Task<List<Payment>> GetUpcomingPaymentsAsync(int tenantId, int count) =>
+        db.Payments
+            .AsNoTracking()
+            .Where(p => p.TenantId == tenantId &&
+                (p.Status == PaymentStatuses.PendingApproval || p.Status == "processing"))
+            .OrderBy(p => p.CreatedAt)
+            .ThenBy(p => p.Id)
             .Take(count)
             .ToListAsync();
 
-    public async Task<List<Payment>> GetPendingApprovalsAsync(int userId, int tenantId)
-    {
-        var payments = await db.ApprovalSteps
-            .Where(step => step.AttestantId == userId && step.Status == "pending")
-            .Include(step => step.Payment)
-            .Select(step => step.Payment)
+    public Task<int> GetPaymentCountAsync(int tenantId) =>
+        db.Payments.AsNoTracking().CountAsync(p => p.TenantId == tenantId);
+
+    public async Task<Dictionary<string, int>> GetPaymentStatusCountsAsync(int tenantId) =>
+        await db.Payments
+            .AsNoTracking()
+            .Where(p => p.TenantId == tenantId)
+            .GroupBy(p => p.Status)
+            .Select(group => new { Status = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.Status, item => item.Count);
+
+    public Task<int> GetValidationErrorCountAsync(int tenantId) =>
+        db.AuditEntries.AsNoTracking().CountAsync(entry =>
+            entry.TenantId == tenantId && entry.Action == "VALIDATE_IBAN");
+
+    public Task<List<AuditEntry>> GetRecentPaymentActivityAsync(int tenantId, int count) =>
+        db.AuditEntries
+            .AsNoTracking()
+            .Include(entry => entry.User)
+            .Where(entry => entry.TenantId == tenantId &&
+                (entry.Action == "CREATE_PAYMENT" ||
+                 entry.Action == "APPROVE_PAYMENT_STEP" ||
+                 entry.Action == "APPROVE_PAYMENT" ||
+                 entry.Action == "REJECT_PAYMENT" ||
+                 entry.Action == "VALIDATE_IBAN"))
+            .OrderByDescending(entry => entry.CreatedAt)
+            .ThenByDescending(entry => entry.Id)
+            .Take(count)
             .ToListAsync();
 
-        return payments
-            .Where(p => p is not null && p.TenantId == tenantId)
-            .Select(p => p!)
-            .ToList();
-    }
+    private IQueryable<Payment> PendingPaymentsQuery(int tenantId) =>
+        db.Payments
+            .AsNoTracking()
+            .Where(p => p.TenantId == tenantId && p.Status == PaymentStatuses.PendingApproval);
 }

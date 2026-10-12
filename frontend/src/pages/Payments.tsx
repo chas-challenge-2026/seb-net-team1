@@ -41,10 +41,23 @@ const amountOptions: { value: PaymentAmountRange; label: string }[] = [
 export default function Payments() {
   const { data, isLoading, error, needsLogin, retry } = usePaymentOverview();
   const [filters, setFilters] = useState(DEFAULT_PAYMENT_FILTERS);
+  const [accountId, setAccountId] = useState("all");
   const [page, setPage] = useState(1);
   const payments = data?.recentPayments ?? [];
   const now = new Date();
-  const filteredPayments = filterRecentPayments(payments, filters, now);
+  const accountOptions = payments.reduce<{ id: number; name: string }[]>((options, payment) => {
+    if (payment.fromAccountId == null || options.some((option) => option.id === payment.fromAccountId)) {
+      return options;
+    }
+
+    options.push({
+      id: payment.fromAccountId,
+      name: payment.fromAccountName || `Konto #${payment.fromAccountId}`,
+    });
+    return options;
+  }, []);
+  const filteredPayments = filterRecentPayments(payments, filters, now)
+    .filter((payment) => accountId === "all" || String(payment.fromAccountId) === accountId);
   const pagination = getPaymentPagination({ totalItems: filteredPayments.length, pageSize: PAGE_SIZE, page });
   const visiblePayments = filteredPayments.slice(pagination.startIndex, pagination.endIndex);
   const paginationDisabled = isLoading || Boolean(error) || filteredPayments.length === 0;
@@ -74,7 +87,7 @@ export default function Payments() {
         </Link>
       </div>
 
-      <div className="payments-toolbar" role="group" aria-label="Filtrera de inlästa senaste betalningarna">
+      <div className="payments-toolbar" role="group" aria-label="Filtrera betalningar">
         <label className={`payments-filter${filters.status !== "all" ? " payments-filter--status-selected" : ""}`}>
           <select
             aria-label="Status för inlästa betalningar"
@@ -88,7 +101,7 @@ export default function Payments() {
         </label>
         <label className="payments-filter payments-filter--date">
           <select
-            aria-label="Datumintervall för inlästa betalningar"
+            aria-label="Betalningsdatum"
             value={filters.dateRange}
             onChange={(event) => {
               const value = dateOptions.find((option) => option.value === event.target.value)?.value;
@@ -101,7 +114,7 @@ export default function Payments() {
         </label>
         <label className={`payments-filter${filters.amountRange !== "all" ? " payments-filter--amount-selected" : ""}`}>
           <select
-            aria-label="Belopp i SEK för inlästa betalningar"
+            aria-label="Betalningsbelopp i SEK"
             value={filters.amountRange}
             onChange={(event) => {
               const value = amountOptions.find((option) => option.value === event.target.value)?.value;
@@ -112,23 +125,31 @@ export default function Payments() {
           </select>
           <FiChevronDown aria-hidden="true" />
         </label>
-        <label className="payments-filter" title="Kontofiltrering kräver avsändarkonto i betalningsdata">
-          <select aria-label="Konto, endast Alla är tillgängligt" defaultValue="all">
+        <label className="payments-filter">
+          <select aria-label="Avsändarkonto" value={accountId} onChange={(event) => {
+            setAccountId(event.target.value);
+            setPage(1);
+          }}>
             <option value="all">Konto: Alla</option>
+            {accountOptions.map((account) => (
+              <option key={account.id} value={account.id}>Konto: {account.name}</option>
+            ))}
           </select>
           <FiChevronDown aria-hidden="true" />
         </label>
-        <Button type="button" className="payments-reset" onClick={() => changeFilters(DEFAULT_PAYMENT_FILTERS)}>
+        <Button type="button" className="payments-reset" onClick={() => {
+          changeFilters(DEFAULT_PAYMENT_FILTERS);
+          setAccountId("all");
+        }}>
           <FiRefreshCw aria-hidden="true" />Rensa filter
         </Button>
       </div>
 
       <Card className="payments-table-card">
-        <div className="payments-table-scroll" role="region" aria-label="Senaste betalningar" tabIndex={0}>
+        <div className="payments-table-scroll" role="region" aria-label="Betalningshistorik" tabIndex={0}>
           <table className="payments-table">
             <caption className="payments-sr-only">
-              Filtren gäller endast de inlästa senaste betalningarna från företagets
-              kontoöversikt, inte hela betalningshistoriken. Sidindelningen gäller endast dessa inlästa betalningar.
+              Filtren gäller företagets fullständiga betalningshistorik.
             </caption>
             <colgroup>
               <col className="payments-col-id" />
@@ -164,7 +185,7 @@ export default function Payments() {
                     <td className="payments-recipient" title={payment.toIban ?? undefined}>
                       {payment.toIban ?? "—"}
                     </td>
-                    <td>—</td>
+                    <td>{payment.fromAccountName || "—"}</td>
                     <td className="payments-amount">
                       {formatPaymentAmount(payment.amount, payment.currency)}
                     </td>
@@ -204,7 +225,7 @@ export default function Payments() {
               </>
             ) : (
               <p role="status">
-                {payments.length === 0 ? "Inga senaste betalningar att visa." : "Inga inlästa betalningar matchar filtren."}
+                {payments.length === 0 ? "Inga betalningar att visa." : "Inga betalningar matchar filtren."}
               </p>
             )}
           </div>
@@ -212,12 +233,12 @@ export default function Payments() {
         <footer className="payments-table-footer">
           <p className="payments-result-count" role="status">
             {isLoading ? "Laddar..." : error ? "—" : pagination.totalPages > 1
-              ? `Visar ${pagination.startIndex + 1}–${pagination.endIndex} av ${filteredPayments.length} ${filteredPayments.length === payments.length ? "inlästa" : "filtrerade"} senaste betalningar`
+              ? `Visar ${pagination.startIndex + 1}–${pagination.endIndex} av ${filteredPayments.length} betalningar`
               : filteredPayments.length === payments.length
-              ? `Visar ${payments.length} senaste betalningar`
-              : `Visar ${filteredPayments.length} av ${payments.length} inlästa senaste betalningar`}
+              ? `Visar ${payments.length} betalningar`
+              : `Visar ${filteredPayments.length} av ${payments.length} betalningar`}
           </p>
-          <nav className="payments-pagination" aria-label="Sidor för inlästa senaste betalningar" title="Sidindelningen gäller endast inlästa senaste betalningar">
+          <nav className="payments-pagination" aria-label="Sidor för inlästa senaste betalningar">
             <Button
               type="button"
               className="payments-page-button"

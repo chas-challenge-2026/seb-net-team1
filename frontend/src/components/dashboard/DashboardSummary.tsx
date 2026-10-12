@@ -9,6 +9,7 @@ interface DashboardSummaryProps {
 
 export default function DashboardSummary({ data }: DashboardSummaryProps) {
   const summary = data?.summary;
+  const canApprove = canReadAuditLog(data?.user.role);
 
 return (
     <section className="dashboard-summary">
@@ -33,7 +34,7 @@ return (
       </Link>
 
       <Link
-        to="/approval-inbox"
+        to={canApprove ? "/approval-inbox" : "/payments"}
         className="card summary-card"
         aria-label="Visa väntande godkännanden"
       >
@@ -55,7 +56,7 @@ return (
       </Link>
 
       <Link
-        to={canReadAuditLog(data?.user.role) ? "/audit-log" : "/payments"}
+        to="/payments"
         className="card summary-card"
         aria-label="Visa betalningar"
       >
@@ -90,7 +91,7 @@ return (
         </strong>
 
         <span className="summary-card__description">
-          Fel i IBAN eller BIC
+          Registrerade IBAN-formatfel
         </span>
       </Link>
     </section>
