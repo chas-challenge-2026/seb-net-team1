@@ -15,7 +15,6 @@ namespace SebPortal.Api.Controllers;
 public class PaymentsController(PaymentService paymentService) : ControllerBase
 {
     private const int MaxBatchFileBytes = 1024 * 1024; // 1 MiB
-    private const int MaxBatchRows = 500; // same limit as the frontend batch validation
 
     /// <summary>
     /// Creates a new payment request for an authenticated user.
@@ -70,23 +69,26 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
     }
 
     /// <summary>
-    /// Creates payments from an uploaded CSV file. The batch is all-or-nothing:
-    /// if any row is invalid, nothing is saved.
+    /// Creates payments from CSV text sent as the request body (<c>Content-Type: text/csv</c>).
+    /// The batch is all-or-nothing: if any row is invalid, nothing is saved.
     /// </summary>
-    /// <param name="file">CSV file with the header from_account_id,to_iban,amount,reference.</param>
+    /// <remarks>
+    /// The body is the CSV itself, with the header from_account_id,to_iban,amount,reference.
+    /// It is read up to <see cref="MaxBatchFileBytes"/> bytes and never buffered beyond that.
+    /// </remarks>
     /// <returns>
     /// 201 Created with <see cref="BatchPaymentsResponseDto"/> when every row is valid,
     /// 401 Unauthorized when the token is missing required user information,
     /// 403 Forbidden when the user's role is not initiator or admin,
-    /// 400 Bad Request with <see cref="BatchUnparsedResponseDto"/> when the file could not
+    /// 415 Unsupported Media Type when the content type is not text/csv,
+    /// 400 Bad Request with <see cref="BatchUnparsedResponseDto"/> when the body could not
     /// be parsed (no row information), or <see cref="BatchInvalidRowsResponseDto"/> when it
     /// parsed but some rows are invalid. Nothing is created in either 400 case.
     /// </returns>
     [HttpPost("batch")]
     [Authorize(Roles = UserRoles.CreatorRoles)]
-    [RequestSizeLimit(MaxBatchFileBytes)]
+    [Consumes("text/csv")]
     public async Task<IActionResult> CreatePaymentsBatch(
-        IFormFile file,
         [FromServices] PaymentBatchService batchService)
     {
         var userId = User.GetUserId();
@@ -96,18 +98,22 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
         {
             return Unauthorized(new { message = "Ogiltig eller saknad användarinformation i token." });
         }
-        if (file is null || file.Length == 0)
-        {
-            return Unparsed("Ingen fil vald.");
-        }
-        if (file.Length > MaxBatchFileBytes)
+        if (Request.ContentLength > MaxBatchFileBytes)
         {
             return Unparsed("Filen är för stor.");
         }
 
-        using var buffer = new MemoryStream();
-        await file.CopyToAsync(buffer);
-        var content = buffer.ToArray();
+        var content = await ReadBodyAsync(MaxBatchFileBytes);
+
+        if (content is null)
+        {
+            // No Content-Length (chunked body) that turned out too large.
+            return Unparsed("Filen är för stor.");
+        }
+        if (content.Length == 0)
+        {
+            return Unparsed("Ingen fil vald.");
+        }
 
         var (rows, parseError) = BatchCsvParser.Parse(content);
 
@@ -118,10 +124,6 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
         if (rows.Count == 0)
         {
             return Unparsed("Filen innehåller inga betalningar.");
-        }
-        if (rows.Count > MaxBatchRows)
-        {
-            return Unparsed($"Filen får innehålla högst {MaxBatchRows} betalningsrader.");
         }
 
         // Every row is validated first. Payments are only created when none is invalid,
@@ -152,6 +154,30 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
 
         // A batch has no single resource to point to, so there is no Location header.
         return StatusCode(StatusCodes.Status201Created, response);
+    }
+
+    /// <summary>
+    /// Reads the request body, giving up (null) as soon as it is larger than
+    /// <paramref name="maxBytes"/>. Counting while reading is what keeps a chunked body
+    /// with no Content-Length from being buffered in full.
+    /// </summary>
+    private async Task<byte[]?> ReadBodyAsync(int maxBytes)
+    {
+        using var buffer = new MemoryStream();
+        var chunk = new byte[16 * 1024];
+        int read;
+
+        while ((read = await Request.Body.ReadAsync(chunk.AsMemory())) > 0)
+        {
+            if (buffer.Length + read > maxBytes)
+            {
+                return null;
+            }
+
+            buffer.Write(chunk, 0, read);
+        }
+
+        return buffer.ToArray();
     }
 
     private BadRequestObjectResult Unparsed(string message) =>
