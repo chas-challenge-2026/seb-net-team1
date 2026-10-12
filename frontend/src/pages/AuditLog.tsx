@@ -13,6 +13,7 @@ import "../styles/auditLog.css";
 type AuditLogError = {
   message: string;
   requiresLogin: boolean;
+  accessDenied: boolean;
 };
 
 type PageRequest = {
@@ -94,6 +95,7 @@ function getAuditLogError(error: unknown): AuditLogError {
         ? "Kunde inte nå backend-API:t. Kontrollera anslutningen och försök igen."
         : "Kunde inte hämta granskningsloggen. Försök igen.",
     requiresLogin: error instanceof AuditLogApiError && error.status === 401,
+    accessDenied: error instanceof AuditLogApiError && error.status === 403,
   };
 }
 
@@ -140,10 +142,17 @@ export default function AuditLog() {
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
-          if (isNavigation) {
-            setPageError(getAuditLogError(error));
+          const auditError = getAuditLogError(error);
+          if (auditError.accessDenied) {
+            // A revoked permission ends pagination and removes previously loaded rows.
+            setAuditLog(null);
+            setNavigation({ cursors: [undefined], index: 0 });
+            setPageError(null);
+            setInitialError(auditError);
+          } else if (isNavigation) {
+            setPageError(auditError);
           } else {
-            setInitialError(getAuditLogError(error));
+            setInitialError(auditError);
           }
         }
       })
@@ -218,7 +227,11 @@ export default function AuditLog() {
 
       <main className="dashboard-main audit-log-main">
         <div className="audit-log-header">
-          <DashboardHeader title="Audit-logg" subtitle="" showSearch={false} />
+          <DashboardHeader
+            title="Audit-logg"
+            subtitle="Registrerade händelser för ditt företag."
+            showSearch={false}
+          />
           <label
             className="audit-log-header-search"
             title="Sökning är inte tillgänglig ännu."
@@ -230,11 +243,6 @@ export default function AuditLog() {
         </div>
 
         <div className="dashboard-content audit-log-content">
-          <div className="audit-log-intro">
-            <h2 id="audit-log-heading">Audit-logg</h2>
-            <p>Registrerade händelser för ditt företag.</p>
-          </div>
-
           <fieldset
             className="audit-log-toolbar"
             aria-describedby="audit-log-filter-availability"
@@ -286,7 +294,7 @@ export default function AuditLog() {
             </Button>
           </fieldset>
 
-          <section className="audit-log-results" aria-labelledby="audit-log-heading">
+          <section className="audit-log-results" aria-label="Registrerade audithändelser">
             <Card className="audit-log-card">
               {isLoading ? (
                 <p className="audit-log-state" role="status">
@@ -301,7 +309,7 @@ export default function AuditLog() {
                     <Link to="/" className="audit-log-login-link">
                       Till inloggning
                     </Link>
-                  ) : (
+                  ) : !initialError.accessDenied ? (
                     <Button
                       type="button"
                       className="audit-log-button"
@@ -309,7 +317,7 @@ export default function AuditLog() {
                     >
                       Försök igen
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               ) : auditLog ? (
                 <>

@@ -21,6 +21,12 @@ public class PendingApprovalDto
     public string CreatedByName { get; set; } = string.Empty;
     public string FromAccountName { get; set; } = string.Empty;
 
+    /// <summary>Attestants for all existing approval steps, ordered by step number.</summary>
+    public List<ApprovalAttestantDto> Attestants { get; set; } = [];
+
+    /// <summary>All existing steps and their decisions, ordered by step number.</summary>
+    public List<ApprovalTimelineStepDto> Timeline { get; set; } = [];
+
     /// <summary>Which step this is, 1-indexed.</summary>
     public int CurrentStep { get; set; }
 

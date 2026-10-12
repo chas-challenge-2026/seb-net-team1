@@ -43,7 +43,7 @@ public class ApprovalsControllerTests
             new PaymentRulesOptions
             {
                 ApprovalThreshold = 50000m,
-                DoubleApprovalThreshold = 200000m
+                DoubleApprovalThreshold = 100000m
             });
 
         var approvalRepository = new ApprovalRepository(db);

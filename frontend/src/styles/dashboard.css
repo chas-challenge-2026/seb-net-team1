@@ -39,7 +39,7 @@
 	display: flex;
 	gap: 20px;
 	justify-content: space-between;
-	margin: 12px 24px 10px;
+	margin: 0;
 	min-height: 84px;
 	padding: 12px 20px;
 }
@@ -95,6 +95,7 @@
 
 .dashboard-footer {
 	flex: 0 0 auto;
+	margin: 12px 0 10px;
 }
 
 
@@ -1169,10 +1170,6 @@
 		overflow-y: auto;
 	}
 
-	.dashboard-promo-banner {
-		margin: 12px 20px 10px;
-	}
-
 	.dashboard-summary {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
@@ -1219,7 +1216,6 @@
 		align-items: flex-start;
 		flex-direction: column;
 		gap: 10px;
-		margin: 10px 16px;
 		padding: 14px 16px;
 	}
 

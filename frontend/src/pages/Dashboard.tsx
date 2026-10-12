@@ -131,11 +131,11 @@ function Dashboard() {
               <QuickActions />
             </aside>
           </section>
-        </div>
 
-        <footer className="dashboard-footer">
-          <DashboardPromoBanner />
-        </footer>
+          <footer className="dashboard-footer">
+            <DashboardPromoBanner />
+          </footer>
+        </div>
       </main>
     </div>
   );

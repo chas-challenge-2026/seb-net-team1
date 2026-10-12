@@ -1,4 +1,5 @@
 import type { User } from "../types/User";
+import { canReadAuditLog } from "../utils/auditAccess";
 import { apiRequest } from "./apiClient";
 
 export interface DashboardAccount {
@@ -84,10 +85,7 @@ function getRequestError(response: Response, fallback: string): Error {
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const [dashboardResponse, auditResponse] = await Promise.all([
-    apiRequest("/api/dashboard"),
-    apiRequest("/api/audit-log?limit=3"),
-  ]);
+  const dashboardResponse = await apiRequest("/api/dashboard");
 
   if (!dashboardResponse.ok) {
     throw getRequestError(
@@ -96,14 +94,22 @@ export async function getDashboardData(): Promise<DashboardData> {
     );
   }
 
-  if (!auditResponse.ok) {
-    throw getRequestError(auditResponse, "Kunde inte hämta senaste aktiviteten.");
-  }
+  const dashboard = await dashboardResponse.json() as DashboardApiResponse;
+  let recentActivity: DashboardAuditEntry[] = [];
 
-  const [dashboard, auditLog] = await Promise.all([
-    dashboardResponse.json() as Promise<DashboardApiResponse>,
-    auditResponse.json() as Promise<AuditLogApiResponse>,
-  ]);
+  if (canReadAuditLog(dashboard.user?.role)) {
+    const auditResponse = await apiRequest("/api/audit-log?limit=3");
+
+    // The current identity may have changed since the dashboard request.
+    if (auditResponse.status !== 403) {
+      if (!auditResponse.ok) {
+        throw getRequestError(auditResponse, "Kunde inte hämta senaste aktiviteten.");
+      }
+
+      const auditLog = await auditResponse.json() as AuditLogApiResponse;
+      recentActivity = auditLog.entries;
+    }
+  }
 
   const accounts = dashboard.accounts.map((account): DashboardAccount => ({
     ...account,
@@ -127,7 +133,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     payments,
     pendingApprovals,
     validations: null,
-    recentActivity: auditLog.entries,
+    recentActivity,
     upcomingPayments: payments
       .filter((payment) =>
         payment.status === "pending_approval" || payment.status === "processing"

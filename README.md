@@ -252,7 +252,8 @@ För Docker används i stället [JWT-nyckel för Docker](#jwt-nyckel-för-docker
 
 Med databasen igång: starta frontend med `npm run dev` från `frontend` och öppna
 adressen som visas i terminalen. Logga in med ert testkonto. Frontendens lokala
-`VITE_API_URL` ska vara `http://localhost:5010`.
+`VITE_API_URL` ska vara `http://localhost:8081` när backend körs i Docker. Om du
+kör backend direkt med `dotnet run` använder du i stället `http://localhost:5010`.
 
 Kontrollera i **F12 → Network** att `/api/auth/login` ger **200**, att svaret
 innehåller `user` och att backend sätter cookien `SebPortal.Auth` med `HttpOnly`.

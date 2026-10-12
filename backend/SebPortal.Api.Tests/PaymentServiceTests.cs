@@ -30,7 +30,7 @@ public class PaymentServiceTests
     private static PaymentService CreatePaymentService(
         SebDbContext db,
         decimal approvalThreshold = 50000m,
-        decimal doubleApprovalThreshold = 200000m)
+        decimal doubleApprovalThreshold = 100000m)
     {
         var repository = new PaymentRepository(db);
         var approvalRepository = new ApprovalRepository(db);
