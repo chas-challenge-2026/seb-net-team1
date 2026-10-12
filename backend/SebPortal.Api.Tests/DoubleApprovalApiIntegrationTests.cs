@@ -57,7 +57,7 @@ public class DoubleApprovalApiIntegrationTests
         using var client = Client(factory, CreatorId, UserRoles.Initiator);
         var response = await client.PostAsJsonAsync("/api/payments", new CreatePaymentRequestDto
         {
-            FromAccountId = AccountId, ToIban = "SE8550000000054910000004",
+            FromAccountId = AccountId, ToIban = "SE0850000000054910000004",
             Amount = amount, Reference = "Två olika attestanter"
         });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);

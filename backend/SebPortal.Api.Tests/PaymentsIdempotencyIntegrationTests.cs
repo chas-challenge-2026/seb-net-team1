@@ -86,7 +86,7 @@ public sealed class PaymentsIdempotencyIntegrationTests
         var request = new CreatePaymentRequestDto
         {
             FromAccountId = 1,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 100m,
             Reference = "Idempotency test"
         };
@@ -182,7 +182,7 @@ public sealed class PaymentsIdempotencyIntegrationTests
             Id = 2,
             TenantId = 2,
             AccountName = "Konflikttestkonto",
-            Iban = "SE3550000000054910000004",
+            Iban = "SE0850000000054910000004",
             Balance = 1000m,
             Currency = "SEK"
         });
@@ -210,7 +210,7 @@ public sealed class PaymentsIdempotencyIntegrationTests
         var firstRequest = new CreatePaymentRequestDto
         {
             FromAccountId = 2,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 100m,
             Reference = "Idempotency test"
         };
@@ -218,7 +218,7 @@ public sealed class PaymentsIdempotencyIntegrationTests
         var changedRequest = new CreatePaymentRequestDto
         {
             FromAccountId = 2,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 800m,
             Reference = "Idempotency test"
         };
@@ -313,7 +313,7 @@ public sealed class PaymentsIdempotencyIntegrationTests
             Id = 3,
             TenantId = 3,
             AccountName = "Samtidighetstestkonto",
-            Iban = "SE3550000000054910000005",
+            Iban = "SE7850000000054910000005",
             Balance = 100000m,
             Currency = "SEK"
         });
@@ -351,7 +351,7 @@ public sealed class PaymentsIdempotencyIntegrationTests
         var request = new CreatePaymentRequestDto
         {
             FromAccountId = 3,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 60000m,
             Reference = "Concurrent idempotency test"
         };
@@ -453,7 +453,7 @@ public sealed class PaymentsIdempotencyIntegrationTests
                 Id = 4,
                 TenantId = 4,
                 AccountName = "Scope Testkonto A",
-                Iban = "SE3550000000054910000006",
+                Iban = "SE5150000000054910000006",
                 Balance = 1000m,
                 Currency = "SEK"
             },
@@ -462,7 +462,7 @@ public sealed class PaymentsIdempotencyIntegrationTests
                 Id = 5,
                 TenantId = 5,
                 AccountName = "Scope Testkonto B",
-                Iban = "SE3550000000054910000007",
+                Iban = "SE2450000000054910000007",
                 Balance = 1000m,
                 Currency = "SEK"
             });
@@ -578,7 +578,7 @@ public sealed class PaymentsIdempotencyIntegrationTests
             Id = 6,
             TenantId = 6,
             AccountName = "Nyckellängdstestkonto",
-            Iban = "SE3550000000054910000008",
+            Iban = "SE9450000000054910000008",
             Balance = 1000m,
             Currency = "SEK"
         });
@@ -637,7 +637,7 @@ public sealed class PaymentsIdempotencyIntegrationTests
         return new CreatePaymentRequestDto
         {
             FromAccountId = fromAccountId,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 100m,
             Reference = "Idempotency scope test"
         };

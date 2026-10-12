@@ -107,7 +107,7 @@ public class ApprovalsApiIntegrationTests
             Id = 42,
             TenantId = TenantId,
             FromAccountId = AccountId,
-            ToIban = "SE8550000000054910000004",
+            ToIban = "SE0850000000054910000004",
             Amount = 75000m,
             Currency = "SEK",
             Reference = "Faktura #1043",
@@ -182,7 +182,7 @@ public class ApprovalsApiIntegrationTests
             new CreatePaymentRequestDto
             {
                 FromAccountId = AccountId,
-                ToIban = "SE8550000000054910000004",
+                ToIban = "SE0850000000054910000004",
                 Amount = 75000m,
                 Reference = "Faktura #1043"
             });
@@ -294,7 +294,7 @@ public class ApprovalsApiIntegrationTests
         var attestants = pending.GetProperty("attestants").EnumerateArray().ToArray();
 
         Assert.Equal("Lisa Persson", pending.GetProperty("createdByName").GetString());
-        Assert.Equal("SE8550000000054910000004", pending.GetProperty("toIban").GetString());
+        Assert.Equal("SE0850000000054910000004", pending.GetProperty("toIban").GetString());
         Assert.Equal("75000.00", pending.GetProperty("amount").GetString());
         Assert.Equal("Faktura #1043", pending.GetProperty("reference").GetString());
         Assert.Equal(new[] { 1, 2, 3 }, attestants.Select(a => a.GetProperty("stepNumber").GetInt32()));

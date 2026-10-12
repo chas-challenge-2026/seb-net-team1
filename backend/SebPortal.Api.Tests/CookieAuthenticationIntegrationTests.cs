@@ -318,7 +318,7 @@ public class CookieAuthenticationIntegrationTests
     private static object PaymentRequest() => new
     {
         fromAccountId = 1,
-        toIban = "SE4550000000054910000099",
+        toIban = "SE6250000000054910000099",
         amount = 125.50m,
         reference = "Cookie authentication test"
     };

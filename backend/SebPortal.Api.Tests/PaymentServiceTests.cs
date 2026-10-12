@@ -203,7 +203,7 @@ public class PaymentServiceTests
             service.CreatePaymentAsync(
                 tenantId: 1,
                 fromAccountId: 1,
-                toIban: "SE4550000000054910000099",
+                toIban: "SE6250000000054910000099",
                 amount: 250m,
                 currency: "SEK",
                 reference: "Testbetalning",
@@ -255,7 +255,7 @@ public class PaymentServiceTests
         var payment = await service.CreatePaymentAsync(
             tenantId: 1,
             fromAccountId: 1,
-            toIban: "SE4550000000054910000099",
+            toIban: "SE6250000000054910000099",
             amount: 75000m,
             currency: "SEK",
             reference: "Testbetalning",
@@ -296,7 +296,7 @@ public class PaymentServiceTests
         var result = await service.CreatePaymentAsync(
             tenantId: 1,
             fromAccountId: 1,
-            toIban: "SE4550000000054910000099",
+            toIban: "SE6250000000054910000099",
             amount: amount,
             currency: "SEK",
             reference: "Direktbetalning",
@@ -341,7 +341,7 @@ public class PaymentServiceTests
             service.CreatePaymentAsync(
                 tenantId: 1,
                 fromAccountId: 1,
-                toIban: "SE4550000000054910000099",
+                toIban: "SE6250000000054910000099",
                 amount: 250m,
                 currency: "SEK",
                 reference: "Testbetalning",
@@ -519,7 +519,7 @@ public class PaymentServiceTests
         var payment = await service.CreatePaymentAsync(
             tenantId: 1,
             fromAccountId: 1,
-            toIban: "SE4550000000054910000099",
+            toIban: "SE6250000000054910000099",
             amount: 60000m,
             currency: "SEK",
             reference: "Över gränsen",
@@ -560,7 +560,7 @@ public class PaymentServiceTests
         var payment = await service.CreatePaymentAsync(
             tenantId: 1,
             fromAccountId: 1,
-            toIban: "SE4550000000054910000099",
+            toIban: "SE6250000000054910000099",
             amount: 50000m,
             currency: "SEK",
             reference: "Exakt på gränsen",
@@ -585,7 +585,7 @@ public class PaymentServiceTests
             service.CreatePaymentAsync(
                 tenantId: 1,
                 fromAccountId: 99,
-                toIban: "SE4550000000054910000099",
+                toIban: "SE6250000000054910000099",
                 amount: 250m,
                 currency: "SEK",
                 reference: null,
