@@ -47,7 +47,7 @@ return (
         </span>
 
         <strong className="summary-card__value">
-          {summary ? `${summary.pendingApprovals} st` : "—"}
+          {data ? `${data.paymentStatusCounts.pendingApproval} st` : "—"}
         </strong>
 
         <span className="summary-card__description">

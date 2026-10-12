@@ -12,11 +12,13 @@ import StatusBadge from "../shared/StatusBadge";
 
 interface PendingApprovalsProps {
 	approvals: DashboardPayment[] | null;
+	canApprove?: boolean;
 	searchActive?: boolean;
 }
 
 export default function PendingApprovals({
 	approvals,
+	canApprove = false,
 	searchActive = false,
 }: PendingApprovalsProps) {
 	const [showAll, setShowAll] = useState(false);
@@ -62,7 +64,7 @@ export default function PendingApprovals({
 						<Link
 							className="pending-approvals__item"
 							key={payment.id}
-							to={`/payments/${payment.id}`}
+							to={canApprove ? `/approval-inbox?paymentId=${payment.id}` : `/payments/${payment.id}`}
 							aria-label={`Visa betalning ${payment.reference || `nummer ${payment.id}`}`}
 						>
 							<div className="pending-approvals__icon">

@@ -49,7 +49,8 @@ public class DashboardService(DashboardRepository dashboardRepository)
                 AccountName = a.AccountName,
                 Iban = a.Iban,
                 Balance = a.Balance.ToString("F2", CultureInfo.InvariantCulture),
-                Currency = a.Currency
+                Currency = a.Currency,
+                BalanceHistory = BuildBalanceHistory(a)
             }).ToList(),
             RecentPayments = payments.Select(ToPaymentSummaryDto).ToList(),
             PendingApprovals = pendingApprovals.Select(ToPaymentSummaryDto).ToList(),
@@ -87,6 +88,26 @@ public class DashboardService(DashboardRepository dashboardRepository)
 
     private static int CountStatus(IReadOnlyDictionary<string, int> statusCounts, string status) =>
         statusCounts.TryGetValue(status, out var count) ? count : 0;
+
+    private static List<AccountBalancePointDto> BuildBalanceHistory(Account account)
+    {
+        var currentMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        return Enumerable.Range(0, 6)
+            .Select(monthOffset => currentMonth.AddMonths(monthOffset - 5))
+            .Select(monthStart =>
+            {
+                var nextMonth = monthStart.AddMonths(1);
+                var balanceAtMonthEnd = account.Balance - account.Transactions
+                    .Where(transaction => transaction.Date >= nextMonth)
+                    .Sum(transaction => transaction.Amount);
+                return new AccountBalancePointDto
+                {
+                    Month = monthStart.ToString("yyyy-MM", CultureInfo.InvariantCulture),
+                    Balance = balanceAtMonthEnd.ToString("F2", CultureInfo.InvariantCulture)
+                };
+            })
+            .ToList();
+    }
 
     private static PaymentSummaryDto ToPaymentSummaryDto(Payment p) => new()
     {

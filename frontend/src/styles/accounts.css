@@ -106,6 +106,98 @@
     font-size: 18px;
 }
 
+.balance-history {
+    border-bottom: 1px solid var(--border-color);
+    padding: 20px;
+}
+
+.balance-history__header {
+    align-items: flex-start;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+}
+
+.balance-history__header h2 {
+    color: var(--ink);
+    font-size: 15px;
+    margin: 0 0 4px;
+}
+
+.balance-history__header p,
+.balance-history__empty {
+    color: var(--medium-gray);
+    font-size: 12px;
+    margin: 0;
+}
+
+.balance-history__reset {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--seb-deep-green);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    padding: 7px 10px;
+}
+
+.balance-history__chart-scroll {
+    margin-top: 12px;
+    overflow-x: auto;
+}
+
+.balance-history__chart {
+    display: block;
+    height: auto;
+    min-width: 520px;
+    width: 100%;
+}
+
+.balance-history__gridline {
+    stroke: var(--border-color);
+    stroke-dasharray: 3 4;
+    stroke-width: 1;
+}
+
+.balance-history__axis-label {
+    fill: var(--medium-gray);
+    font-size: 11px;
+}
+
+.balance-history__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.balance-history__legend-item {
+    align-items: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-full);
+    color: var(--medium-gray);
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: 11px;
+    gap: 6px;
+    padding: 5px 8px;
+}
+
+.balance-history__legend-item.is-selected {
+    background: var(--light-green);
+    border-color: color-mix(in srgb, var(--seb-green) 25%, transparent);
+    color: var(--ink);
+}
+
+.balance-history__legend-item span {
+    border-radius: 2px;
+    height: 10px;
+    width: 10px;
+}
+
 .account-list-actions {
     display: flex;
     align-items: center;
@@ -405,6 +497,10 @@
     }
 
     .account-list-items {
+        padding: 16px;
+    }
+
+    .balance-history {
         padding: 16px;
     }
 }
