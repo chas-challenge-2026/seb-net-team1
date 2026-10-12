@@ -54,12 +54,7 @@ public class PaymentService(
         };
 
         // 3. Determine the payment flow from the configured approval threshold.
-<<<<<<< HEAD
         var requiresApproval = RequiresApproval(amount);
-=======
-        var requiresApproval = amount > paymentRules.Value.ApprovalThreshold ||
-            RequiresDoubleApproval(amount);
->>>>>>> origin/develop
 
         if (requiresApproval)
         {
@@ -113,7 +108,6 @@ public class PaymentService(
         return payment;
     }
 
-<<<<<<< HEAD
     /// <summary>
     /// Creates several payments as one unit for a validated batch file: either every
     /// payment (with its balance changes, approval step and CREATE_PAYMENT audit entry)
@@ -154,7 +148,7 @@ public class PaymentService(
 
             if (requiresApproval)
             {
-                await AddInitialApprovalStepAsync(payment);
+                await AddInitialApprovalStepsAsync(payment);
             }
             else
             {
@@ -209,10 +203,10 @@ public class PaymentService(
 
     /// <summary>
     /// Whether a payment of this amount must be approved by an attestant instead of
-    /// being completed directly. Reads the one configured threshold.
+    /// being completed directly. Reads the configured thresholds.
     /// </summary>
     public bool RequiresApproval(decimal amount) =>
-        amount > paymentRules.Value.ApprovalThreshold;
+        amount > paymentRules.Value.ApprovalThreshold || RequiresDoubleApproval(amount);
 
     private static string PaymentCreatedDescription(
         decimal amount, string currency, string toIban, bool requiresApproval) =>
@@ -220,10 +214,7 @@ public class PaymentService(
         $"till {toIban}. " +
         (requiresApproval ? "Väntar på attest." : "Genomförd direkt.");
 
-    private async Task AddInitialApprovalStepAsync(Payment payment)
-=======
     private async Task AddInitialApprovalStepsAsync(Payment payment)
->>>>>>> origin/develop
     {
         var excludedUserIds = new List<int>();
 

@@ -116,16 +116,11 @@ builder.Services.AddScoped<PasswordHasher>();
 
 builder.Services.AddScoped<PaymentRepository>();
 builder.Services.AddScoped<PaymentService>();
-<<<<<<< HEAD
 builder.Services.AddScoped<PaymentBatchService>();
-builder.Services.AddScoped<DashboardRepository>();
-builder.Services.AddScoped<DashboardService>();
-=======
 builder.Services.AddScoped<DashboardRepository>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<ReportRepository>();
 builder.Services.AddScoped<ReportService>();
->>>>>>> origin/develop
 
 builder.Services.AddScoped<ApprovalRepository>();
 builder.Services.AddScoped<ApprovalService>();
