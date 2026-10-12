@@ -44,7 +44,7 @@ No request body, no query parameters.
   "recentPayments": [
     {
       "id": 42,
-      "toIban": "SE4550000000054910000099",
+      "toIban": "SE6250000000054910000099",
       "amount": "12500.00",
       "currency": "SEK",
       "reference": "Faktura 2026-114",
@@ -55,7 +55,7 @@ No request body, no query parameters.
   "pendingApprovals": [
     {
       "id": 43,
-      "toIban": "SE1250000000054910000077",
+      "toIban": "SE7450000000054910000077",
       "amount": "8000.00",
       "currency": "SEK",
       "reference": "Löner september",
