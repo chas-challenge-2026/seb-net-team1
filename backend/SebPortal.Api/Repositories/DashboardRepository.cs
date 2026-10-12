@@ -26,13 +26,10 @@ public class DashboardRepository(SebDbContext db)
             .ThenByDescending(p => p.Id)
             .ToListAsync();
 
-    public Task<List<Payment>> GetPendingApprovalsAsync(int userId, int tenantId, string? role) =>
+    public Task<List<Payment>> GetPendingApprovalsAsync(int tenantId) =>
         PendingPaymentsQuery(tenantId)
-            .Where(p => role == UserRoles.Admin ||
-                (role == UserRoles.Initiator
-                    ? p.CreatedById == userId
-                    : p.ApprovalSteps.Any(step =>
-                        step.AttestantId == userId && step.Status == ApprovalStatuses.Pending)))
+            .Include(payment => payment.FromAccount)
+            .Include(payment => payment.CreatedBy)
             .OrderBy(p => p.CreatedAt)
             .ThenBy(p => p.Id)
             .ToListAsync();

@@ -21,7 +21,7 @@ public class DashboardService(DashboardRepository dashboardRepository)
 
         var accounts = await dashboardRepository.GetAccountsAsync(tenantId);
         var payments = await dashboardRepository.GetPaymentsAsync(tenantId);
-        var pendingApprovals = await dashboardRepository.GetPendingApprovalsAsync(userId, tenantId, user.Role);
+        var pendingApprovals = await dashboardRepository.GetPendingApprovalsAsync(tenantId);
         var upcomingPayments = await dashboardRepository.GetUpcomingPaymentsAsync(tenantId, UpcomingPaymentsCount);
         var statusCounts = await dashboardRepository.GetPaymentStatusCountsAsync(tenantId);
         var totalPayments = await dashboardRepository.GetPaymentCountAsync(tenantId);
@@ -66,7 +66,7 @@ public class DashboardService(DashboardRepository dashboardRepository)
                     .Where(account => account.Currency == "SEK")
                     .Sum(account => account.Balance)
                     .ToString("F2", CultureInfo.InvariantCulture),
-                PendingApprovals = pendingApprovals.Count,
+                PendingApprovals = CountStatus(statusCounts, PaymentStatuses.PendingApproval),
                 TotalPayments = totalPayments,
                 ValidationErrors = validationErrors
             },

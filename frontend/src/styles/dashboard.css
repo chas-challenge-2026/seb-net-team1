@@ -834,6 +834,18 @@
 	gap: 10px;
 	min-height: 40px;
 	padding: 3px 0;
+	text-decoration: none;
+}
+
+.pending-approvals__item:hover .pending-approvals__info strong,
+.pending-approvals__item:focus-visible .pending-approvals__info strong {
+	color: var(--seb-green);
+}
+
+.pending-approvals__item:focus-visible {
+	border-radius: 4px;
+	outline: 2px solid var(--seb-green);
+	outline-offset: 2px;
 }
 
 .pending-approvals__item:last-child {

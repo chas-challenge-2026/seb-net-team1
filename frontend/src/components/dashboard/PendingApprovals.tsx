@@ -5,6 +5,7 @@ import {
 	LuCircleCheck,
 	LuClock3,
 } from "react-icons/lu";
+import { Link } from "react-router-dom";
 import type { DashboardPayment } from "../../api/dashboardApi";
 import Card from "../shared/Card";
 import StatusBadge from "../shared/StatusBadge";
@@ -58,21 +59,36 @@ export default function PendingApprovals({
 					</div>
 				) : (
 					(showAll ? approvals : approvals.slice(0, 3)).map((payment) => (
-						<div className="pending-approvals__item" key={payment.id}>
+						<Link
+							className="pending-approvals__item"
+							key={payment.id}
+							to={`/payments/${payment.id}`}
+							aria-label={`Visa betalning ${payment.reference || `nummer ${payment.id}`}`}
+						>
 							<div className="pending-approvals__icon">
 								<LuClock3 />
 							</div>
 							<div className="pending-approvals__info">
-								<strong>{payment.reference}</strong>
+								<strong>{payment.reference || `Betalning #${payment.id}`}</strong>
 								<span>
 									{payment.toIban ? `•••• ${payment.toIban.slice(-4)}` : "IBAN saknas"}
+								</span>
+								<span>
+									{payment.createdByName || "Okänd skapare"}
+									{" · "}
+									{payment.fromAccountName || `Konto #${payment.fromAccountId}`}
+									{" · "}
+									{new Intl.DateTimeFormat("sv-SE", {
+										day: "numeric",
+										month: "short",
+									}).format(new Date(payment.createdAt))}
 								</span>
 							</div>
 							<div className="pending-approvals__details">
 								<strong>{formatAmount(payment.amount, payment.currency)}</strong>
 								<StatusBadge status="pending">Godkännande</StatusBadge>
 							</div>
-						</div>
+						</Link>
 					))
 				)}
 			</div>

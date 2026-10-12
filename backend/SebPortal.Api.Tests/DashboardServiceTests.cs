@@ -100,7 +100,7 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task GetDashboardAsync_IncludesTheInitiatorsPendingPayment()
+    public async Task GetDashboardAsync_IncludesTenantPendingPayments_ForInitiator()
     {
         // Arrange: same payment/step setup, but user role is "initiator"
         using var db = CreateContext();
@@ -112,7 +112,7 @@ public class DashboardServiceTests
             FromAccountId = 1,
             ToIban = "SE4550000000054910000099",
             Amount = 8000m,
-            CreatedById = 1,
+            CreatedById = 2,
             Status = "pending_approval"
         });
         db.ApprovalSteps.Add(new ApprovalStep
