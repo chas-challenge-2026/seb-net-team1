@@ -59,7 +59,7 @@ Requires a valid JWT (`Authorization: Bearer <token>`), role `initiator` or `adm
 | `status` | string | `completed` if under the approval threshold, otherwise `pending_approval` |
 | `fromAccountId` | number | Account the payment was made from |
 | `toIban` | string | Recipient IBAN, no spaces |
-| `amount` | string | Payment amount, as a decimal string |
+| `amount` | number | Payment amount |
 | `currency` | string | Currently always `SEK` for MVP |
 | `reference` | string | Payment reference |
 | `createdAt` | string (ISO 8601) | When the payment was created |

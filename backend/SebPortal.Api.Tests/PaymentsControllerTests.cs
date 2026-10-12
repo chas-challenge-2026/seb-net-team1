@@ -119,7 +119,7 @@ public class PaymentsControllerTests
         Assert.Equal("completed", response.Status);
         Assert.Equal(1, response.FromAccountId);
         Assert.Equal("SE4550000000054910000099", response.ToIban);
-        Assert.Equal("12500.00", response.Amount);
+        Assert.Equal(12500m, response.Amount);
         Assert.Equal("SEK", response.Currency);
         Assert.Equal("Faktura #2001", response.Reference);
     }
