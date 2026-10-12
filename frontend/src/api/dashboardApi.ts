@@ -12,12 +12,16 @@ export interface DashboardAccount {
 
 export interface DashboardPayment {
   id: number;
+  fromAccountId?: number;
+  fromAccountName?: string | null;
+  createdByName?: string | null;
   toIban: string | null;
   amount: number;
   currency: string;
   reference: string;
   status: string;
   createdAt: string;
+  executedAt?: string | null;
 }
 
 export interface DashboardValidation {
@@ -70,6 +74,15 @@ interface DashboardApiResponse {
   accounts: (Omit<DashboardAccount, "balance"> & { balance: string })[];
   recentPayments: PaymentSummaryResponse[];
   pendingApprovals: PaymentSummaryResponse[];
+  upcomingPayments?: PaymentSummaryResponse[];
+  recentActivity?: DashboardAuditEntry[];
+  summary?: {
+    totalBalance: string;
+    pendingApprovals: number;
+    totalPayments: number;
+    validationErrors: number;
+  };
+  paymentStatusCounts?: DashboardPaymentStatusCounts;
 }
 
 interface AuditLogApiResponse {
@@ -95,12 +108,11 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
 
   const dashboard = await dashboardResponse.json() as DashboardApiResponse;
-  let recentActivity: DashboardAuditEntry[] = [];
+  let recentActivity = dashboard.recentActivity ?? [];
 
-  if (canReadAuditLog(dashboard.user?.role)) {
+  // Compatibility with deployments that have not yet shipped the dashboard activity projection.
+  if (dashboard.recentActivity === undefined && canReadAuditLog(dashboard.user?.role)) {
     const auditResponse = await apiRequest("/api/audit-log?limit=3");
-
-    // The current identity may have changed since the dashboard request.
     if (auditResponse.status !== 403) {
       if (!auditResponse.ok) {
         throw getRequestError(auditResponse, "Kunde inte hämta senaste aktiviteten.");
@@ -123,8 +135,19 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const payments = dashboard.recentPayments.map(mapPayment);
   const pendingApprovals = dashboard.pendingApprovals.map(mapPayment);
-  const countStatus = (status: string) =>
-    payments.filter((payment) => payment.status === status).length;
+  const upcomingPayments = dashboard.upcomingPayments
+    ? dashboard.upcomingPayments.map(mapPayment)
+    : payments.filter((payment) =>
+      payment.status === "pending_approval" || payment.status === "processing"
+    );
+  const summary = dashboard.summary;
+  const paymentStatusCounts = dashboard.paymentStatusCounts ?? {
+    completed: payments.filter((payment) => payment.status === "completed").length,
+    processing: payments.filter((payment) => payment.status === "processing").length,
+    pendingApproval: payments.filter((payment) => payment.status === "pending_approval").length,
+    rejected: payments.filter((payment) => payment.status === "rejected").length,
+    failed: payments.filter((payment) => payment.status === "failed").length,
+  };
 
   return {
     user: dashboard.user,
@@ -134,24 +157,16 @@ export async function getDashboardData(): Promise<DashboardData> {
     pendingApprovals,
     validations: null,
     recentActivity,
-    upcomingPayments: payments
-      .filter((payment) =>
-        payment.status === "pending_approval" || payment.status === "processing"
-      ),
-    paymentStatusCounts: {
-      completed: countStatus("completed"),
-      processing: countStatus("processing"),
-      pendingApproval: countStatus("pending_approval"),
-      rejected: countStatus("rejected"),
-      failed: countStatus("failed"),
-    },
+    upcomingPayments,
+    paymentStatusCounts,
     summary: {
-      totalBalance: accounts
-        .filter((account) => account.currency === "SEK")
-        .reduce((total, account) => total + account.balance, 0),
-      pendingApprovals: pendingApprovals.length,
-      totalPayments: null,
-      validationErrors: null,
+      totalBalance: summary
+        ? Number(summary.totalBalance)
+        : accounts.filter((account) => account.currency === "SEK")
+          .reduce((total, account) => total + account.balance, 0),
+      pendingApprovals: summary?.pendingApprovals ?? pendingApprovals.length,
+      totalPayments: summary?.totalPayments ?? null,
+      validationErrors: summary?.validationErrors ?? null,
     },
   };
 }

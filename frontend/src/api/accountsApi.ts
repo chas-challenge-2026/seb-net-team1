@@ -9,6 +9,7 @@ type DashboardAccountResponse = {
   iban: string | null;
   balance: string | null;
   currency: string | null;
+  balanceHistory?: { month: string; balance: string }[];
 };
 
 type DashboardResponse = {
@@ -30,5 +31,9 @@ export async function getAccounts(): Promise<Account[]> {
     iban: account.iban ?? "",
     balance: account.balance ?? "0.00",
     currency: account.currency ?? "SEK",
+    balanceHistory: (account.balanceHistory ?? []).map((point) => ({
+      month: point.month,
+      balance: point.balance,
+    })),
   }));
 }

@@ -4,6 +4,7 @@ import type {
   PaymentStatus,
   PaymentOverview,
   RecentPaymentSummary,
+  PaymentDetails,
 } from "../types/Payment";
 import type { User } from "../types/User";
 import { PAYMENT_AMOUNT_ERROR, parsePaymentAmount } from "../utils/paymentAmount";
@@ -63,6 +64,53 @@ export async function getRecentPayments(signal?: AbortSignal): Promise<PaymentOv
       ? overview.pendingApprovals.length
       : undefined,
   };
+}
+
+export async function getPaymentDetails(
+  paymentId: number,
+  signal?: AbortSignal
+): Promise<PaymentDetails> {
+  const response = await apiRequest(`${PAYMENTS_ENDPOINT}/${paymentId}`, {
+    signal,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new PaymentReadError(
+      response.status,
+      response.status === 404
+        ? "Betalningen finns inte eller är inte tillgänglig för ditt företag."
+        : undefined
+    );
+  }
+
+  let details: unknown;
+  try {
+    details = await response.json();
+  } catch {
+    throw new PaymentReadError(response.status, "Svaret från betalningstjänsten kunde inte läsas.");
+  }
+
+  if (!details || typeof details !== "object" || Array.isArray(details)) {
+    throw new PaymentReadError(response.status, "Svaret från betalningstjänsten var ofullständigt.");
+  }
+
+  const payment = details as Record<string, unknown>;
+  if (
+    !Number.isSafeInteger(payment.id) || payment.id !== paymentId ||
+    !Number.isSafeInteger(payment.fromAccountId) ||
+    typeof payment.toIban !== "string" ||
+    typeof payment.amount !== "string" || !/^\d+\.\d{2}$/.test(payment.amount) ||
+    typeof payment.currency !== "string" ||
+    typeof payment.status !== "string" ||
+    typeof payment.createdAt !== "string" ||
+    !Array.isArray(payment.approvalTimeline) ||
+    !Array.isArray(payment.activity)
+  ) {
+    throw new PaymentReadError(response.status, "Svaret från betalningstjänsten var ofullständigt.");
+  }
+
+  return payment as unknown as PaymentDetails;
 }
 
 type PaymentApiResponse = {

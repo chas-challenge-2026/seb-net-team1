@@ -11,6 +11,7 @@ import UpcomingPayments from "../components/dashboard/UpcomingPayments";
 import PendingApprovals from "../components/dashboard/PendingApprovals";
 import RecentActivity from "../components/dashboard/RecentActivity";
 import QuickActions from "../components/dashboard/QuickActions";
+import { canReadAuditLog } from "../utils/auditAccess";
 import "../styles/dashboard.css";
 
 function filterBySearch<T>(
@@ -118,6 +119,7 @@ function Dashboard() {
               />
               <PendingApprovals
                 approvals={visibleApprovals}
+                canApprove={canReadAuditLog(dashboardData?.user.role)}
                 searchActive={Boolean(normalizedSearchTerm)}
               />
               <RecentActivity activities={dashboardData?.recentActivity ?? null} />

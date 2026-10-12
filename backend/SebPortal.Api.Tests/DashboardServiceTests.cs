@@ -69,6 +69,14 @@ public class DashboardServiceTests
         // Arrange
         using var db = CreateContext();
         SeedBasicTenantAndUser(db, role: "attestant");
+        db.Accounts.Add(new Account
+        {
+            Id = 1,
+            TenantId = 1,
+            AccountName = "Företagskonto",
+            Iban = "SE3550000000054910000003",
+            Currency = "SEK"
+        });
         db.Payments.Add(new Payment
         {
             Id = 1,
@@ -100,11 +108,27 @@ public class DashboardServiceTests
     }
 
     [Fact]
-    public async Task GetDashboardAsync_LeavesPendingApprovalsEmpty_ForInitiator()
+    public async Task GetDashboardAsync_IncludesTenantPendingPayments_ForInitiator()
     {
         // Arrange: same payment/step setup, but user role is "initiator"
         using var db = CreateContext();
         SeedBasicTenantAndUser(db, role: "initiator");
+        db.Users.Add(new User
+        {
+            Id = 2,
+            TenantId = 1,
+            Name = "Anna Andersson",
+            Email = "anna@runobygg.se",
+            Role = "initiator"
+        });
+        db.Accounts.Add(new Account
+        {
+            Id = 1,
+            TenantId = 1,
+            AccountName = "Företagskonto",
+            Iban = "SE3550000000054910000003",
+            Currency = "SEK"
+        });
         db.Payments.Add(new Payment
         {
             Id = 1,
@@ -112,6 +136,7 @@ public class DashboardServiceTests
             FromAccountId = 1,
             ToIban = "SE4550000000054910000099",
             Amount = 8000m,
+            CreatedById = 2,
             Status = "pending_approval"
         });
         db.ApprovalSteps.Add(new ApprovalStep
@@ -130,7 +155,8 @@ public class DashboardServiceTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Empty(result!.PendingApprovals);
+        Assert.Single(result!.PendingApprovals);
+        Assert.Equal(1, result.PendingApprovals[0].Id);
     }
 
     [Fact]

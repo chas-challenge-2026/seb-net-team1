@@ -32,7 +32,7 @@ CREATE TABLE transactions (
     id SERIAL PRIMARY KEY,
     account_id INT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     amount DECIMAL(15,2) NOT NULL,
-    date TIMESTAMPTZ NOT NULL,
+    date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     description VARCHAR(255),
     transaction_type VARCHAR(50)
 );
@@ -93,7 +93,7 @@ INSERT INTO users (tenant_id, name, email, password_md5, role) VALUES
 (1, 'Sara Ek',      'sara@malmobygg.se',  NULL, 'admin');
 
 INSERT INTO accounts (tenant_id, account_name, iban, balance, currency) VALUES
-(1, 'Driftkonto',   'SE4550000000058398257466', 2500000.00, 'SEK'),
+(1, 'Driftkonto',   'SE4550000000058398257466', 2485000.00, 'SEK'),
 (1, 'Lönekonto',    'SE1850000000058398257467',  890000.00, 'SEK'),
 (1, 'Projektkonto', 'SE8850000000058398257468',  450000.00, 'SEK');
 

@@ -1,5 +1,6 @@
 import Card from "../shared/Card";
 import AccountRow from "./AccountRow";
+import AccountBalanceChart from "./AccountBalanceChart";
 import type { Account } from "../../types/Account";
 
 type AccountListProps = {
@@ -17,6 +18,8 @@ const AccountList = ({ accounts }: AccountListProps) => {
             <p>Översikt över företagets konton och aktuella saldon.</p>
           </div>
         </div>
+
+        {accounts && accounts.length > 0 && <AccountBalanceChart accounts={accounts} />}
 
         <div className="account-list-items">
           {accounts === null ? (

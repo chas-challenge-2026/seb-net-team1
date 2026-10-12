@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { FiCheckCircle, FiClock, FiRefreshCw } from "react-icons/fi";
 import { ApprovalApiError, getApprovalInbox } from "../api/approvalsApi";
@@ -37,6 +38,7 @@ function formatAmount(amount: string, currency: string): string {
 }
 
 export default function ApprovalInbox() {
+  const [searchParams] = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [pending, setPending] = useState<PendingApproval[] | null>(null);
   const [recentlyHandled, setRecentlyHandled] = useState<HandledApproval[] | null>(null);
@@ -56,6 +58,9 @@ export default function ApprovalInbox() {
         if (!controller.signal.aborted) {
           setPending(inbox.pending);
           setRecentlyHandled(inbox.recentlyHandled);
+          const paymentId = Number(searchParams.get("paymentId"));
+          const matchingApproval = inbox.pending.find((approval) => approval.paymentId === paymentId);
+          if (matchingApproval) setSelectedStepId(matchingApproval.approvalStepId);
         }
       })
       .catch((cause: unknown) => {
@@ -73,7 +78,7 @@ export default function ApprovalInbox() {
       });
 
     return () => controller.abort();
-  }, [requestVersion]);
+  }, [requestVersion, searchParams]);
 
   function refreshInbox() {
     setSelectedStepId(null);

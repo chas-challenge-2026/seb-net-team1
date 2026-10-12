@@ -125,14 +125,16 @@ export default function DashboardSidebar({
           <span>Betalningar</span>
         </Link>
 
-        <Link to="/approval-inbox" className={approvalsClassName}>
-          <FiCheckSquare />
-          <span>Godkännanden</span>
+        {canReadAuditLog(displayedUser?.role) && (
+          <Link to="/approval-inbox" className={approvalsClassName}>
+            <FiCheckSquare />
+            <span>Godkännanden</span>
 
-          {pendingApprovalCount !== undefined && pendingApprovalCount > 0 && (
-            <span className="dashboard-sidebar-badge">{pendingApprovalCount}</span>
-          )}
-        </Link>
+            {pendingApprovalCount !== undefined && pendingApprovalCount > 0 && (
+              <span className="dashboard-sidebar-badge">{pendingApprovalCount}</span>
+            )}
+          </Link>
+        )}
 
         <Link to="/accounts" className={accountsClassName}>
           <FiBriefcase />
