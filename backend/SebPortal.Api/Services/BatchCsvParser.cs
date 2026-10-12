@@ -22,7 +22,7 @@ public static class BatchCsvParser
         if (!result.valid)
         {
             // rows is null here, so there is nothing to free.
-            return (null, Encoding.UTF8.GetString(result.error, 256).TrimEnd('\0'));
+            return (null, ReadCString(result.error, 256));
         }
 
         try
@@ -35,10 +35,10 @@ public static class BatchCsvParser
 
                 rows.Add(new BatchPaymentRow(
                     row->from_account_id,
-                    Encoding.UTF8.GetString(row->to_iban, 35).TrimEnd('\0'),
+                    ReadCString(row->to_iban, 35),
                     ToAmount(row->amount),
                     row->amount.ToString(CultureInfo.InvariantCulture),
-                    Encoding.UTF8.GetString(row->reference, 101).TrimEnd('\0')));
+                    ReadCString(row->reference, 101)));
             }
 
             return (rows, null);
@@ -50,6 +50,25 @@ public static class BatchCsvParser
                 NativeProvider.CSV.free_csv_rows(result.rows);
             }
         }
+    }
+
+    /// <summary>
+    /// Reads a C string out of a fixed-size native buffer: everything up to the first
+    /// NUL byte. The parser only writes the string and its terminator, the rest of the
+    /// buffer is whatever the memory held before, so trimming trailing NULs is not
+    /// enough. Garbage after the terminator would end up in the string, and a NUL in a
+    /// string makes PostgreSQL reject the insert.
+    /// </summary>
+    private static unsafe string ReadCString(byte* buffer, int size)
+    {
+        var length = 0;
+
+        while (length < size && buffer[length] != 0)
+        {
+            length++;
+        }
+
+        return Encoding.UTF8.GetString(buffer, length);
     }
 
     /// <summary>
