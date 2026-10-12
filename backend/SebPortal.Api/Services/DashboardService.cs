@@ -21,7 +21,11 @@ public class DashboardService(DashboardRepository dashboardRepository)
 
         var accounts = await dashboardRepository.GetAccountsAsync(tenantId);
         var payments = await dashboardRepository.GetPaymentsAsync(tenantId);
-        var pendingApprovals = await dashboardRepository.GetPendingApprovalsAsync(tenantId);
+        var pendingApprovals = payments
+            .Where(payment => payment.Status == PaymentStatuses.PendingApproval)
+            .OrderBy(payment => payment.CreatedAt)
+            .ThenBy(payment => payment.Id)
+            .ToList();
         var upcomingPayments = await dashboardRepository.GetUpcomingPaymentsAsync(tenantId, UpcomingPaymentsCount);
         var statusCounts = await dashboardRepository.GetPaymentStatusCountsAsync(tenantId);
         var totalPayments = await dashboardRepository.GetPaymentCountAsync(tenantId);

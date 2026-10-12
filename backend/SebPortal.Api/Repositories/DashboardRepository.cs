@@ -26,14 +26,6 @@ public class DashboardRepository(SebDbContext db)
             .ThenByDescending(p => p.Id)
             .ToListAsync();
 
-    public Task<List<Payment>> GetPendingApprovalsAsync(int tenantId) =>
-        PendingPaymentsQuery(tenantId)
-            .Include(payment => payment.FromAccount)
-            .Include(payment => payment.CreatedBy)
-            .OrderBy(p => p.CreatedAt)
-            .ThenBy(p => p.Id)
-            .ToListAsync();
-
     public Task<List<Payment>> GetUpcomingPaymentsAsync(int tenantId, int count) =>
         db.Payments
             .AsNoTracking()
@@ -74,8 +66,4 @@ public class DashboardRepository(SebDbContext db)
             .Take(count)
             .ToListAsync();
 
-    private IQueryable<Payment> PendingPaymentsQuery(int tenantId) =>
-        db.Payments
-            .AsNoTracking()
-            .Where(p => p.TenantId == tenantId && p.Status == PaymentStatuses.PendingApproval);
 }
