@@ -42,22 +42,29 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
         {
             return BadRequest(new { message = "Beloppet måste vara större än 0." });
         }
-        if (string.IsNullOrWhiteSpace(request.ToIban))
-        {
-            return BadRequest(new { message = "Mottagarkonto måste anges." });
-        }
         if (request.FromAccountId <= 0)
         {
             return BadRequest(new { message = "Avsändarkonto måste anges." });
         }
+        if (string.IsNullOrWhiteSpace(request.ToIban))
+        {
+            return BadRequest(new { message = "Mottagarkonto måste anges." });
+        }
 
         var createdById = userId.Value;
         var currency = "SEK";
+        var normalizedToIban = PaymentService.NormalizeIban(request.ToIban ?? string.Empty);
+
+        if (!PaymentService.HasValidIbanFormat(normalizedToIban))
+        {
+            await paymentService.RecordIbanFormatFailureAsync(tenantId.Value, createdById);
+            return BadRequest(new { message = "Ogiltigt IBAN-format. Kontrollera mottagarkontot." });
+        }
 
         var payment = await paymentService.CreatePaymentAsync(
             tenantId.Value,
             request.FromAccountId,
-            request.ToIban,
+            normalizedToIban,
             request.Amount,
             currency,
             request.Reference,

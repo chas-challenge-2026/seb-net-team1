@@ -4,4 +4,5 @@ export type Account = {
   iban: string;
   balance: string;
   currency: string;
+  balanceHistory: { month: string; balance: string }[];
 };

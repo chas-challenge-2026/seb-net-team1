@@ -13,6 +13,30 @@ public class PaymentService(
     IOptions<PaymentRulesOptions> paymentRules,
     AuditService auditService)
 {
+    public async Task RecordIbanFormatFailureAsync(int tenantId, int? userId) =>
+        await auditService.LogImmediatelyAsync(
+            tenantId,
+            userId,
+            "VALIDATE_IBAN",
+            "payment_validation",
+            null,
+            "IBAN-valideringen stoppade ett betalningsförsök eftersom formatet var ogiltigt.");
+
+    public static string NormalizeIban(string iban) =>
+        new string(iban.Where(character => !char.IsWhiteSpace(character)).ToArray()).ToUpperInvariant();
+
+    public static bool HasValidIbanFormat(string iban)
+    {
+        if (iban.Length is < 15 or > 34 ||
+            !char.IsAsciiLetter(iban[0]) || !char.IsAsciiLetter(iban[1]) ||
+            !char.IsAsciiDigit(iban[2]) || !char.IsAsciiDigit(iban[3]))
+        {
+            return false;
+        }
+
+        return iban.All(character => char.IsAsciiLetterOrDigit(character));
+    }
+
     /// <summary>
     /// Creates a payment, validates the source account and tenant,
     /// and uses the configured approval threshold to either complete the payment
