@@ -1,30 +1,12 @@
 import Card from "../shared/Card";
 import AccountRow from "./AccountRow";
+import type { Account } from "../../types/Account";
 
-const AccountList = () => {
-  const accounts = [
-    {
-      id: 1,
-      name: "Driftkonto",
-      iban: "SE45 5000 0000 0583 9825 7466",
-      balance: "2 500 000 kr",
-      currency: "SEK",
-    },
-    {
-      id: 2,
-      name: "Lönekonto",
-      iban: "SE45 5000 0000 0583 9825 7467",
-      balance: "890 000 kr",
-      currency: "SEK",
-    },
-    {
-      id: 3,
-      name: "Projektkonto",
-      iban: "SE45 5000 0000 0583 9825 7468",
-      balance: "450 000 kr",
-      currency: "SEK",
-    },
-  ];
+type AccountListProps = {
+  accounts: Account[] | null;
+};
+
+const AccountList = ({ accounts }: AccountListProps) => {
 
   return (
     <section className="account-list">
@@ -37,7 +19,11 @@ const AccountList = () => {
         </div>
 
         <div className="account-list-items">
-          {accounts.map((account) => (
+          {accounts === null ? (
+            <p className="account-list-empty">Hämtar konton...</p>
+          ) : accounts.length === 0 ? (
+            <p className="account-list-empty">Inga konton att visa.</p>
+          ) : accounts.map((account) => (
             <AccountRow key={account.id} account={account} />
           ))}
         </div>

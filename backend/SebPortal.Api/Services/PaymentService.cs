@@ -54,11 +54,16 @@ public class PaymentService(
         };
 
         // 3. Determine the payment flow from the configured approval threshold.
+<<<<<<< HEAD
         var requiresApproval = RequiresApproval(amount);
+=======
+        var requiresApproval = amount > paymentRules.Value.ApprovalThreshold ||
+            RequiresDoubleApproval(amount);
+>>>>>>> origin/develop
 
         if (requiresApproval)
         {
-            await AddInitialApprovalStepAsync(payment);
+            await AddInitialApprovalStepsAsync(payment);
         }
         else
         {
@@ -108,6 +113,7 @@ public class PaymentService(
         return payment;
     }
 
+<<<<<<< HEAD
     /// <summary>
     /// Creates several payments as one unit for a validated batch file: either every
     /// payment (with its balance changes, approval step and CREATE_PAYMENT audit entry)
@@ -215,6 +221,9 @@ public class PaymentService(
         (requiresApproval ? "Väntar på attest." : "Genomförd direkt.");
 
     private async Task AddInitialApprovalStepAsync(Payment payment)
+=======
+    private async Task AddInitialApprovalStepsAsync(Payment payment)
+>>>>>>> origin/develop
     {
         var excludedUserIds = new List<int>();
 
@@ -223,16 +232,24 @@ public class PaymentService(
             excludedUserIds.Add(payment.CreatedById.Value);
         }
 
-        var attestantId = await approvalRepository.FindNextAttestantIdAsync(
-            payment.TenantId,
-            excludedUserIds);
-
-        payment.ApprovalSteps.Add(new ApprovalStep
+        for (var stepNumber = 1; stepNumber <= RequiredApprovalSteps(payment.Amount); stepNumber++)
         {
-            AttestantId = attestantId,
-            StepNumber = 1,
-            Status = ApprovalStatuses.Pending
-        });
+            var attestantId = await approvalRepository.FindNextAttestantIdAsync(
+                payment.TenantId,
+                excludedUserIds);
+
+            payment.ApprovalSteps.Add(new ApprovalStep
+            {
+                AttestantId = attestantId,
+                StepNumber = stepNumber,
+                Status = ApprovalStatuses.Pending
+            });
+
+            if (attestantId.HasValue)
+            {
+                excludedUserIds.Add(attestantId.Value);
+            }
+        }
     }
 
     /// <summary>
