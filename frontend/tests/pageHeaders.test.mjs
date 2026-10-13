@@ -28,12 +28,18 @@ async function loadComponent(path, reactRuntime = react) {
       Link: ({ to, children, ...props }) => react.createElement("a", { href: to, ...props }, children),
     }],
     [new URL("components/dashboard/Sidebar.tsx", src).href, { default: () => null }],
+    [new URL("components/payments/PaymentConfirmationDialog.tsx", src).href, { default: () => null }],
     [new URL("hooks/usePaymentOverview.ts", src).href, {
       usePaymentOverview: () => ({ data: overview, isLoading: false, error: null, needsLogin: false, retry: () => {} }),
     }],
     [new URL("api/auditLogApi.ts", src).href, { AuditLogApiError: class extends Error {}, getAuditLog: () => {} }],
     [new URL("api/accountsApi.ts", src).href, { getAccounts: () => {} }],
-    [new URL("api/paymentsApi.ts", src).href, { createPayment: () => {} }],
+    [new URL("api/paymentsApi.ts", src).href, { createPayment: () => {}, PAYMENT_PERMISSION_ERROR: "Du har inte behörighet att skapa betalningar. Logga in som initiator eller admin." }],
+    [new URL("api/recipientsApi.ts", src).href, {
+      getRecipients: () => {}, createRecipient: () => {},
+      getRecipientDetailsError: () => null, normalizeRecipientIban: (value) => value,
+      RecipientApiError: class extends Error {},
+    }],
   ]);
 
   async function load(identifier) {

@@ -118,8 +118,9 @@ for (const amount of ["1250.50", NaN, Infinity, -Infinity, 0, -1, 0.001, 0.1 + 0
 for (const [status, body, message] of [
   [400, { detail: "Beloppet måste vara större än 0." }, /Beloppet måste/],
   [400, { message: "Mottagarkonto måste anges." }, /Mottagarkonto/],
-  [401, null, /Kunde inte skapa betalningen/],
-  [403, null, /Kunde inte skapa betalningen/],
+  [401, null, /Din inloggning har gått ut\. Logga in igen\./],
+  [403, null, /Du har inte behörighet att skapa betalningar\. Logga in som initiator eller admin\./],
+  [400, { detail: "Kontot har inte tillräckligt saldo för denna betalning." }, /Kontot har inte tillräckligt saldo/],
   [409, { detail: "Kontot ändrades av en annan betalning." }, /Kontot ändrades/],
   [500, null, /Kunde inte skapa betalningen/],
 ]) {

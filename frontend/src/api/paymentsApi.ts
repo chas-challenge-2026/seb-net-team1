@@ -12,6 +12,7 @@ import { apiRequest } from "./apiClient";
 
 const PAYMENTS_ENDPOINT = "/api/payments";
 const DEFAULT_PAYMENT_ERROR_MESSAGE = "Kunde inte skapa betalningen.";
+export const PAYMENT_PERMISSION_ERROR = "Du har inte behörighet att skapa betalningar. Logga in som initiator eller admin.";
 
 type PaymentOverviewResponse = {
   recentPayments: RecentPaymentSummary[];
@@ -179,6 +180,9 @@ export async function createPayment(
 }
 
 async function getPaymentErrorMessage(response: Response): Promise<string> {
+  if (response.status === 401) return "Din inloggning har gått ut. Logga in igen.";
+  if (response.status === 403) return PAYMENT_PERMISSION_ERROR;
+
   try {
     const errorBody = (await response.json()) as PaymentApiError;
 

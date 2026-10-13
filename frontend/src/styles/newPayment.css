@@ -54,6 +54,20 @@
   gap: 20px;
 }
 
+.new-payment-role-notice {
+  background: #f5f7f6;
+  border: 1px solid #dce5df;
+  border-radius: 6px;
+  color: #43504c;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  padding: 14px;
+}
+
+.new-payment-role-notice p { margin: 0 0 8px; }
+.new-payment-role-notice a { color: #006831; font-weight: 600; }
+
 .new-payment-field {
   display: grid;
   gap: 8px;
@@ -66,7 +80,8 @@
 }
 
 .new-payment-field input,
-.new-payment-field select {
+.new-payment-field select,
+.new-payment-field output {
   background: var(--white);
   border: 1px solid #cbd5d0;
   border-radius: 6px;
@@ -77,6 +92,13 @@
   padding: 10px 12px;
   width: 100%;
 }
+
+.new-payment-field output {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+#recipient-manual-entry-help { color: #607269; font-size: 12px; line-height: 1.5; }
 
 .new-payment-field input:focus,
 .new-payment-field select:focus {
@@ -107,6 +129,63 @@
 .new-payment-submit:hover {
   background: #005429;
 }
+
+.new-payment-submit:disabled {
+  background: #607269;
+  cursor: default;
+  opacity: 0.65;
+}
+
+.new-payment-recipient-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.new-payment-recipient-controls {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 16px;
+}
+
+.new-payment-add-recipient,
+.new-payment-recipient-retry {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: #006831;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 6px;
+  min-height: 36px;
+  padding: 4px 0;
+}
+
+.new-payment-recipient-field small {
+  color: #607269;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.new-payment-recipient-feedback {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.new-payment-recipient-feedback small[role="alert"] { color: #a12a29; }
+.new-payment-add-recipient:disabled { color: #607269; cursor: default; opacity: 0.65; }
+.new-payment-add-recipient:focus-visible,
+.new-payment-recipient-retry:focus-visible { outline: 2px solid var(--seb-green); outline-offset: 3px; }
 
 @media (min-width: 701px) {
   .new-payment-layout .dashboard-header-actions {
