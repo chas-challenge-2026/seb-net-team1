@@ -46,6 +46,7 @@ services:
       - "8081"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      Recipients__AllowDemoConfirmation: "true"
       ASPNETCORE_URLS: "http://+:8081"
       Jwt__Key: "${JWT_KEY:?Set JWT_KEY in infra/.env before starting Docker}"
       Jwt__PreviousKey: "${JWT_PREVIOUS_KEY:-}"
