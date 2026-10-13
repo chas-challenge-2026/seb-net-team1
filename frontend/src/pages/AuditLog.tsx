@@ -50,6 +50,8 @@ type ActionPresentation = {
 
 function getActionPresentation(action: string): ActionPresentation {
   switch (action) {
+    case "CREATE_RECIPIENT":
+      return { label: "Lade till en mottagare", tone: "created" };
     case "CREATE_PAYMENT":
       return { label: "Skapade en betalning", tone: "created" };
     case "APPROVE_PAYMENT":

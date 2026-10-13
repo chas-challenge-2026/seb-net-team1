@@ -74,9 +74,50 @@ function step(overrides = {}) {
   };
 }
 
-function render(timeline) {
-  return renderToStaticMarkup(createElement(ApprovalTimeline, { timeline }));
+function render(timeline, props = {}) {
+  return renderToStaticMarkup(createElement(ApprovalTimeline, { timeline, ...props }));
 }
+
+test("payment history shows its creator before the actual approval actor with both saved times", () => {
+  const markup = render([step({
+    status: "approved",
+    decidedByName: "Johan Berg",
+    decidedAt: "2026-10-13T08:42:00Z",
+    decisionSource: "manual",
+  })], {
+    heading: "Betalningshistorik",
+    creation: { createdByName: "Lisa Persson", createdAt: "2026-10-13T08:36:00Z" },
+  });
+
+  assert.match(markup, /Betalningshistorik/);
+  assert.match(markup, /Skapad av <strong>Lisa Persson<\/strong>/);
+  assert.match(markup, /Godkänd av <strong>Johan Berg<\/strong>/);
+  assert.ok(markup.indexOf("Skapad av") < markup.indexOf("Godkänd av"));
+  assert.match(markup, /<time dateTime="2026-10-13T08:36:00Z">2026-10-13 10:36<\/time>/);
+  assert.match(markup, /<time dateTime="2026-10-13T08:42:00Z">2026-10-13 10:42<\/time>/);
+  assert.doesNotMatch(markup, /Godkänd av <strong>Lisa Persson/);
+});
+
+test("missing creation metadata is explicit and never attributes creation to the attestant", () => {
+  const markup = render([step()], {
+    creation: { createdByName: null, createdAt: "invalid-date" },
+  });
+
+  assert.match(markup, /Uppgift om vem som skapade betalningen saknas/);
+  assert.match(markup, /Tidpunkt saknas/);
+  assert.match(markup, /Väntar på godkännande/);
+  assert.doesNotMatch(markup, /Skapad av|Godkänd av|Invalid Date/);
+});
+
+test("creation remains visible when approval timeline data is missing", () => {
+  const markup = render([], {
+    creation: { createdByName: "Lisa Persson", createdAt: "2026-10-13T08:36:00Z" },
+  });
+
+  assert.match(markup, /Skapad av <strong>Lisa Persson<\/strong>/);
+  assert.match(markup, /Uppgifter om tidslinjen saknas/);
+  assert.equal((markup.match(/<li\b/g) ?? []).length, 1);
+});
 
 test("timeline shows who is waiting, including a step without an assigned attestant", () => {
   const markup = render([

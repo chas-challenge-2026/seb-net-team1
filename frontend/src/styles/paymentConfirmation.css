@@ -1,0 +1,36 @@
+.payment-confirmation-heading {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.payment-confirmation-icon {
+  align-items: center;
+  background: var(--light-green);
+  border-radius: 8px;
+  color: var(--seb-deep-green);
+  display: flex;
+  flex: 0 0 42px;
+  font-size: 24px;
+  height: 42px;
+  justify-content: center;
+}
+
+.payment-confirmation-icon--pending {
+  background: #fff5df;
+  color: #a46b00;
+}
+
+.payment-confirmation-summary {
+  grid-template-columns: 1fr 1fr;
+}
+
+.payment-confirmation-recipient {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 540px) {
+  .payment-confirmation-heading { gap: 10px; }
+  .payment-confirmation-icon { flex-basis: 36px; height: 36px; font-size: 22px; }
+}

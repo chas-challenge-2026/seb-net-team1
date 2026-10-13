@@ -34,6 +34,10 @@ docker compose up --build
 
 Lösenordet för dessa konton väljer ni lokalt enligt nästa avsnitt.
 
+För popupen med sparade mottagare och BankID-demo, se
+[Sparade mottagare](docs/saved-recipients.md). Befintliga databaser behöver
+uppdateringen i `infra/migrations/20261013_recipients.sql`.
+
 ---
 
 ## Lokala testkonton

@@ -385,6 +385,11 @@
   color: var(--seb-deep-green);
 }
 
+.approval-timeline-step--created .approval-timeline-marker {
+  background: #edf4ff;
+  color: #175cd3;
+}
+
 .approval-timeline-step--rejected .approval-timeline-marker {
   background: #fee9e7;
   color: #b42318;
