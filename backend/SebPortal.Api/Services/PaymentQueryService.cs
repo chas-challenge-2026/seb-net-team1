@@ -7,7 +7,8 @@ namespace SebPortal.Api.Services;
 
 public class PaymentQueryService(
     PaymentQueryRepository paymentRepository,
-    AuditRepository auditRepository)
+    AuditRepository auditRepository,
+    RecipientRepository recipientRepository)
 {
     public async Task<PaymentDetailsDto?> GetPaymentAsync(int paymentId, int tenantId)
     {
@@ -18,6 +19,7 @@ public class PaymentQueryService(
         }
 
         var auditEntries = await auditRepository.GetPaymentEntriesAsync(paymentId, tenantId);
+        var recipientName = await recipientRepository.GetNameByIbanAsync(tenantId, payment.ToIban);
 
         return new PaymentDetailsDto
         {
@@ -26,6 +28,7 @@ public class PaymentQueryService(
             FromAccountName = payment.FromAccount?.AccountName,
             CreatedByName = payment.CreatedBy?.Name,
             ToIban = payment.ToIban,
+            RecipientName = recipientName,
             Amount = payment.Amount.ToString("F2", CultureInfo.InvariantCulture),
             Currency = payment.Currency,
             Reference = payment.Reference,

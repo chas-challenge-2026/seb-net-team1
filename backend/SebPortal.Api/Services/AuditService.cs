@@ -101,7 +101,7 @@ public class AuditService(
         EntityType = entry.EntityType,
         EntityId = entry.EntityId,
         Description = entry.Description ?? "",
-        CreatedAt = entry.CreatedAt,
+        CreatedAt = DateTime.SpecifyKind(entry.CreatedAt, DateTimeKind.Utc),
         UserName = entry.User?.Name ?? "Systemet"
     };
 
