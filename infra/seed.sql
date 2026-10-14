@@ -90,6 +90,7 @@ CREATE TABLE audit_entries (
     entity_id INT,
     description TEXT,
     created_at TIMESTAMP DEFAULT NOW(),
+    ip_address VARCHAR(45),
     signature TEXT NOT NULL,
     previous_signature TEXT NOT NULL
 );

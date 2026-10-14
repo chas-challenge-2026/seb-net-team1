@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { FiChevronDown, FiChevronLeft, FiChevronRight, FiSearch, FiSliders } from "react-icons/fi";
 import { AuditLogApiError, getAuditLog } from "../api/auditLogApi";
+import AuditEntryDetails from "../components/audit/AuditEntryDetails";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import Sidebar from "../components/dashboard/Sidebar";
 import Button from "../components/shared/Button";
 import Card from "../components/shared/Card";
 import type { AuditEntry, AuditLogResponse } from "../types/AuditLog";
+import { formatAuditIpAddress, formatDateTime, formatEntity, getActionPresentation } from "../utils/auditPresentation";
 import "../styles/dashboard.css";
 import "../styles/auditLog.css";
 
@@ -43,51 +45,6 @@ function getReachedPageSlots(knownPages: number, currentPage: number): PageSlot[
   return pages;
 }
 
-type ActionPresentation = {
-  label: string;
-  tone: "created" | "approved" | "step" | "rejected" | "neutral";
-};
-
-function getActionPresentation(action: string): ActionPresentation {
-  switch (action) {
-    case "CREATE_RECIPIENT":
-      return { label: "Lade till en mottagare", tone: "created" };
-    case "CREATE_PAYMENT":
-      return { label: "Skapade en betalning", tone: "created" };
-    case "APPROVE_PAYMENT":
-      return { label: "Godkände en betalning", tone: "approved" };
-    case "APPROVE_PAYMENT_STEP":
-      return { label: "Godkände ett atteststeg", tone: "step" };
-    case "REJECT_PAYMENT":
-      return { label: "Avvisade en betalning", tone: "rejected" };
-    default:
-      return { label: "Annan händelse", tone: "neutral" };
-  }
-}
-
-const dateTimeFormatter = new Intl.DateTimeFormat("sv-SE", {
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-});
-
-function formatDateTime(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : dateTimeFormatter.format(date);
-}
-
-function formatEntity(entry: AuditEntry): string {
-  return [
-    entry.entityType?.trim(),
-    entry.entityId != null ? `#${entry.entityId}` : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
-
 function getAuditLogError(error: unknown): AuditLogError {
   return {
     message:
@@ -110,6 +67,7 @@ export default function AuditLog() {
   const [pageError, setPageError] = useState<AuditLogError | null>(null);
   const [navigation, setNavigation] = useState<CursorNavigation>({ cursors: [undefined], index: 0 });
   const [showFilterNotice, setShowFilterNotice] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
   const currentPage = navigation.index + 1;
   const pageSlots = getReachedPageSlots(navigation.cursors.length, currentPage);
@@ -127,6 +85,7 @@ export default function AuditLog() {
       .then((page) => {
         if (!controller.signal.aborted) {
           setAuditLog(page);
+          setSelectedEntry(null);
           setNavigation((current) => {
             if (!request) return { cursors: [undefined], index: 0 };
 
@@ -148,6 +107,7 @@ export default function AuditLog() {
           if (auditError.accessDenied) {
             // A revoked permission ends pagination and removes previously loaded rows.
             setAuditLog(null);
+            setSelectedEntry(null);
             setNavigation({ cursors: [undefined], index: 0 });
             setPageError(null);
             setInitialError(auditError);
@@ -352,6 +312,7 @@ export default function AuditLog() {
                           {auditLog.entries.map((entry) => {
                             const action = getActionPresentation(entry.action);
                             const entity = formatEntity(entry);
+                            const ipAddress = formatAuditIpAddress(entry.ipAddress);
 
                             return (
                               <tr key={entry.id}>
@@ -362,26 +323,39 @@ export default function AuditLog() {
                                 </td>
                                 <td className="audit-log-user">{entry.userName || "—"}</td>
                                 <td>
-                                  <span className={`audit-log-action audit-log-action--${action.tone}`}>
+                                  <button
+                                    type="button"
+                                    className={`audit-log-entry-button audit-log-action audit-log-action--${action.tone}`}
+                                    onClick={() => setSelectedEntry(entry)}
+                                    aria-label={`Visa hela händelsen: ${action.label}, audit #${entry.id}`}
+                                    aria-haspopup="dialog"
+                                    aria-controls="audit-entry-details"
+                                  >
                                     {action.label}
-                                  </span>
+                                  </button>
                                 </td>
                                 <td className="audit-log-details">
-                                  <p
-                                    className="audit-log-description"
+                                  <button
+                                    type="button"
+                                    className="audit-log-entry-button audit-log-description"
                                     title={entry.description || "—"}
-                                    tabIndex={0}
+                                    onClick={() => setSelectedEntry(entry)}
+                                    aria-label={`Visa detaljer för audit #${entry.id}`}
+                                    aria-haspopup="dialog"
+                                    aria-controls="audit-entry-details"
                                   >
                                     {entry.description || "—"}
-                                  </p>
+                                  </button>
                                   <p className="audit-log-metadata">
                                     {entity && <span>{entity}</span>}
                                     <span>Audit #{entry.id}</span>
                                   </p>
                                 </td>
-                                <td className="audit-log-ip" title="IP-adress saknas i API-svaret.">
-                                  <span aria-hidden="true">—</span>
-                                  <span className="audit-log-sr-only">IP-adress saknas</span>
+                                <td className="audit-log-ip">
+                                  {ipAddress ?? <>
+                                    <span aria-hidden="true">—</span>
+                                    <span className="audit-log-sr-only">IP-adress saknas</span>
+                                  </>}
                                 </td>
                               </tr>
                             );
@@ -473,6 +447,13 @@ export default function AuditLog() {
           </section>
         </div>
       </main>
+      {selectedEntry && (
+        <AuditEntryDetails
+          key={selectedEntry.id}
+          entry={selectedEntry}
+          onClose={() => setSelectedEntry(null)}
+        />
+      )}
     </div>
   );
 }

@@ -8,7 +8,13 @@ type ApprovalTimelineProps = {
     createdByName: string | null;
     createdAt: string;
   };
+  completion?: {
+    executedAt: string;
+    toIban: string;
+    recipientName?: string | null;
+  };
   heading?: string;
+  emptyMessage?: string;
 };
 
 const dateTimeFormatter = new Intl.DateTimeFormat("sv-SE", {
@@ -20,14 +26,22 @@ const dateTimeFormatter = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Europe/Stockholm",
 });
 
-export default function ApprovalTimeline({ timeline, creation, heading = "Attesttidslinje" }: ApprovalTimelineProps) {
+export default function ApprovalTimeline({
+  timeline,
+  creation,
+  completion,
+  heading = "Attesttidslinje",
+  emptyMessage = "Uppgifter om tidslinjen saknas. Uppdatera listan för att försöka igen.",
+}: ApprovalTimelineProps) {
   const creatorName = typeof creation?.createdByName === "string" ? creation.createdByName.trim() : null;
   const createdAt = creation ? new Date(creation.createdAt) : null;
+  const executedAt = completion ? new Date(completion.executedAt) : null;
+  const recipientName = completion?.recipientName?.trim();
 
   return (
     <section aria-labelledby="approval-timeline-heading">
       <h3 id="approval-timeline-heading">{heading}</h3>
-      {(creation || !!timeline?.length) && (
+      {(creation || !!timeline?.length || completion) && (
         <ol className="approval-timeline" role="list">
           {creation && (
             <li className="approval-timeline-step approval-timeline-step--created">
@@ -88,10 +102,28 @@ export default function ApprovalTimeline({ timeline, creation, heading = "Attest
               </li>
             );
           })}
+          {completion && (
+            <li className="approval-timeline-step approval-timeline-step--approved approval-timeline-step--completed">
+              <span className="approval-timeline-marker" aria-hidden="true"><FiCheckCircle /></span>
+              <div className="approval-timeline-content">
+                <div className="approval-timeline-step-header">
+                  <span className="approval-timeline-step-number">Betalning genomförd</span>
+                  <StatusBadge status="success">Genomförd</StatusBadge>
+                </div>
+                {recipientName && <p>Mottagare: <strong>{recipientName}</strong></p>}
+                <p>IBAN: {completion.toIban.trim() || "Kontouppgift saknas."}</p>
+                <p className="approval-timeline-time">
+                  {executedAt && !Number.isNaN(executedAt.getTime())
+                    ? <time dateTime={completion.executedAt}>{dateTimeFormatter.format(executedAt)}</time>
+                    : "Tidpunkt saknas."}
+                </p>
+              </div>
+            </li>
+          )}
         </ol>
       )}
       {!timeline?.length && (
-        <p className="approval-details-missing">Uppgifter om tidslinjen saknas. Uppdatera listan för att försöka igen.</p>
+        <p className="approval-details-missing">{emptyMessage}</p>
       )}
     </section>
   );
