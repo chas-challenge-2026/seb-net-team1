@@ -60,7 +60,8 @@ public class PaymentQueryService(
                 EntityId = entry.EntityId,
                 Description = entry.Description ?? string.Empty,
                 CreatedAt = DateTime.SpecifyKind(entry.CreatedAt, DateTimeKind.Utc),
-                UserName = entry.User?.Name ?? "Systemet"
+                UserName = entry.User?.Name ?? "Systemet",
+                IpAddress = entry.IpAddress
             }).ToList()
         };
     }

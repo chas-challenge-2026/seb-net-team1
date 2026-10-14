@@ -16,6 +16,7 @@ public class AuditEntry
     public int? EntityId { get; set; }
     public string? Description { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public string? IpAddress { get; set; }
 
     /// <summary>
     /// HMAC-SHA256 of this entry's signed text (see AuditSigningFormat), base64.

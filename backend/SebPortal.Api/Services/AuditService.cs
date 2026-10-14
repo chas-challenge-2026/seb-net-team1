@@ -10,7 +10,8 @@ namespace SebPortal.Api.Services;
 public class AuditService(
     AuditRepository auditRepository,
     AuditLockProvider lockProvider,
-    IAuditSigner signer)
+    IAuditSigner signer,
+    IHttpContextAccessor? httpContextAccessor = null)
 {
     private const string GenesisSignature = "GENESIS";
 
@@ -39,6 +40,8 @@ public class AuditService(
     {
         var previousSignature = await auditRepository.GetLatestSignatureAsync(tenantId) ?? GenesisSignature;
 
+        // Trusted forwarding middleware has already resolved the connection address.
+        var remoteAddress = httpContextAccessor?.HttpContext?.Connection.RemoteIpAddress;
         var entry = new AuditEntry
         {
             TenantId = tenantId,
@@ -48,6 +51,9 @@ public class AuditService(
             EntityId = entityId,
             Description = description,
             CreatedAt = DateTime.UtcNow,
+            IpAddress = remoteAddress?.IsIPv4MappedToIPv6 == true
+                ? remoteAddress.MapToIPv4().ToString()
+                : remoteAddress?.ToString(),
             PreviousSignature = previousSignature
         };
 
@@ -102,7 +108,8 @@ public class AuditService(
         EntityId = entry.EntityId,
         Description = entry.Description ?? "",
         CreatedAt = DateTime.SpecifyKind(entry.CreatedAt, DateTimeKind.Utc),
-        UserName = entry.User?.Name ?? "Systemet"
+        UserName = entry.User?.Name ?? "Systemet",
+        IpAddress = entry.IpAddress
     };
 
     /// <summary>Opaque to the client, just a base64-encoded id.</summary>

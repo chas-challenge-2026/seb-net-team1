@@ -6,7 +6,7 @@ import ApprovalTimeline from "../approvals/ApprovalTimeline";
 import StatusBadge from "../shared/StatusBadge";
 import type { AuditEntry } from "../../types/AuditLog";
 import type { PaymentDetails } from "../../types/Payment";
-import { formatDateTime, formatEntity, getActionPresentation } from "../../utils/auditPresentation";
+import { formatAuditIpAddress, formatDateTime, formatEntity, getActionPresentation } from "../../utils/auditPresentation";
 import { formatPaymentAmount, getPaymentStatus } from "../../utils/paymentPresentation";
 import "../../styles/approvalInbox.css";
 import "../../styles/auditEntryDetails.css";
@@ -29,6 +29,7 @@ export default function AuditEntryDetails({ entry, onClose }: AuditEntryDetailsP
   const titleId = useId();
   const action = getActionPresentation(entry.action);
   const entity = formatEntity(entry);
+  const ipAddress = formatAuditIpAddress(entry.ipAddress);
   const paymentId = entry.entityType?.trim().toLowerCase() === "payment" &&
     entry.entityId != null && Number.isSafeInteger(entry.entityId) && entry.entityId > 0
       ? entry.entityId
@@ -167,6 +168,10 @@ export default function AuditEntryDetails({ entry, onClose }: AuditEntryDetailsP
             <div>
               <dt>Gäller</dt>
               <dd>{entity || "Uppgift saknas"}</dd>
+            </div>
+            <div>
+              <dt>IP-adress</dt>
+              <dd>{ipAddress || "Uppgift saknas"}</dd>
             </div>
           </dl>
           <p className="audit-entry-description">

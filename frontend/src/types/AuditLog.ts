@@ -6,6 +6,7 @@ export type AuditEntry = {
   description: string;
   createdAt: string;
   userName: string;
+  ipAddress?: string | null;
 };
 
 export type AuditLogResponse = {

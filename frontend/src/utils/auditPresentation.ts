@@ -45,3 +45,7 @@ export function formatEntity(entry: AuditEntry): string {
     .filter(Boolean)
     .join(" ");
 }
+
+export function formatAuditIpAddress(ipAddress?: string | null): string | null {
+  return ipAddress?.trim() || null;
+}

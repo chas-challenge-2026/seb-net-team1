@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using SebPortal.Api.Models;
 
 namespace SebPortal.Api.Services;
@@ -23,7 +24,9 @@ public static class AuditSigningFormat
         int? EntityId,
         string? Description,
         string CreatedAt,
-        string PreviousSignature);
+        string PreviousSignature,
+        // Preserve historical signed text for rows that have no recorded IP.
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? IpAddress);
 
     public static string Build(AuditEntry entry, string previousSignature)
     {
@@ -35,7 +38,8 @@ public static class AuditSigningFormat
             entry.EntityId,
             entry.Description,
             FormatCreatedAt(entry.CreatedAt),
-            previousSignature);
+            previousSignature,
+            entry.IpAddress);
 
         return JsonSerializer.Serialize(fields);
     }

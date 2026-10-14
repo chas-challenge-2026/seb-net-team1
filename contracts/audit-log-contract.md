@@ -39,7 +39,8 @@ No request body.
       "entityId": 42,
       "description": "Skapade betalning 12500.00 SEK till SE4550000000054910000099",
       "createdAt": "2026-08-30T09:15:00Z",
-      "userName": "Lisa Andersson"
+      "userName": "Lisa Andersson",
+      "ipAddress": "198.51.100.23"
     }
   ],
   "nextCursor": "eyJpZCI6NTAxfQ=="
@@ -57,6 +58,7 @@ No request body.
 | `entries[].description` | string | Human-readable description of what happened |
 | `entries[].createdAt` | string (ISO 8601) | When the action happened |
 | `entries[].userName` | string | Name of the user who performed the action, or `Systemet` for system-generated entries |
+| `entries[].ipAddress` | string \| null | IPv4 or IPv6 address recorded when the event was created. `null` for older events or when no request address is available |
 | `nextCursor` | string \| null | Pass as `cursor` to fetch the next page. `null` when there are no more results |
 
 ---
@@ -87,6 +89,7 @@ Frontend can use this contract to:
 - render the audit log table
 - page through older entries using `nextCursor`
 - create mock audit log data for the Granskningslogg page before the backend is ready
+- show the recorded `ipAddress` in the table and event popup; use `—` in the table and a missing-information label in the popup when it is absent. Opening an event never replaces its recorded address with the reader's address
 
 ---
 
@@ -99,6 +102,12 @@ Backend should use this contract to:
 - respect `limit`/`cursor` and return `nextCursor` accordingly. v1 hardcoded a limit of 200 with no way to page further
 - restrict the endpoint to `attestant` and `admin` (`UserRoles.ApproverRoles`), same as the approval endpoints
 - return consistent ProblemDetails error responses (status, title, detail) per the format above
+- record `HttpContext.Connection.RemoteIpAddress` when appending an event. Forwarded client addresses are accepted only by the configured trusted-proxy middleware, never by reading arbitrary `X-Forwarded-For` headers directly
+- include the same recorded `ipAddress` in payment details' `activity` entries
+
+Existing databases must apply `infra/migrations/20261014_audit_ip_address.sql` before running the updated API. Fresh databases include the nullable column in `infra/seed.sql`. Older events are not backfilled. Audit signing includes the address when present and preserves the existing canonical JSON for entries without an address.
+
+See [Audit IP setup](../docs/audit-ip-address.md) for local migration and proxy configuration.
 
 ---
 

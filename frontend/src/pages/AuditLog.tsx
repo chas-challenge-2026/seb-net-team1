@@ -8,7 +8,7 @@ import Sidebar from "../components/dashboard/Sidebar";
 import Button from "../components/shared/Button";
 import Card from "../components/shared/Card";
 import type { AuditEntry, AuditLogResponse } from "../types/AuditLog";
-import { formatDateTime, formatEntity, getActionPresentation } from "../utils/auditPresentation";
+import { formatAuditIpAddress, formatDateTime, formatEntity, getActionPresentation } from "../utils/auditPresentation";
 import "../styles/dashboard.css";
 import "../styles/auditLog.css";
 
@@ -312,6 +312,7 @@ export default function AuditLog() {
                           {auditLog.entries.map((entry) => {
                             const action = getActionPresentation(entry.action);
                             const entity = formatEntity(entry);
+                            const ipAddress = formatAuditIpAddress(entry.ipAddress);
 
                             return (
                               <tr key={entry.id}>
@@ -350,9 +351,11 @@ export default function AuditLog() {
                                     <span>Audit #{entry.id}</span>
                                   </p>
                                 </td>
-                                <td className="audit-log-ip" title="IP-adress saknas i API-svaret.">
-                                  <span aria-hidden="true">—</span>
-                                  <span className="audit-log-sr-only">IP-adress saknas</span>
+                                <td className="audit-log-ip">
+                                  {ipAddress ?? <>
+                                    <span aria-hidden="true">—</span>
+                                    <span className="audit-log-sr-only">IP-adress saknas</span>
+                                  </>}
                                 </td>
                               </tr>
                             );
