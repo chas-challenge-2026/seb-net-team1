@@ -37,7 +37,7 @@ No request body.
       "action": "CREATE_PAYMENT",
       "entityType": "payment",
       "entityId": 42,
-      "description": "Skapade betalning 12500.00 SEK till SE4550000000054910000099",
+      "description": "Skapade betalning 12500.00 SEK till SE6250000000054910000099",
       "createdAt": "2026-08-30T09:15:00Z",
       "userName": "Lisa Andersson"
     }

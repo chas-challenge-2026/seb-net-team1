@@ -39,7 +39,7 @@ public class PaymentsAuthorizationIntegrationTests
         var request = new CreatePaymentRequestDto
         {
             FromAccountId = 1,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 125.50m,
             Reference = "Integration test"
         };
@@ -86,7 +86,7 @@ public class PaymentsAuthorizationIntegrationTests
         var request = new CreatePaymentRequestDto
         {
             FromAccountId = 1,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 125.50m,
             Reference = "Integration test"
         };
@@ -117,7 +117,7 @@ public class PaymentsAuthorizationIntegrationTests
                 Id = 2,
                 TenantId = 1,
                 AccountName = "Företagskonto",
-                Iban = "SE3550000000054910000011",
+                Iban = "SE1350000000054910000011",
                 Balance = 1000m,
                 Currency = "SEK"
             });
@@ -140,7 +140,7 @@ public class PaymentsAuthorizationIntegrationTests
         var response = await _client.PostAsJsonAsync("/api/payments", new CreatePaymentRequestDto
         {
             FromAccountId = 2,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 125.50m,
             Reference = "Role test"
         });

@@ -28,7 +28,7 @@ public class ReportsApiIntegrationTests
             new User { Id = 2, TenantId = 2, Name = "Annan användare", Email = "other@example.test", Role = UserRoles.Admin });
         db.Accounts.AddRange(
             new Account { Id = 1, TenantId = 1, AccountName = "Driftkonto", Iban = "SE3550000000054910000003", Balance = 1000m },
-            new Account { Id = 2, TenantId = 2, AccountName = "Annat företags konto", Iban = "SE4550000000054910000099", Balance = 2000m });
+            new Account { Id = 2, TenantId = 2, AccountName = "Annat företags konto", Iban = "SE6250000000054910000099", Balance = 2000m });
         db.Payments.AddRange(payments);
         await db.SaveChangesAsync();
     }
@@ -59,7 +59,7 @@ public class ReportsApiIntegrationTests
         Id = id,
         TenantId = tenantId,
         FromAccountId = tenantId,
-        ToIban = "SE4550000000054910000099",
+        ToIban = "SE6250000000054910000099",
         Amount = 1250.50m,
         Reference = $"Faktura {id}",
         Status = PaymentStatuses.Completed,

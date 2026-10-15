@@ -62,7 +62,7 @@ public class PaymentDoubleApprovalTests
     }
 
     private static Task<Payment> CreateAsync(PaymentService service, decimal amount, int creatorId = CreatorId) =>
-        service.CreatePaymentAsync(TenantId, AccountId, "SE8550000000054910000004",
+        service.CreatePaymentAsync(TenantId, AccountId, "SE0850000000054910000004",
             amount, "SEK", "Beloppsregel", creatorId);
 
     private static ApprovalDecisionRequestDto Approve() => new() { Action = "approve" };
@@ -242,7 +242,7 @@ public class PaymentDoubleApprovalTests
         var payment = new Payment
         {
             Id = 42, TenantId = TenantId, FromAccountId = AccountId,
-            Amount = 150000m, Currency = "SEK", ToIban = "SE8550000000054910000004",
+            Amount = 150000m, Currency = "SEK", ToIban = "SE0850000000054910000004",
             CreatedById = CreatorId, Status = PaymentStatuses.PendingApproval
         };
         var step = new ApprovalStep

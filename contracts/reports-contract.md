@@ -35,7 +35,7 @@ standard `application/problem+json` body and a safe Swedish `detail` message.
     {
       "id": 42,
       "reference": "Faktura 42",
-      "toIban": "SE4550000000054910000099",
+      "toIban": "SE6250000000054910000099",
       "fromAccountName": "Företagskonto",
       "amount": "1250.50",
       "currency": "SEK",

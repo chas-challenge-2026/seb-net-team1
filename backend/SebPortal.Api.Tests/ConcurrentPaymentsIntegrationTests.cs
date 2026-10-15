@@ -115,7 +115,7 @@ public sealed class ConcurrentPaymentsIntegrationTests
         var firstRequest = new CreatePaymentRequestDto
         {
             FromAccountId = 1,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 800m,
             Reference = "Concurrent payment A"
         };
@@ -123,7 +123,7 @@ public sealed class ConcurrentPaymentsIntegrationTests
         var secondRequest = new CreatePaymentRequestDto
         {
             FromAccountId = 1,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 800m,
             Reference = "Concurrent payment B"
         };
