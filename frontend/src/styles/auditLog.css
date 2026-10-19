@@ -319,8 +319,26 @@
   font-weight: 600;
 }
 
+.audit-log-entry-button {
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.audit-log-entry-button:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .audit-log-action {
   font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .audit-log-action--created {
@@ -349,14 +367,11 @@
 }
 
 .audit-log-description {
+  display: block;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.audit-log-description:focus {
-  overflow: visible;
-  white-space: normal;
 }
 
 .audit-log-details .audit-log-metadata {
@@ -493,7 +508,7 @@
 .audit-log-page-button:focus-visible,
 .audit-log-filter-button:focus-visible,
 .audit-log-login-link:focus-visible,
-.audit-log-description:focus-visible,
+.audit-log-entry-button:focus-visible,
 .audit-log-table-scroll:focus-visible {
   outline: 2px solid var(--seb-green);
   outline-offset: 3px;

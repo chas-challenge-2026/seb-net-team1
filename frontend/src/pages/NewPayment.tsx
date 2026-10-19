@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import { FiArrowLeft, FiBell, FiPlus, FiSearch } from "react-icons/fi";
 import { getAccounts } from "../api/accountsApi";
 import { createPayment, PAYMENT_PERMISSION_ERROR } from "../api/paymentsApi";
-import { getRecipients, RecipientApiError } from "../api/recipientsApi";
+import { getRecipients, normalizeRecipientIban, RecipientApiError } from "../api/recipientsApi";
+import { getHistoricalRecipients } from "../api/historicalRecipientsApi";
 import Sidebar from "../components/dashboard/Sidebar";
 import NewRecipientDialog from "../components/payments/NewRecipientDialog";
 import PaymentConfirmationDialog from "../components/payments/PaymentConfirmationDialog";
@@ -17,6 +18,7 @@ import type {
   CreatePaymentResponse,
 } from "../types/Payment";
 import { PAYMENT_AMOUNT_ERROR, parsePaymentAmount } from "../utils/paymentAmount";
+import { getPaymentRecipientOptions } from "../utils/paymentRecipients";
 import "../styles/dashboard.css";
 import "../styles/newPayment.css";
 
@@ -56,8 +58,15 @@ function NewPayment() {
   const [recipientRequestVersion, setRecipientRequestVersion] = useState(0);
   const [isRecipientDialogOpen, setIsRecipientDialogOpen] = useState(false);
   const [recipientSaveMessage, setRecipientSaveMessage] = useState<string | null>(null);
+  const [historicalIbans, setHistoricalIbans] = useState<string[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [historyLoadError, setHistoryLoadError] = useState<string | null>(null);
   const role = getStoredRole();
   const canAddRecipients = role === "initiator" || role === "admin";
+  const recipientOptions = getPaymentRecipientOptions(recipients, historicalIbans);
+  const selectedRecipient = selectedRecipientId
+    ? recipientOptions.find((option) => option.iban === normalizeRecipientIban(paymentForm.toIban))
+    : undefined;
 
   useEffect(() => {
     let isMounted = true;
@@ -111,16 +120,40 @@ function NewPayment() {
     return () => controller.abort();
   }, [recipientRequestVersion]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    getHistoricalRecipients(controller.signal)
+      .then((history) => {
+        if (controller.signal.aborted) return;
+        setHistoricalIbans(history.ibans);
+        if (history.incomplete) {
+          setHistoryLoadError("Vissa tidigare mottagare kunde inte kontrolleras. Du kan fortfarande välja sparade mottagare eller ange IBAN manuellt.");
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setHistoryLoadError("Tidigare godkända mottagare kunde inte hämtas. Du kan fortfarande välja sparade mottagare eller ange IBAN manuellt.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoadingHistory(false);
+      });
+    return () => controller.abort();
+  }, [recipientRequestVersion]);
+
   function refreshRecipients() {
     setIsLoadingRecipients(true);
     setDemoConfirmationEnabled(false);
     setRecipientLoadError(null);
+    setIsLoadingHistory(true);
+    setHistoryLoadError(null);
+    setHistoricalIbans([]);
     setRecipientRequestVersion((version) => version + 1);
   }
 
-  function selectRecipient(recipient: Recipient) {
-    setSelectedRecipientId(String(recipient.id));
-    setPaymentForm((current) => ({ ...current, toIban: recipient.iban }));
+  function selectRecipient(value: number | string, iban: string) {
+    setSelectedRecipientId(String(value));
+    setPaymentForm((current) => ({ ...current, toIban: iban }));
     setSubmitError(null);
     setCreatedPayment(null);
   }
@@ -128,7 +161,7 @@ function NewPayment() {
   function handleRecipientSaved(recipient: Recipient) {
     setRecipients((current) => [...current.filter((item) => item.id !== recipient.id), recipient]
       .sort((left, right) => left.name.localeCompare(right.name, "sv-SE")));
-    selectRecipient(recipient);
+    selectRecipient(recipient.id, recipient.iban);
     setRecipientSaveMessage(`${recipient.name} har sparats och valts som mottagare.`);
     setIsRecipientDialogOpen(false);
   }
@@ -313,7 +346,7 @@ function NewPayment() {
 
                 <div className="new-payment-field new-payment-recipient-field">
                   <div className="new-payment-recipient-heading">
-                    <label htmlFor="saved-recipient">Sparad mottagare</label>
+                    <label htmlFor="saved-recipient">Mottagare</label>
                     <div className="new-payment-recipient-controls">
                       <Button type="button" className="new-payment-recipient-retry" onClick={refreshRecipients} disabled={isLoadingRecipients}>Uppdatera mottagare</Button>
                       {canAddRecipients && (
@@ -332,27 +365,29 @@ function NewPayment() {
                   </div>
                   <select
                     id="saved-recipient"
-                    value={selectedRecipientId}
-                    disabled={isLoadingRecipients || recipients.length === 0}
+                    value={selectedRecipient ? String(selectedRecipient.value) : ""}
+                    disabled={isLoadingRecipients || recipientOptions.length === 0}
                     onChange={(event) => {
-                      const recipient = recipients.find((item) => String(item.id) === event.target.value);
+                      const recipient = recipientOptions.find((item) => String(item.value) === event.target.value);
                       setRecipientSaveMessage(null);
-                      if (recipient) selectRecipient(recipient);
+                      if (recipient) selectRecipient(recipient.value, recipient.iban);
                       else setSelectedRecipientId("");
                     }}
                   >
                     <option value="">{isLoadingRecipients ? "Laddar mottagare..." : "Ange IBAN manuellt eller välj mottagare"}</option>
-                    {recipients.map((recipient) => (
-                      <option key={recipient.id} value={recipient.id}>{recipient.name} – {recipient.iban}</option>
+                    {recipientOptions.map((recipient) => (
+                      <option key={recipient.value} value={recipient.value}>{recipient.label}</option>
                     ))}
                   </select>
                   {recipientLoadError ? (
                     <div className="new-payment-recipient-feedback">
                       <small role="alert">{recipientLoadError}</small>
                     </div>
-                  ) : !isLoadingRecipients && recipients.length === 0 ? (
+                  ) : !isLoadingRecipients && !isLoadingHistory && recipientOptions.length === 0 ? (
                     <small>Inga sparade mottagare ännu. Du kan ange IBAN manuellt nedan.</small>
                   ) : null}
+                  {isLoadingHistory && <small role="status">Hämtar tidigare godkända mottagare...</small>}
+                  {historyLoadError && <small role="status">{historyLoadError}</small>}
                   {canAddRecipients && !demoConfirmationEnabled && (
                     <small id="recipient-add-availability">{isLoadingRecipients
                       ? "Hämtar tillgänglighet för att lägga till mottagare..."
@@ -365,7 +400,7 @@ function NewPayment() {
 
                 <div className="new-payment-field">
                   <label htmlFor="recipient-iban">Mottagare / IBAN</label>
-                  {selectedRecipientId ? (
+                  {selectedRecipient ? (
                     <>
                       <output id="recipient-iban" htmlFor="saved-recipient" aria-describedby="recipient-manual-entry-help">{paymentForm.toIban}</output>
                       <small id="recipient-manual-entry-help">Välj Ange IBAN manuellt i listan ovan för att ändra IBAN.</small>

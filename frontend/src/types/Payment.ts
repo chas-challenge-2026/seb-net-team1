@@ -42,6 +42,7 @@ export type PaymentDetails = RecentPaymentSummary & {
   fromAccountName: string | null;
   createdByName: string | null;
   toIban: string;
+  recipientName?: string | null;
   amount: string;
   currency: string;
   reference: string | null;
