@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using SebPortal.Api.Data;
 using SebPortal.Api.Models;
 using SebPortal.Api.Repositories;
@@ -301,6 +302,39 @@ public class AuditServiceTests
 
         Assert.Single(page.Entries);
         Assert.Null(page.NextCursor);
+    }
+
+    [Fact]
+    public async Task GetAuditLogAsync_UnspecifiedStoredTimestamp_SerializesAsUtcWithoutChangingStoredEntry()
+    {
+        using var db = CreateContext();
+        SeedTenant(db, 1, "Tenant A");
+        var storedTimestamp = new DateTime(2026, 10, 14, 11, 9, 46, DateTimeKind.Unspecified);
+        var entry = new AuditEntry
+        {
+            TenantId = 1,
+            Action = "CREATE_PAYMENT",
+            EntityType = "payment",
+            EntityId = 31,
+            CreatedAt = storedTimestamp,
+            PreviousSignature = "GENESIS",
+            Signature = UnsignedPlaceholderAuditSigner.Marker
+        };
+        db.AuditEntries.Add(entry);
+        await db.SaveChangesAsync();
+        var canonicalBeforeRead = AuditSigningFormat.Build(entry, entry.PreviousSignature);
+
+        var page = await CreateService(db).GetAuditLogAsync(1, limit: 50, cursor: null);
+
+        var returned = Assert.Single(page.Entries);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(returned,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.Equal("2026-10-14T11:09:46Z", json.RootElement.GetProperty("createdAt").GetString());
+        var stored = await db.AuditEntries.AsNoTracking().SingleAsync();
+        Assert.Equal(DateTimeKind.Unspecified, stored.CreatedAt.Kind);
+        Assert.Equal(storedTimestamp, stored.CreatedAt);
+        Assert.Equal(canonicalBeforeRead, AuditSigningFormat.Build(stored, stored.PreviousSignature));
+        Assert.Equal(UnsignedPlaceholderAuditSigner.Marker, stored.Signature);
     }
 
     [Fact]

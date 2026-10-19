@@ -119,6 +119,75 @@ test("creation remains visible when approval timeline data is missing", () => {
   assert.equal((markup.match(/<li\b/g) ?? []).length, 1);
 });
 
+test("completed payment shows creation, actual approvers and the destination in order", () => {
+  const markup = render([
+    step({
+      status: "approved",
+      decidedByName: "Johan Berg",
+      decidedAt: "2026-10-14T11:10:00Z",
+    }),
+    step({
+      approvalStepId: "final-step",
+      stepNumber: 2,
+      status: "approved",
+      attestantName: "Test User",
+      decidedByName: "Test User",
+      decidedAt: "2026-10-14T11:22:00Z",
+    }),
+  ], {
+    creation: { createdByName: "Sara Ek", createdAt: "2026-10-14T11:09:00Z" },
+    completion: {
+      executedAt: "2026-10-14T11:22:00Z",
+      toIban: "SE3550000000054910000003",
+      recipientName: "Demo Leverantör AB",
+    },
+  });
+
+  assert.match(markup, /Skapad av <strong>Sara Ek<\/strong>/);
+  assert.match(markup, /Godkänd av <strong>Johan Berg<\/strong>/);
+  assert.match(markup, /Godkänd av <strong>Test User<\/strong>/);
+  assert.match(markup, /Mottagare: <strong>Demo Leverantör AB<\/strong>/);
+  assert.match(markup, /IBAN: SE3550000000054910000003/);
+  assert.match(markup, /status-badge--success[^>]*>Genomförd</);
+  assert.equal((markup.match(/<li\b/g) ?? []).length, 4);
+  assert.ok(markup.indexOf("Betalning skapad") < markup.indexOf("Atteststeg 1"));
+  assert.ok(markup.indexOf("Atteststeg 1") < markup.indexOf("Atteststeg 2"));
+  assert.ok(markup.indexOf("Atteststeg 2") < markup.indexOf("Betalning genomförd"));
+  assert.match(markup, /<time dateTime="2026-10-14T11:22:00Z">2026-10-14 13:22<\/time>/);
+});
+
+test("a direct payment shows its full flow with an explicit message about absent approval steps", () => {
+  const markup = render([], {
+    creation: { createdByName: "Sara Ek", createdAt: "2026-10-14T11:09:00Z" },
+    completion: {
+      executedAt: "2026-10-14T11:09:00Z",
+      toIban: "SE3550000000054910000003",
+    },
+    emptyMessage: "Inga separata atteststeg är registrerade för betalningen.",
+  });
+
+  assert.equal((markup.match(/<li\b/g) ?? []).length, 2);
+  assert.match(markup, /Betalning skapad/);
+  assert.match(markup, /Betalning genomförd/);
+  assert.match(markup, /Inga separata atteststeg är registrerade för betalningen/);
+  assert.doesNotMatch(markup, /Atteststeg [0-9]|Godkänd av|Uppdatera listan|Mottagare:/);
+});
+
+test("completion keeps destination text safe and reports an unavailable time without inventing an actor", () => {
+  const markup = render([], {
+    completion: {
+      executedAt: "invalid-date",
+      toIban: "SE123 & konto",
+      recipientName: "<script>alert('test')</script>",
+    },
+  });
+
+  assert.match(markup, /IBAN: SE123 &amp; konto/);
+  assert.match(markup, /&lt;script&gt;/);
+  assert.match(markup, /Tidpunkt saknas/);
+  assert.doesNotMatch(markup, /<script\b|Godkänd av|Skapad av|Invalid Date|<time\b/);
+});
+
 test("timeline shows who is waiting, including a step without an assigned attestant", () => {
   const markup = render([
     step(),
