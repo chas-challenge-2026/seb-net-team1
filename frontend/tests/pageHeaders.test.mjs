@@ -34,6 +34,7 @@ async function loadComponent(path, reactRuntime = react) {
     }],
     [new URL("api/auditLogApi.ts", src).href, { AuditLogApiError: class extends Error {}, getAuditLog: () => {} }],
     [new URL("api/accountsApi.ts", src).href, { getAccounts: () => {} }],
+    [new URL("api/historicalRecipientsApi.ts", src).href, { getHistoricalRecipients: () => {} }],
     [new URL("api/paymentsApi.ts", src).href, {
       createPayment: () => {}, getPaymentDetails: () => {}, PaymentReadError: class extends Error {},
       PAYMENT_PERMISSION_ERROR: "Du har inte behörighet att skapa betalningar. Logga in som initiator eller admin.",
