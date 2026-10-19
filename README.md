@@ -38,6 +38,10 @@ För popupen med sparade mottagare och BankID-demo, se
 [Sparade mottagare](docs/saved-recipients.md). Befintliga databaser behöver
 uppdateringen i `infra/migrations/20261013_recipients.sql`.
 
+För IP-adresser i auditloggen, se [IP-adress i auditloggen](docs/audit-ip-address.md).
+Befintliga databaser behöver `infra/migrations/20261014_audit_ip_address.sql`
+innan den uppdaterade appen startas.
+
 ---
 
 ## Lokala testkonton

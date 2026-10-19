@@ -17,7 +17,10 @@ function find(tree, predicate) {
 }
 const byId = (id) => (node) => node.props?.id === id;
 
-async function loadComponent(entry, responses, { role = "initiator", props = {}, paymentStatus = "completed", paymentError = null } = {}) {
+async function loadComponent(entry, responses, {
+  role = "initiator", props = {}, paymentStatus = "completed", paymentError = null,
+  historicalIbans = [], historyIncomplete = false, historyError = null, historyWait = null,
+} = {}) {
   const state = [];
   const refs = [];
   const dependencies = [];
@@ -25,6 +28,7 @@ async function loadComponent(entry, responses, { role = "initiator", props = {},
   const cleanups = [];
   const calls = [];
   const payments = [];
+  const historyCalls = [];
   let cursor = 0;
   const hooks = {
     useState: (initial) => {
@@ -60,6 +64,12 @@ async function loadComponent(entry, responses, { role = "initiator", props = {},
     ["../components/dashboard/Sidebar", { default: () => null }],
     ["../components/payments/PaymentConfirmationDialog", { default: () => null }],
     ["../api/accountsApi", { getAccounts: async () => [{ id: 1, accountName: "Konto", iban: "SE4550000000054910000099", currency: "SEK" }] }],
+    ["../api/historicalRecipientsApi", { getHistoricalRecipients: async (signal) => {
+      historyCalls.push(signal);
+      if (historyWait) await historyWait;
+      if (historyError) throw historyError;
+      return { ibans: historicalIbans, incomplete: historyIncomplete };
+    } }],
     ["../api/paymentsApi", {
       createPayment: async (payment) => {
         payments.push(payment);
@@ -133,7 +143,7 @@ async function loadComponent(entry, responses, { role = "initiator", props = {},
   }
   render();
   await flushEffects();
-  return { render, flushEffects, calls, payments, opener, heading, dialog, unmount: () => cleanups.forEach((cleanup) => cleanup?.()) };
+  return { render, flushEffects, calls, payments, historyCalls, opener, heading, dialog, unmount: () => cleanups.forEach((cleanup) => cleanup?.()) };
 }
 
 test("saved recipients load again after reload, fill payment IBAN and remain optional for manual entry", async () => {
@@ -176,6 +186,82 @@ test("only initiator/admin and an explicit enabled flag can open add recipient",
       assert.ok(find(render(), (node) => typeof node.props?.onSaved === "function"));
     }
   }
+});
+
+test("historical recipients appear alongside saved recipients and submit the selected IBAN", async () => {
+  const historicalIban = "SE3550000000054910000003";
+  const { render, payments, calls } = await loadComponent("../src/pages/NewPayment.tsx", [
+    { body: { recipients: [recipient], demoConfirmationEnabled: true } },
+  ], { historicalIbans: [historicalIban] });
+  assert.ok(find(render(), (node) => node.type === "option" && node.props.value === recipient.id));
+  const option = find(render(), (node) => node.type === "option" && node.props.value === `history:${historicalIban}`);
+  assert.match(option.props.children, /Tidigare godkänd betalning/);
+  find(render(), byId("saved-recipient")).props.onChange({ target: { value: option.props.value } });
+  assert.equal(find(render(), byId("recipient-iban")).type, "output");
+  assert.equal(find(render(), byId("recipient-iban")).props.children, historicalIban);
+  find(render(), byId("from-account")).props.onChange({ target: { value: "1" } });
+  find(render(), byId("amount")).props.onChange({ target: { name: "amount", value: "60.00" } });
+  await find(render(), (node) => node.type === "form").props.onSubmit({ preventDefault() {} });
+  assert.equal(payments[0].toIban, historicalIban);
+  assert.equal(calls.length, 1, "Historical selection must not create a saved recipient");
+  find(render(), byId("saved-recipient")).props.onChange({ target: { value: "" } });
+  assert.equal(find(render(), byId("recipient-iban")).type, "input");
+  assert.equal(find(render(), byId("recipient-iban")).props.value, historicalIban);
+});
+
+test("normalized duplicate historical IBANs retain the saved recipient and its name", async () => {
+  const { render } = await loadComponent("../src/pages/NewPayment.tsx", [
+    { body: { recipients: [recipient], demoConfirmationEnabled: true } },
+  ], { historicalIbans: [recipient.iban.toLowerCase(), "SE45 5000 0000 0549 1000 0099"] });
+  const selected = find(render(), (node) => node.type === "option" && node.props.value === recipient.id);
+  assert.match(selected.props.children, /Testmottagare/);
+  assert.equal(find(render(), (node) => node.type === "option" && String(node.props.value).startsWith("history:")), undefined);
+  find(render(), byId("saved-recipient")).props.onChange({ target: { value: String(recipient.id) } });
+  assert.equal(find(render(), byId("recipient-iban")).props.children, recipient.iban);
+});
+
+test("adding a saved name for a selected historical recipient replaces rather than duplicates it", async () => {
+  const { render } = await loadComponent("../src/pages/NewPayment.tsx", [
+    { body: { recipients: [], demoConfirmationEnabled: true } },
+  ], { historicalIbans: [recipient.iban] });
+  find(render(), byId("saved-recipient")).props.onChange({ target: { value: `history:${recipient.iban}` } });
+  find(render(), (node) => node.props?.className === "new-payment-add-recipient").props.onClick();
+  find(render(), (node) => typeof node.props?.onSaved === "function").props.onSaved(recipient);
+  assert.equal(find(render(), byId("saved-recipient")).props.value, String(recipient.id));
+  assert.ok(find(render(), (node) => node.type === "option" && node.props.value === recipient.id));
+  assert.equal(find(render(), (node) => node.type === "option" && String(node.props.value).startsWith("history:")), undefined);
+  assert.equal(find(render(), byId("recipient-iban")).props.children, recipient.iban);
+});
+
+test("history failures and partial results never break saved-recipient selection or adding", async () => {
+  for (const history of [{ historyError: new Error("History unavailable") }, { historyIncomplete: true, historicalIbans: ["SE3550000000054910000003"] }]) {
+    const { render } = await loadComponent("../src/pages/NewPayment.tsx", [
+      { body: { recipients: [recipient], demoConfirmationEnabled: true } },
+    ], history);
+    assert.equal(find(render(), byId("saved-recipient")).props.disabled, false);
+    find(render(), byId("saved-recipient")).props.onChange({ target: { value: String(recipient.id) } });
+    assert.equal(find(render(), byId("recipient-iban")).props.children, recipient.iban);
+    const status = find(render(), (node) => node.props?.role === "status" && /kunde inte/.test(node.props.children));
+    assert.ok(status);
+    const add = find(render(), (node) => node.props?.className === "new-payment-add-recipient");
+    assert.equal(add.props.disabled, false);
+    add.props.onClick();
+    assert.ok(find(render(), (node) => typeof node.props?.onSaved === "function"));
+  }
+});
+
+test("slow history loading does not disable saved recipients and unmount cancels it", async () => {
+  let resolve;
+  const historyWait = new Promise((done) => { resolve = done; });
+  const { render, historyCalls, unmount } = await loadComponent("../src/pages/NewPayment.tsx", [
+    { body: { recipients: [recipient], demoConfirmationEnabled: true } },
+  ], { historyWait });
+  assert.equal(find(render(), byId("saved-recipient")).props.disabled, false);
+  assert.equal(historyCalls[0].aborted, false);
+  unmount();
+  assert.equal(historyCalls[0].aborted, true);
+  resolve();
+  await new Promise((done) => setImmediate(done));
 });
 
 test("recipient load failure disables add while a manual payment still submits normally", async () => {
