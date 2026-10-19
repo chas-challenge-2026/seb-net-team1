@@ -20,6 +20,12 @@ public class RecipientRepository(SebDbContext dbContext)
         dbContext.Recipients.AnyAsync(recipient =>
             recipient.TenantId == tenantId && recipient.Iban == iban);
 
+    public Task<string?> GetNameByIbanAsync(int tenantId, string iban) =>
+        dbContext.Recipients.AsNoTracking()
+            .Where(recipient => recipient.TenantId == tenantId && recipient.Iban == iban)
+            .Select(recipient => recipient.Name)
+            .FirstOrDefaultAsync();
+
     public async Task AddAsync(Recipient recipient)
     {
         dbContext.Recipients.Add(recipient);

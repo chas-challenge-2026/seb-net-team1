@@ -105,6 +105,7 @@ export async function getPaymentDetails(
     typeof payment.currency !== "string" ||
     typeof payment.status !== "string" ||
     typeof payment.createdAt !== "string" ||
+    (payment.recipientName != null && typeof payment.recipientName !== "string") ||
     !Array.isArray(payment.approvalTimeline) ||
     !Array.isArray(payment.activity)
   ) {

@@ -108,6 +108,7 @@ builder.Services.Configure<PaymentRulesOptions>(
     builder.Configuration.GetSection(PaymentRulesOptions.SectionName));
 
 // Services
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<JwtTokenService>();
 
