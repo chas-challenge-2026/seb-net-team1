@@ -178,6 +178,59 @@ test("audit GET sends cookies, cursor and abort signal without requesting CSRF",
   assert.equal(requestedUrl.searchParams.has("role"), false);
 });
 
+test("audit GET encodes all combined filters without changing their meaning", async () => {
+  const expected = { entries: [], nextCursor: null };
+  const { api, calls } = await loadApi({ body: expected });
+  const filters = {
+    search: "Sara & betalning #36 + konto",
+    action: "APPROVE_PAYMENT_STEP",
+    userId: 0,
+    from: "2026-10-24T22:00:00.000Z",
+    to: "2026-10-25T23:00:00.000Z",
+  };
+
+  assert.deepEqual(await api.getAuditLog(filters), expected);
+  assertAuditGet(calls);
+  const query = new URL(calls[0].url).searchParams;
+  for (const [name, value] of Object.entries(filters)) {
+    assert.equal(query.get(name), String(value));
+  }
+  assert.equal(query.get("limit"), "50");
+  assert.equal(query.has("konto"), false);
+});
+
+test("audit filter options use an authenticated GET and preserve the abort signal", async () => {
+  const expected = {
+    actions: ["CREATE_PAYMENT", "APPROVE_PAYMENT"],
+    users: [{ id: 0, name: "Systemet" }, { id: 7, name: "Sara Ek" }],
+  };
+  const { api, calls } = await loadApi({ body: expected });
+  const controller = new AbortController();
+
+  assert.deepEqual(await api.getAuditLogFilterOptions(controller.signal), expected);
+  assert.equal(calls.length, 1);
+  assert.equal(new URL(calls[0].url).pathname, "/api/audit-log/filters");
+  assert.equal(calls[0].options.method, "GET");
+  assert.equal(calls[0].options.credentials, "include");
+  assert.equal(calls[0].options.signal, controller.signal);
+  assert.equal(calls[0].options.headers.has("X-CSRF-TOKEN"), false);
+  assert.equal(calls[0].options.body, undefined);
+});
+
+test("audit filter options retain typed authorization errors", async () => {
+  const { api } = await loadApi({
+    status: 403,
+    body: { detail: "Connection secret: database-password" },
+  });
+
+  await assert.rejects(api.getAuditLogFilterOptions(), (error) => {
+    assert.ok(error instanceof api.AuditLogApiError);
+    assert.equal(error.status, 403);
+    assert.doesNotMatch(error.message, /Connection|secret|database-password/);
+    return true;
+  });
+});
+
 for (const [status, message] of [
   [403, "Du saknar behörighet"],
   [401, "Åtkomst nekad. Logga in igen."],
