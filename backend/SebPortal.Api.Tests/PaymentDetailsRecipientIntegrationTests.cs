@@ -8,7 +8,7 @@ namespace SebPortal.Api.Tests;
 
 public sealed class PaymentDetailsRecipientIntegrationTests
 {
-    private const string DestinationIban = "SE4550000000054910000099";
+    private const string DestinationIban = "SE6250000000054910000099";
 
     [Theory]
     [InlineData(true, true, "Own supplier")]

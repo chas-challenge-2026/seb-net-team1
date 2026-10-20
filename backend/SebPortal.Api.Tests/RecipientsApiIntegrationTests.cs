@@ -19,7 +19,7 @@ namespace SebPortal.Api.Tests;
 /// <summary>Exercises saved recipients through authorization, validation and the HTTP contract.</summary>
 public sealed class RecipientsApiIntegrationTests
 {
-    private const string Iban = "SE4550000000054910000099";
+    private const string Iban = "SE6250000000054910000099";
 
     [Theory]
     [InlineData("GET")]
