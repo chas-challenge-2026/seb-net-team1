@@ -62,6 +62,7 @@ async function loadComponent(entry, responses, {
     ["react", hooks], ["react/jsx-runtime", jsxRuntime], ["react-icons/fi", icons],
     ["react-router-dom", { Link: () => null }],
     ["../components/dashboard/Sidebar", { default: () => null }],
+    ["../components/dashboard/ApprovalNotifications", { default: () => null }],
     ["../components/payments/PaymentConfirmationDialog", { default: () => null }],
     ["../api/accountsApi", { getAccounts: async () => [{ id: 1, accountName: "Konto", iban: "SE4550000000054910000099", currency: "SEK" }] }],
     ["../api/historicalRecipientsApi", { getHistoricalRecipients: async (signal) => {
