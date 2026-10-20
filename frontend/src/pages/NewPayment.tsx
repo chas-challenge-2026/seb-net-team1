@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { FiArrowLeft, FiBell, FiPlus, FiSearch } from "react-icons/fi";
+import { FiArrowLeft, FiPlus, FiSearch } from "react-icons/fi";
 import { getAccounts } from "../api/accountsApi";
 import { createPayment, PAYMENT_PERMISSION_ERROR } from "../api/paymentsApi";
 import { getRecipients, normalizeRecipientIban, RecipientApiError } from "../api/recipientsApi";
 import { getHistoricalRecipients } from "../api/historicalRecipientsApi";
 import Sidebar from "../components/dashboard/Sidebar";
+import ApprovalNotifications from "../components/dashboard/ApprovalNotifications";
 import NewRecipientDialog from "../components/payments/NewRecipientDialog";
 import PaymentConfirmationDialog from "../components/payments/PaymentConfirmationDialog";
 import Button from "../components/shared/Button";
@@ -284,13 +285,7 @@ function NewPayment() {
               />
             </div>
 
-            <button
-              className="dashboard-notification-button"
-              type="button"
-              aria-label="Notifikationer"
-            >
-              <FiBell className="dashboard-notification-icon" />
-            </button>
+            <ApprovalNotifications />
           </div>
         </header>
 

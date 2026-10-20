@@ -4,6 +4,7 @@ import type {
   ApprovalInboxResponse,
 } from "../types/Approval";
 import { apiRequest } from "./apiClient";
+import { notifyApprovalsUpdated } from "../utils/approvalUpdates";
 
 type ApprovalInboxRequest = {
   signal?: AbortSignal;
@@ -151,6 +152,7 @@ export async function decideApproval(
       throw new ApprovalDecisionApiError(response.status);
     }
 
+    notifyApprovalsUpdated();
     return decision;
   } catch {
     throw new ApprovalDecisionApiError(response.status);

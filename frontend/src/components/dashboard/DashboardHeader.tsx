@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { ChangeEvent } from "react";
 import type { User } from "../../types/User";
-import { FiBell, FiSearch } from "react-icons/fi";
+import { FiSearch } from "react-icons/fi";
+import ApprovalNotifications from "./ApprovalNotifications";
 import "../../styles/dashboard.css";
 
 interface DashboardHeaderProps {
@@ -10,7 +11,6 @@ interface DashboardHeaderProps {
     subtitle?: string;
     showSearch?: boolean;
   onSearch?: (value: string) => void;
-  onNotificationClick?: () => void;
 }
 
 export default function DashboardHeader({
@@ -19,7 +19,6 @@ export default function DashboardHeader({
     subtitle,
     showSearch = true,
     onSearch,
-    onNotificationClick,
 }: DashboardHeaderProps) {
     const [searchValue, setSearchValue] = useState("");
 
@@ -52,16 +51,7 @@ export default function DashboardHeader({
                 </div>
                 )}
 
-                <button
-                    className="dashboard-notification-button"
-                    type="button"
-                    onClick={onNotificationClick}
-                    disabled={!onNotificationClick}
-                    title={onNotificationClick ? "Notifikationer" : "Notifikationer är inte tillgängliga"}
-                    aria-label="Notifikationer"
-                >
-                    <FiBell className="dashboard-notification-icon" />
-                </button>
+                <ApprovalNotifications user={user} />
             </div>
         </header>
     );

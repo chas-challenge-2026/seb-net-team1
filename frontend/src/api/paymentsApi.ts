@@ -9,6 +9,7 @@ import type {
 import type { User } from "../types/User";
 import { PAYMENT_AMOUNT_ERROR, parsePaymentAmount } from "../utils/paymentAmount";
 import { apiRequest } from "./apiClient";
+import { notifyApprovalsUpdated } from "../utils/approvalUpdates";
 
 const PAYMENTS_ENDPOINT = "/api/payments";
 const DEFAULT_PAYMENT_ERROR_MESSAGE = "Kunde inte skapa betalningen.";
@@ -168,6 +169,7 @@ export async function createPayment(
     throw new Error("Svaret från betalningstjänsten var ofullständigt.");
   }
 
+  notifyApprovalsUpdated();
   return {
     id: createdPayment.id,
     status: createdPayment.status,
