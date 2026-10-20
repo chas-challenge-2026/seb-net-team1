@@ -84,11 +84,12 @@ public class AuditService(
         }
     }
 
-    public async Task<AuditLogResponseDto> GetAuditLogAsync(int tenantId, int limit, string? cursor)
+    public async Task<AuditLogResponseDto> GetAuditLogAsync(
+        int tenantId, int limit, string? cursor, AuditLogQuery? filters = null)
     {
         var beforeId = DecodeCursor(cursor);
 
-        var rows = await auditRepository.GetPageAsync(tenantId, limit, beforeId);
+        var rows = await auditRepository.GetPageAsync(tenantId, limit, beforeId, filters);
 
         var hasMore = rows.Count > limit;
         var page = hasMore ? rows.Take(limit).ToList() : rows;
@@ -100,6 +101,9 @@ public class AuditService(
         };
     }
 
+    public Task<AuditLogFiltersDto> GetFiltersAsync(int tenantId) =>
+        auditRepository.GetFiltersAsync(tenantId);
+
     private static AuditEntryDto ToDto(AuditEntry entry) => new()
     {
         Id = entry.Id,
@@ -108,7 +112,7 @@ public class AuditService(
         EntityId = entry.EntityId,
         Description = entry.Description ?? "",
         CreatedAt = DateTime.SpecifyKind(entry.CreatedAt, DateTimeKind.Utc),
-        UserName = entry.User?.Name ?? "Systemet",
+        UserName = entry.User?.TenantId == entry.TenantId ? entry.User.Name : "Systemet",
         IpAddress = entry.IpAddress
     };
 

@@ -32,7 +32,9 @@ async function loadComponent(path, reactRuntime = react) {
     [new URL("hooks/usePaymentOverview.ts", src).href, {
       usePaymentOverview: () => ({ data: overview, isLoading: false, error: null, needsLogin: false, retry: () => {} }),
     }],
-    [new URL("api/auditLogApi.ts", src).href, { AuditLogApiError: class extends Error {}, getAuditLog: () => {} }],
+    [new URL("api/auditLogApi.ts", src).href, {
+      AuditLogApiError: class extends Error {}, getAuditLog: () => {}, getAuditLogFilterOptions: () => {},
+    }],
     [new URL("api/accountsApi.ts", src).href, { getAccounts: () => {} }],
     [new URL("api/historicalRecipientsApi.ts", src).href, { getHistoricalRecipients: () => {} }],
     [new URL("api/paymentsApi.ts", src).href, {
@@ -114,11 +116,14 @@ test("Audit Log has one heading with its subtitle directly beneath it in the hea
   assert.match(markup, /<section class="audit-log-results" aria-label="Registrerade audithändelser">/);
 });
 
-test("Audit Log retains existing search and filter availability feedback", () => {
+test("Audit Log has one accessible search field in its filter toolbar", () => {
   const markup = render(AuditLog);
-  assert.match(markup, /name="search"/);
-  for (const name of ["dateRange", "action", "user"]) assert.match(markup, new RegExp(`name="${name}"`));
-  assert.match(markup, /Sökning och filtrering är inte tillgängliga ännu. Inga filter har tillämpats./);
+  assert.equal((markup.match(/type="search"/g) ?? []).length, 1);
+  assert.match(markup, /<form class="audit-log-toolbar"[^>]*>.*name="search"/);
+  for (const name of ["dateRange", "action", "userId"]) assert.match(markup, new RegExp(`name="${name}"`));
+  assert.match(markup, /aria-label="Sök och filtrera audit-loggen"/);
+  assert.match(markup, /type="submit"[^>]*>.*Filtrera<\/button>/);
+  assert.doesNotMatch(markup, /Sökning och filtrering är inte tillgängliga ännu/);
   assert.match(markup, /Hämtar granskningslogg/);
 });
 

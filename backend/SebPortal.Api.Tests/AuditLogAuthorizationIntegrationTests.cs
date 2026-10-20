@@ -29,10 +29,12 @@ public class AuditLogAuthorizationIntegrationTests
 	/// <summary>
 	/// Verifies that the audit log rejects requests without a JWT.
 	/// </summary>
-	[Fact]
-	public async Task GetAuditLog_WithoutToken_ReturnsUnauthorized()
+	[Theory]
+	[InlineData("/api/audit-log")]
+	[InlineData("/api/audit-log/filters")]
+	public async Task GetAuditLog_WithoutToken_ReturnsUnauthorized(string path)
 	{
-		var response = await _client.GetAsync("/api/audit-log");
+		var response = await _client.GetAsync(path);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -59,6 +61,23 @@ public class AuditLogAuthorizationIntegrationTests
 				name: "Test User");
 
 		using var request = new HttpRequestMessage(HttpMethod.Get, "/api/audit-log");
+		request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+		var response = await _client.SendAsync(request);
+
+		Assert.Equal(expected, response.StatusCode);
+	}
+
+	[Theory]
+	[InlineData("attestant", HttpStatusCode.OK)]
+	[InlineData("admin", HttpStatusCode.OK)]
+	[InlineData("initiator", HttpStatusCode.Forbidden)]
+	public async Task GetFilters_DependsOnRole(string role, HttpStatusCode expected)
+	{
+		using var scope = _factory.Services.CreateScope();
+		var token = scope.ServiceProvider.GetRequiredService<JwtTokenService>()
+			.GenerateToken(1, 1, "test@malmobygg.se", role, "Test User");
+		using var request = new HttpRequestMessage(HttpMethod.Get, "/api/audit-log/filters");
 		request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
 		var response = await _client.SendAsync(request);
