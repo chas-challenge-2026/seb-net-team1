@@ -9,9 +9,11 @@ import type {
 import type { User } from "../types/User";
 import { PAYMENT_AMOUNT_ERROR, parsePaymentAmount } from "../utils/paymentAmount";
 import { apiRequest } from "./apiClient";
+import { notifyApprovalsUpdated } from "../utils/approvalUpdates";
 
 const PAYMENTS_ENDPOINT = "/api/payments";
 const DEFAULT_PAYMENT_ERROR_MESSAGE = "Kunde inte skapa betalningen.";
+export const PAYMENT_PERMISSION_ERROR = "Du har inte behörighet att skapa betalningar. Logga in som initiator eller admin.";
 
 type PaymentOverviewResponse = {
   recentPayments: RecentPaymentSummary[];
@@ -104,6 +106,7 @@ export async function getPaymentDetails(
     typeof payment.currency !== "string" ||
     typeof payment.status !== "string" ||
     typeof payment.createdAt !== "string" ||
+    (payment.recipientName != null && typeof payment.recipientName !== "string") ||
     !Array.isArray(payment.approvalTimeline) ||
     !Array.isArray(payment.activity)
   ) {
@@ -166,6 +169,7 @@ export async function createPayment(
     throw new Error("Svaret från betalningstjänsten var ofullständigt.");
   }
 
+  notifyApprovalsUpdated();
   return {
     id: createdPayment.id,
     status: createdPayment.status,
@@ -179,6 +183,9 @@ export async function createPayment(
 }
 
 async function getPaymentErrorMessage(response: Response): Promise<string> {
+  if (response.status === 401) return "Din inloggning har gått ut. Logga in igen.";
+  if (response.status === 403) return PAYMENT_PERMISSION_ERROR;
+
   try {
     const errorBody = (await response.json()) as PaymentApiError;
 

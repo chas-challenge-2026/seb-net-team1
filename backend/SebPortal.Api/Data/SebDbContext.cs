@@ -16,6 +16,7 @@ public class SebDbContext : DbContext
     public DbSet<ApprovalStep> ApprovalSteps => Set<ApprovalStep>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
+    public DbSet<Recipient> Recipients => Set<Recipient>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -165,8 +166,16 @@ public class SebDbContext : DbContext
             entity.Property(e => e.EntityType).HasColumnName("entity_type").HasMaxLength(50);
             entity.Property(e => e.EntityId).HasColumnName("entity_id");
             entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            // seed.sql stores audit timestamps as UTC wall-clock values in TIMESTAMP.
+            // Send UTC values/filters as that same type, avoiding session-timezone
+            // conversions in PostgreSQL comparisons. Reading preserves stored ticks.
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at")
+                .HasColumnType("timestamp without time zone")
+                .HasConversion(
+                    value => DateTime.SpecifyKind(value, DateTimeKind.Unspecified),
+                    value => value);
             entity.Property(e => e.Signature).HasColumnName("signature");
+            entity.Property(e => e.IpAddress).HasColumnName("ip_address").HasMaxLength(45);
             entity.Property(e => e.PreviousSignature).HasColumnName("previous_signature");
             entity.HasOne<Tenant>()
                 .WithMany()
@@ -179,6 +188,25 @@ public class SebDbContext : DbContext
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasIndex(e => new { e.TenantId, e.Id });
+        });
+
+        // Recipients
+        modelBuilder.Entity<Recipient>(entity =>
+        {
+            entity.ToTable("recipients");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(100);
+            entity.Property(e => e.Iban).HasColumnName("iban").HasMaxLength(34);
+            entity.Property(e => e.CreatedById).HasColumnName("created_by");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.HasIndex(e => new { e.TenantId, e.Iban })
+                .IsUnique().HasDatabaseName("ux_recipients_tenant_iban");
+            entity.HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.CreatedById)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Transactions

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { FiCheckCircle, FiClock, FiRefreshCw } from "react-icons/fi";
 import { ApprovalApiError, getApprovalInbox } from "../api/approvalsApi";
@@ -39,6 +39,9 @@ function formatAmount(amount: string, currency: string): string {
 
 export default function ApprovalInbox() {
   const [searchParams] = useSearchParams();
+  const paymentQuery = searchParams.get("paymentId") ?? "";
+  const location = useLocation();
+  const selectionContext = `${location.key}:${paymentQuery}`;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [pending, setPending] = useState<PendingApproval[] | null>(null);
   const [recentlyHandled, setRecentlyHandled] = useState<HandledApproval[] | null>(null);
@@ -47,7 +50,10 @@ export default function ApprovalInbox() {
   const [requestVersion, setRequestVersion] = useState(0);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [selectedHistory, setSelectedHistory] = useState<HandledApproval | null>(null);
-  const selectedApproval = pending?.find((approval) => approval.approvalStepId === selectedStepId);
+  const [selectionQuery, setSelectionQuery] = useState(selectionContext);
+  const selectedApproval = selectionQuery === selectionContext
+    ? pending?.find((approval) => approval.approvalStepId === selectedStepId)
+    : undefined;
   const isLoading = pending === null && error === null;
 
   useEffect(() => {
@@ -58,9 +64,11 @@ export default function ApprovalInbox() {
         if (!controller.signal.aborted) {
           setPending(inbox.pending);
           setRecentlyHandled(inbox.recentlyHandled);
-          const paymentId = Number(searchParams.get("paymentId"));
+          const paymentId = Number(paymentQuery);
           const matchingApproval = inbox.pending.find((approval) => approval.paymentId === paymentId);
-          if (matchingApproval) setSelectedStepId(matchingApproval.approvalStepId);
+          setSelectedStepId(matchingApproval?.approvalStepId ?? null);
+          setSelectedHistory(null);
+          setSelectionQuery(selectionContext);
         }
       })
       .catch((cause: unknown) => {
@@ -78,7 +86,7 @@ export default function ApprovalInbox() {
       });
 
     return () => controller.abort();
-  }, [requestVersion, searchParams]);
+  }, [requestVersion, paymentQuery, selectionContext]);
 
   function refreshInbox() {
     setSelectedStepId(null);
@@ -290,7 +298,7 @@ export default function ApprovalInbox() {
           }}
         />
       )}
-      {selectedHistory && (
+      {selectedHistory && selectionQuery === selectionContext && (
         <ApprovalHistoryDetails approval={selectedHistory} onClose={() => setSelectedHistory(null)} />
       )}
     </div>

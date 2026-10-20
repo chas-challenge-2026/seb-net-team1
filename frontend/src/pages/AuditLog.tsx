@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { FiChevronDown, FiChevronLeft, FiChevronRight, FiSearch, FiSliders } from "react-icons/fi";
-import { AuditLogApiError, getAuditLog } from "../api/auditLogApi";
+import { AuditLogApiError, getAuditLog, getAuditLogFilterOptions } from "../api/auditLogApi";
+import AuditEntryDetails from "../components/audit/AuditEntryDetails";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import Sidebar from "../components/dashboard/Sidebar";
 import Button from "../components/shared/Button";
 import Card from "../components/shared/Card";
-import type { AuditEntry, AuditLogResponse } from "../types/AuditLog";
+import type { AuditEntry, AuditLogFilterOptions, AuditLogFilters, AuditLogResponse } from "../types/AuditLog";
+import { buildAuditLogFilters, DEFAULT_AUDIT_FILTERS } from "../utils/auditFilters";
+import type { AuditFilterValues } from "../utils/auditFilters";
+import { formatAuditIpAddress, formatDateTime, formatEntity, getActionPresentation } from "../utils/auditPresentation";
 import "../styles/dashboard.css";
 import "../styles/auditLog.css";
 
@@ -43,49 +47,6 @@ function getReachedPageSlots(knownPages: number, currentPage: number): PageSlot[
   return pages;
 }
 
-type ActionPresentation = {
-  label: string;
-  tone: "created" | "approved" | "step" | "rejected" | "neutral";
-};
-
-function getActionPresentation(action: string): ActionPresentation {
-  switch (action) {
-    case "CREATE_PAYMENT":
-      return { label: "Skapade en betalning", tone: "created" };
-    case "APPROVE_PAYMENT":
-      return { label: "Godkände en betalning", tone: "approved" };
-    case "APPROVE_PAYMENT_STEP":
-      return { label: "Godkände ett atteststeg", tone: "step" };
-    case "REJECT_PAYMENT":
-      return { label: "Avvisade en betalning", tone: "rejected" };
-    default:
-      return { label: "Annan händelse", tone: "neutral" };
-  }
-}
-
-const dateTimeFormatter = new Intl.DateTimeFormat("sv-SE", {
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-});
-
-function formatDateTime(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : dateTimeFormatter.format(date);
-}
-
-function formatEntity(entry: AuditEntry): string {
-  return [
-    entry.entityType?.trim(),
-    entry.entityId != null ? `#${entry.entityId}` : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
-
 function getAuditLogError(error: unknown): AuditLogError {
   return {
     message:
@@ -107,10 +68,19 @@ export default function AuditLog() {
   const [isLoadingPage, setIsLoadingPage] = useState(false);
   const [pageError, setPageError] = useState<AuditLogError | null>(null);
   const [navigation, setNavigation] = useState<CursorNavigation>({ cursors: [undefined], index: 0 });
-  const [showFilterNotice, setShowFilterNotice] = useState(false);
+  const [filterValues, setFilterValues] = useState<AuditFilterValues>(DEFAULT_AUDIT_FILTERS);
+  const [filters, setFilters] = useState<AuditLogFilters>({});
+  const [filterValidationError, setFilterValidationError] = useState<string | null>(null);
+  const [filterOptions, setFilterOptions] = useState<AuditLogFilterOptions | null>(null);
+  const [filterOptionsError, setFilterOptionsError] = useState<AuditLogError | null>(null);
+  const [filterOptionsAttempt, setFilterOptionsAttempt] = useState(0);
+  const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentPage = navigation.index + 1;
   const pageSlots = getReachedPageSlots(navigation.cursors.length, currentPage);
+  const hasFilters = Boolean(filters.search || filters.action || filters.userId !== undefined || filters.from || filters.to);
+  const hasFilterValues = Boolean(filterValues.search || filterValues.action || filterValues.userId || filterValues.dateRange !== "all");
 
   const loadPage = useCallback((request?: PageRequest) => {
     if (activeRequest.current) {
@@ -121,10 +91,11 @@ export default function AuditLog() {
     activeRequest.current = controller;
     const isNavigation = request !== undefined;
 
-    getAuditLog({ cursor: request?.cursor, signal: controller.signal })
+    getAuditLog({ ...filters, cursor: request?.cursor, signal: controller.signal })
       .then((page) => {
         if (!controller.signal.aborted) {
           setAuditLog(page);
+          setSelectedEntry(null);
           setNavigation((current) => {
             if (!request) return { cursors: [undefined], index: 0 };
 
@@ -146,6 +117,7 @@ export default function AuditLog() {
           if (auditError.accessDenied) {
             // A revoked permission ends pagination and removes previously loaded rows.
             setAuditLog(null);
+            setSelectedEntry(null);
             setNavigation({ cursors: [undefined], index: 0 });
             setPageError(null);
             setInitialError(auditError);
@@ -169,7 +141,7 @@ export default function AuditLog() {
           activeRequest.current = null;
         }
       });
-  }, []);
+  }, [filters]);
 
   useEffect(() => {
     loadPage();
@@ -179,6 +151,79 @@ export default function AuditLog() {
       activeRequest.current = null;
     };
   }, [loadPage]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getAuditLogFilterOptions(controller.signal)
+      .then((options) => {
+        if (!controller.signal.aborted) setFilterOptions(options);
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        const auditError = getAuditLogError(error);
+        setFilterOptionsError(auditError);
+        if (auditError.accessDenied || auditError.requiresLogin) {
+          activeRequest.current?.abort();
+          activeRequest.current = null;
+          setAuditLog(null);
+          setSelectedEntry(null);
+          setNavigation({ cursors: [undefined], index: 0 });
+          setInitialError(auditError);
+          setIsLoading(false);
+          setIsLoadingPage(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [filterOptionsAttempt]);
+
+  useEffect(() => () => {
+    if (searchTimer.current !== null) clearTimeout(searchTimer.current);
+  }, []);
+
+  function applyFilters(values: AuditFilterValues) {
+    if (searchTimer.current !== null) {
+      clearTimeout(searchTimer.current);
+      searchTimer.current = null;
+    }
+
+    let nextFilters: AuditLogFilters;
+    try {
+      nextFilters = buildAuditLogFilters(values);
+    } catch (error: unknown) {
+      setFilterValidationError(error instanceof Error ? error.message : "Kontrollera datumintervallet.");
+      return;
+    }
+
+    activeRequest.current?.abort();
+    activeRequest.current = null;
+    setFilterValidationError(null);
+    setInitialError(null);
+    setPageError(null);
+    setAuditLog(null);
+    setSelectedEntry(null);
+    setNavigation({ cursors: [undefined], index: 0 });
+    setIsLoading(true);
+    setIsLoadingPage(false);
+    setFilters(nextFilters);
+  }
+
+  function changeFilters(change: Partial<AuditFilterValues>, debounce = false) {
+    const nextValues = { ...filterValues, ...change };
+    setFilterValues(nextValues);
+
+    if (searchTimer.current !== null) clearTimeout(searchTimer.current);
+    if (debounce) {
+      searchTimer.current = setTimeout(() => applyFilters(nextValues), 300);
+    } else {
+      applyFilters(nextValues);
+    }
+  }
+
+  function resetFilters() {
+    setFilterValues(DEFAULT_AUDIT_FILTERS);
+    applyFilters(DEFAULT_AUDIT_FILTERS);
+  }
 
   function retryInitialLoad() {
     if (activeRequest.current) {
@@ -232,67 +277,124 @@ export default function AuditLog() {
             subtitle="Registrerade händelser för ditt företag."
             showSearch={false}
           />
-          <label
-            className="audit-log-header-search"
-            title="Sökning är inte tillgänglig ännu."
-          >
-            <FiSearch aria-hidden="true" />
-            <span className="audit-log-sr-only">Sök betalningar och konton</span>
-            <input type="search" placeholder="Sök betalningar, konton..." />
-          </label>
         </div>
 
         <div className="dashboard-content audit-log-content">
-          <fieldset
+          <form
             className="audit-log-toolbar"
-            aria-describedby="audit-log-filter-availability"
-            title="Sökning och filtrering är inte tillgängliga ännu."
-            onFocus={() => setShowFilterNotice(true)}
-            onBlur={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget)) setShowFilterNotice(false);
-            }}
+            aria-label="Sök och filtrera audit-loggen"
+            onSubmit={(event) => { event.preventDefault(); applyFilters(filterValues); }}
           >
-            <legend className="audit-log-sr-only">Sök och filtrera audit-loggen</legend>
-            <p
-              id="audit-log-filter-availability"
-              className={showFilterNotice ? "audit-log-filter-notice" : "audit-log-sr-only"}
-              role="status"
-            >
-              Sökning och filtrering är inte tillgängliga ännu. Inga filter har tillämpats.
-            </p>
             <label className="audit-log-search">
               <FiSearch aria-hidden="true" />
               <span className="audit-log-sr-only">Sök loggar</span>
-              <input type="search" name="search" placeholder="Sök loggar..." />
+              <input
+                type="search"
+                name="search"
+                placeholder="Sök loggar..."
+                maxLength={200}
+                value={filterValues.search}
+                onChange={(event) => changeFilters({ search: event.target.value }, true)}
+              />
             </label>
-            <label className="audit-log-filter">
-              <select name="dateRange" aria-label="Period, endast All är tillgängligt" defaultValue="all">
-                <option value="all">Date range: All</option>
+            <label className="audit-log-filter audit-log-filter--date">
+              <select
+                name="dateRange"
+                aria-label="Period"
+                value={filterValues.dateRange}
+                onChange={(event) => changeFilters({ dateRange: event.target.value as AuditFilterValues["dateRange"] })}
+              >
+                <option value="all">Alla datum</option>
+                <option value="today">Idag</option>
+                <option value="7days">Senaste 7 dagarna</option>
+                <option value="30days">Senaste 30 dagarna</option>
+                <option value="custom">Eget intervall</option>
               </select>
               <FiChevronDown aria-hidden="true" />
             </label>
-            <label className="audit-log-filter">
-              <select name="action" aria-label="Händelse, endast All är tillgängligt" defaultValue="all">
-                <option value="all">Action: All</option>
+            <label className="audit-log-filter audit-log-filter--action">
+              <select
+                name="action"
+                aria-label="Händelse"
+                value={filterValues.action}
+                onChange={(event) => changeFilters({ action: event.target.value })}
+                disabled={filterOptions === null}
+              >
+                <option value="">Alla händelser</option>
+                {filterOptions?.actions.map((action) => (
+                  <option key={action} value={action}>
+                    {getActionPresentation(action).tone === "neutral" ? action : getActionPresentation(action).label}
+                  </option>
+                ))}
               </select>
               <FiChevronDown aria-hidden="true" />
             </label>
-            <label className="audit-log-filter">
-              <select name="user" aria-label="Användare, endast All är tillgängligt" defaultValue="all">
-                <option value="all">User: All</option>
+            <label className="audit-log-filter audit-log-filter--user">
+              <select
+                name="userId"
+                aria-label="Användare"
+                value={filterValues.userId}
+                onChange={(event) => changeFilters({ userId: event.target.value })}
+                disabled={filterOptions === null}
+              >
+                <option value="">Alla användare</option>
+                {filterOptions?.users.map((user) => <option key={user.id} value={String(user.id)}>{user.name}</option>)}
               </select>
               <FiChevronDown aria-hidden="true" />
             </label>
             <Button
-              type="button"
+              type="submit"
               className="audit-log-filter-button"
-              onClick={() => setShowFilterNotice(true)}
-              aria-describedby="audit-log-filter-availability"
             >
               <FiSliders aria-hidden="true" />
-              Filters
+              Filtrera
             </Button>
-          </fieldset>
+            {hasFilterValues && (
+              <button type="button" className="audit-log-reset-button" onClick={resetFilters}>Rensa filter</button>
+            )}
+            {filterValues.dateRange === "custom" && (
+              <div className="audit-log-custom-dates">
+                <label>
+                  Från och med
+                  <input
+                    name="fromDate"
+                    type="date"
+                    value={filterValues.fromDate}
+                    max={filterValues.toDate || undefined}
+                    onChange={(event) => changeFilters({ fromDate: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Till och med
+                  <input
+                    name="toDate"
+                    type="date"
+                    value={filterValues.toDate}
+                    min={filterValues.fromDate || undefined}
+                    onChange={(event) => changeFilters({ toDate: event.target.value })}
+                  />
+                </label>
+              </div>
+            )}
+            {filterValidationError && <p className="audit-log-filter-error" role="alert">{filterValidationError}</p>}
+            {filterOptionsError && (
+              <div className="audit-log-filter-error">
+                <p role="alert">Kunde inte hämta filtervalen. {filterOptionsError.message}</p>
+                {filterOptionsError.requiresLogin ? (
+                  <Link to="/" className="audit-log-login-link">Till inloggning</Link>
+                ) : !filterOptionsError.accessDenied ? (
+                  <button
+                    type="button"
+                    className="audit-log-reset-button"
+                    onClick={() => {
+                      setFilterOptionsError(null);
+                      setFilterOptionsAttempt((current) => current + 1);
+                    }}
+                  >Försök igen</button>
+                ) : null}
+              </div>
+            )}
+          </form>
 
           <section className="audit-log-results" aria-label="Registrerade audithändelser">
             <Card className="audit-log-card">
@@ -323,7 +425,7 @@ export default function AuditLog() {
                 <>
                   {auditLog.entries.length === 0 ? (
                     <p className="audit-log-state" role="status">
-                      Det finns inga audithändelser att visa.
+                      {hasFilters ? "Inga händelser matchar din sökning eller dina filter." : "Det finns inga audithändelser att visa."}
                     </p>
                   ) : (
                     <div
@@ -350,6 +452,7 @@ export default function AuditLog() {
                           {auditLog.entries.map((entry) => {
                             const action = getActionPresentation(entry.action);
                             const entity = formatEntity(entry);
+                            const ipAddress = formatAuditIpAddress(entry.ipAddress);
 
                             return (
                               <tr key={entry.id}>
@@ -360,26 +463,39 @@ export default function AuditLog() {
                                 </td>
                                 <td className="audit-log-user">{entry.userName || "—"}</td>
                                 <td>
-                                  <span className={`audit-log-action audit-log-action--${action.tone}`}>
+                                  <button
+                                    type="button"
+                                    className={`audit-log-entry-button audit-log-action audit-log-action--${action.tone}`}
+                                    onClick={() => setSelectedEntry(entry)}
+                                    aria-label={`Visa hela händelsen: ${action.label}, audit #${entry.id}`}
+                                    aria-haspopup="dialog"
+                                    aria-controls="audit-entry-details"
+                                  >
                                     {action.label}
-                                  </span>
+                                  </button>
                                 </td>
                                 <td className="audit-log-details">
-                                  <p
-                                    className="audit-log-description"
+                                  <button
+                                    type="button"
+                                    className="audit-log-entry-button audit-log-description"
                                     title={entry.description || "—"}
-                                    tabIndex={0}
+                                    onClick={() => setSelectedEntry(entry)}
+                                    aria-label={`Visa detaljer för audit #${entry.id}`}
+                                    aria-haspopup="dialog"
+                                    aria-controls="audit-entry-details"
                                   >
                                     {entry.description || "—"}
-                                  </p>
+                                  </button>
                                   <p className="audit-log-metadata">
                                     {entity && <span>{entity}</span>}
                                     <span>Audit #{entry.id}</span>
                                   </p>
                                 </td>
-                                <td className="audit-log-ip" title="IP-adress saknas i API-svaret.">
-                                  <span aria-hidden="true">—</span>
-                                  <span className="audit-log-sr-only">IP-adress saknas</span>
+                                <td className="audit-log-ip">
+                                  {ipAddress ?? <>
+                                    <span aria-hidden="true">—</span>
+                                    <span className="audit-log-sr-only">IP-adress saknas</span>
+                                  </>}
                                 </td>
                               </tr>
                             );
@@ -471,6 +587,13 @@ export default function AuditLog() {
           </section>
         </div>
       </main>
+      {selectedEntry && (
+        <AuditEntryDetails
+          key={selectedEntry.id}
+          entry={selectedEntry}
+          onClose={() => setSelectedEntry(null)}
+        />
+      )}
     </div>
   );
 }

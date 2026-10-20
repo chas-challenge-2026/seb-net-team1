@@ -108,6 +108,7 @@ builder.Services.Configure<PaymentRulesOptions>(
     builder.Configuration.GetSection(PaymentRulesOptions.SectionName));
 
 // Services
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<JwtTokenService>();
 
@@ -118,6 +119,8 @@ builder.Services.AddScoped<PaymentRepository>();
 builder.Services.AddScoped<PaymentQueryRepository>();
 builder.Services.AddScoped<PaymentService>();
 builder.Services.AddScoped<PaymentQueryService>();
+builder.Services.AddScoped<RecipientRepository>();
+builder.Services.AddScoped<RecipientService>();
 builder.Services.AddScoped<DashboardRepository>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<ReportRepository>();

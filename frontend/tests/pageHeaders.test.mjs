@@ -14,9 +14,10 @@ const src = new URL("../src/", import.meta.url);
 const paymentSubtitle = "Skapa, granska och spåra alla företagets utgående betalningar.";
 const auditSubtitle = "Registrerade händelser för ditt företag.";
 const overview = { recentPayments: [], user: null, tenantName: null };
+const NotificationBell = () => react.createElement("button", { type: "button", "aria-label": "Notiser" }, "Notiser");
 
-// Render the production pages and shared header. Only navigation, API reads
-// and Sidebar are isolated; effects do not run during server rendering.
+// Render production pages and their shared header. Navigation, API reads,
+// Sidebar and the separately tested notification component are isolated.
 async function loadComponent(path, reactRuntime = react) {
   const context = createContext({});
   const modules = new Map();
@@ -28,12 +29,25 @@ async function loadComponent(path, reactRuntime = react) {
       Link: ({ to, children, ...props }) => react.createElement("a", { href: to, ...props }, children),
     }],
     [new URL("components/dashboard/Sidebar.tsx", src).href, { default: () => null }],
+    [new URL("components/dashboard/ApprovalNotifications.tsx", src).href, { default: NotificationBell }],
+    [new URL("components/payments/PaymentConfirmationDialog.tsx", src).href, { default: () => null }],
     [new URL("hooks/usePaymentOverview.ts", src).href, {
       usePaymentOverview: () => ({ data: overview, isLoading: false, error: null, needsLogin: false, retry: () => {} }),
     }],
-    [new URL("api/auditLogApi.ts", src).href, { AuditLogApiError: class extends Error {}, getAuditLog: () => {} }],
+    [new URL("api/auditLogApi.ts", src).href, {
+      AuditLogApiError: class extends Error {}, getAuditLog: () => {}, getAuditLogFilterOptions: () => {},
+    }],
     [new URL("api/accountsApi.ts", src).href, { getAccounts: () => {} }],
-    [new URL("api/paymentsApi.ts", src).href, { createPayment: () => {} }],
+    [new URL("api/historicalRecipientsApi.ts", src).href, { getHistoricalRecipients: () => {} }],
+    [new URL("api/paymentsApi.ts", src).href, {
+      createPayment: () => {}, getPaymentDetails: () => {}, PaymentReadError: class extends Error {},
+      PAYMENT_PERMISSION_ERROR: "Du har inte behörighet att skapa betalningar. Logga in som initiator eller admin.",
+    }],
+    [new URL("api/recipientsApi.ts", src).href, {
+      getRecipients: () => {}, createRecipient: () => {},
+      getRecipientDetailsError: () => null, normalizeRecipientIban: (value) => value,
+      RecipientApiError: class extends Error {},
+    }],
   ]);
 
   async function load(identifier) {
@@ -104,11 +118,14 @@ test("Audit Log has one heading with its subtitle directly beneath it in the hea
   assert.match(markup, /<section class="audit-log-results" aria-label="Registrerade audithändelser">/);
 });
 
-test("Audit Log retains existing search and filter availability feedback", () => {
+test("Audit Log has one accessible search field in its filter toolbar", () => {
   const markup = render(AuditLog);
-  assert.match(markup, /name="search"/);
-  for (const name of ["dateRange", "action", "user"]) assert.match(markup, new RegExp(`name="${name}"`));
-  assert.match(markup, /Sökning och filtrering är inte tillgängliga ännu. Inga filter har tillämpats./);
+  assert.equal((markup.match(/type="search"/g) ?? []).length, 1);
+  assert.match(markup, /<form class="audit-log-toolbar"[^>]*>.*name="search"/);
+  for (const name of ["dateRange", "action", "userId"]) assert.match(markup, new RegExp(`name="${name}"`));
+  assert.match(markup, /aria-label="Sök och filtrera audit-loggen"/);
+  assert.match(markup, /type="submit"[^>]*>.*Filtrera<\/button>/);
+  assert.doesNotMatch(markup, /Sökning och filtrering är inte tillgängliga ännu/);
   assert.match(markup, /Hämtar granskningslogg/);
 });
 
@@ -126,34 +143,33 @@ test("Payment detail layouts still omit the optional subtitle and unavailable se
   const markup = render(PaymentsLayout, { title: "Betalningar – Detaljer", overview: null, contentClassName: "payments-details-content" });
   assert.match(markup, /<h1>Betalningar – Detaljer<\/h1><p><\/p>/);
   assert.doesNotMatch(markup, /type="search"|Skapa, granska/);
-  assert.match(markup, /disabled=""[^>]*title="Notifikationer är inte tillgängliga"/);
+  assert.match(markup, /<button type="button" aria-label="Notiser">/);
 });
 
-test("Shared header defaults, welcome text, search and notification availability stay unchanged", () => {
+test("Shared header retains welcome text and search and renders an active notification bell", () => {
   const markup = render(DashboardHeader, { user: { name: "Test User" } });
   assert.match(markup, /<h1>Översikt<\/h1><p>Välkommen, Test User!<\/p>/);
   assert.match(markup, /type="search"/);
-  assert.match(markup, /disabled=""[^>]*title="Notifikationer är inte tillgängliga"/);
-  const interactive = render(DashboardHeader, { subtitle: "En explicit beskrivning", onNotificationClick: () => {} });
+  assert.match(markup, /<button type="button" aria-label="Notiser">/);
+  const interactive = render(DashboardHeader, { subtitle: "En explicit beskrivning" });
   assert.match(interactive, /<p>En explicit beskrivning<\/p>/);
   assert.doesNotMatch(interactive, /disabled=""/);
 });
 
-test("Shared header still forwards search changes and notification clicks to existing callbacks", async () => {
+test("Shared header forwards search changes and the current user to the notification component", async () => {
   const updates = [];
   const Header = await loadComponent("components/dashboard/DashboardHeader.tsx", {
     ...react, useState: () => ["", (value) => updates.push(value)],
   });
   const searches = [];
-  let notificationClicks = 0;
-  const tree = Header({ onSearch: (value) => searches.push(value), onNotificationClick: () => notificationClicks++ });
+  const user = { id: 1, tenantId: 10, name: "Test User", email: "test@example.test", role: "admin" };
+  const tree = Header({ user, onSearch: (value) => searches.push(value) });
   function find(element, type) {
     if (element?.type === type) return element;
     return react.Children.toArray(element?.props?.children).map((child) => find(child, type)).find(Boolean);
   }
   find(tree, "input").props.onChange({ target: { value: "betalning" } });
-  find(tree, "button").props.onClick();
+  assert.equal(find(tree, NotificationBell).props.user, user);
   assert.deepEqual(updates, ["betalning"]);
   assert.deepEqual(searches, ["betalning"]);
-  assert.equal(notificationClicks, 1);
 });

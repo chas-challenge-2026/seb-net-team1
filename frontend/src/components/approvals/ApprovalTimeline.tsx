@@ -1,9 +1,20 @@
-import { FiCheckCircle, FiClock, FiMinusCircle, FiXCircle } from "react-icons/fi";
+import { FiCheckCircle, FiClock, FiFileText, FiMinusCircle, FiXCircle } from "react-icons/fi";
 import StatusBadge from "../shared/StatusBadge";
 import type { ApprovalTimelineStep } from "../../types/Approval";
 
 type ApprovalTimelineProps = {
   timeline?: ApprovalTimelineStep[];
+  creation?: {
+    createdByName: string | null;
+    createdAt: string;
+  };
+  completion?: {
+    executedAt: string;
+    toIban: string;
+    recipientName?: string | null;
+  };
+  heading?: string;
+  emptyMessage?: string;
 };
 
 const dateTimeFormatter = new Intl.DateTimeFormat("sv-SE", {
@@ -12,15 +23,48 @@ const dateTimeFormatter = new Intl.DateTimeFormat("sv-SE", {
   day: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Europe/Stockholm",
 });
 
-export default function ApprovalTimeline({ timeline }: ApprovalTimelineProps) {
+export default function ApprovalTimeline({
+  timeline,
+  creation,
+  completion,
+  heading = "Attesttidslinje",
+  emptyMessage = "Uppgifter om tidslinjen saknas. Uppdatera listan för att försöka igen.",
+}: ApprovalTimelineProps) {
+  const creatorName = typeof creation?.createdByName === "string" ? creation.createdByName.trim() : null;
+  const createdAt = creation ? new Date(creation.createdAt) : null;
+  const executedAt = completion ? new Date(completion.executedAt) : null;
+  const recipientName = completion?.recipientName?.trim();
+
   return (
     <section aria-labelledby="approval-timeline-heading">
-      <h3 id="approval-timeline-heading">Attesttidslinje</h3>
-      {timeline?.length ? (
+      <h3 id="approval-timeline-heading">{heading}</h3>
+      {(creation || !!timeline?.length || completion) && (
         <ol className="approval-timeline" role="list">
-          {timeline.map((step) => {
+          {creation && (
+            <li className="approval-timeline-step approval-timeline-step--created">
+              <span className="approval-timeline-marker" aria-hidden="true"><FiFileText /></span>
+              <div className="approval-timeline-content">
+                <div className="approval-timeline-step-header">
+                  <span className="approval-timeline-step-number">Betalning skapad</span>
+                  <StatusBadge status="processing">Skapad</StatusBadge>
+                </div>
+                <p className="approval-timeline-decision">
+                  {creatorName
+                    ? <>Skapad av <strong>{creatorName}</strong>.</>
+                    : "Uppgift om vem som skapade betalningen saknas."}
+                </p>
+                <p className="approval-timeline-time">
+                  {createdAt && !Number.isNaN(createdAt.getTime())
+                    ? <time dateTime={creation.createdAt}>{dateTimeFormatter.format(createdAt)}</time>
+                    : "Tidpunkt saknas."}
+                </p>
+              </div>
+            </li>
+          )}
+          {timeline?.map((step) => {
             const isCancelled = step.decisionSource === "payment_rejected";
             const isPending = step.status === "pending";
             const isApproved = step.status === "approved";
@@ -58,9 +102,28 @@ export default function ApprovalTimeline({ timeline }: ApprovalTimelineProps) {
               </li>
             );
           })}
+          {completion && (
+            <li className="approval-timeline-step approval-timeline-step--approved approval-timeline-step--completed">
+              <span className="approval-timeline-marker" aria-hidden="true"><FiCheckCircle /></span>
+              <div className="approval-timeline-content">
+                <div className="approval-timeline-step-header">
+                  <span className="approval-timeline-step-number">Betalning genomförd</span>
+                  <StatusBadge status="success">Genomförd</StatusBadge>
+                </div>
+                {recipientName && <p>Mottagare: <strong>{recipientName}</strong></p>}
+                <p>IBAN: {completion.toIban.trim() || "Kontouppgift saknas."}</p>
+                <p className="approval-timeline-time">
+                  {executedAt && !Number.isNaN(executedAt.getTime())
+                    ? <time dateTime={completion.executedAt}>{dateTimeFormatter.format(executedAt)}</time>
+                    : "Tidpunkt saknas."}
+                </p>
+              </div>
+            </li>
+          )}
         </ol>
-      ) : (
-        <p className="approval-details-missing">Uppgifter om tidslinjen saknas. Uppdatera listan för att försöka igen.</p>
+      )}
+      {!timeline?.length && (
+        <p className="approval-details-missing">{emptyMessage}</p>
       )}
     </section>
   );

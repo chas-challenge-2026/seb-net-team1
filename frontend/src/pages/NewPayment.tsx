@@ -1,22 +1,39 @@
 import { useEffect, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { FiArrowLeft, FiBell, FiSearch } from "react-icons/fi";
+import { FiArrowLeft, FiPlus, FiSearch } from "react-icons/fi";
 import { getAccounts } from "../api/accountsApi";
-import { createPayment } from "../api/paymentsApi";
+import { createPayment, PAYMENT_PERMISSION_ERROR } from "../api/paymentsApi";
+import { getRecipients, normalizeRecipientIban, RecipientApiError } from "../api/recipientsApi";
+import { getHistoricalRecipients } from "../api/historicalRecipientsApi";
 import Sidebar from "../components/dashboard/Sidebar";
+import ApprovalNotifications from "../components/dashboard/ApprovalNotifications";
+import NewRecipientDialog from "../components/payments/NewRecipientDialog";
+import PaymentConfirmationDialog from "../components/payments/PaymentConfirmationDialog";
 import Button from "../components/shared/Button";
 import Card from "../components/shared/Card";
 import type { Account } from "../types/Account";
+import type { Recipient } from "../types/Recipient";
 import type {
   CreatePaymentRequest,
   CreatePaymentResponse,
 } from "../types/Payment";
 import { PAYMENT_AMOUNT_ERROR, parsePaymentAmount } from "../utils/paymentAmount";
+import { getPaymentRecipientOptions } from "../utils/paymentRecipients";
 import "../styles/dashboard.css";
 import "../styles/newPayment.css";
 
 type PaymentFormState = Omit<CreatePaymentRequest, "amount"> & { amount: string };
+
+function getStoredRole(): string | null {
+  try {
+    const storedUser = localStorage.getItem("user");
+    const role = storedUser ? JSON.parse(storedUser)?.role : null;
+    return typeof role === "string" ? role : null;
+  } catch {
+    return null;
+  }
+}
 
 function NewPayment() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -33,6 +50,24 @@ function NewPayment() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [createdPayment, setCreatedPayment] =
     useState<CreatePaymentResponse | null>(null);
+  const [isPaymentConfirmationOpen, setIsPaymentConfirmationOpen] = useState(false);
+  const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [selectedRecipientId, setSelectedRecipientId] = useState("");
+  const [isLoadingRecipients, setIsLoadingRecipients] = useState(true);
+  const [recipientLoadError, setRecipientLoadError] = useState<string | null>(null);
+  const [demoConfirmationEnabled, setDemoConfirmationEnabled] = useState(false);
+  const [recipientRequestVersion, setRecipientRequestVersion] = useState(0);
+  const [isRecipientDialogOpen, setIsRecipientDialogOpen] = useState(false);
+  const [recipientSaveMessage, setRecipientSaveMessage] = useState<string | null>(null);
+  const [historicalIbans, setHistoricalIbans] = useState<string[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [historyLoadError, setHistoryLoadError] = useState<string | null>(null);
+  const role = getStoredRole();
+  const canAddRecipients = role === "initiator" || role === "admin";
+  const recipientOptions = getPaymentRecipientOptions(recipients, historicalIbans);
+  const selectedRecipient = selectedRecipientId
+    ? recipientOptions.find((option) => option.iban === normalizeRecipientIban(paymentForm.toIban))
+    : undefined;
 
   useEffect(() => {
     let isMounted = true;
@@ -65,10 +100,83 @@ function NewPayment() {
     };
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    getRecipients(controller.signal)
+      .then((list) => {
+        if (controller.signal.aborted) return;
+        setRecipients(list.recipients);
+        setDemoConfirmationEnabled(list.demoConfirmationEnabled);
+      })
+      .catch((cause) => {
+        if (controller.signal.aborted) return;
+        setDemoConfirmationEnabled(false);
+        setRecipientLoadError(cause instanceof RecipientApiError
+          ? cause.message
+          : "Kunde inte hämta sparade mottagare. Du kan fortfarande ange IBAN manuellt.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoadingRecipients(false);
+      });
+    return () => controller.abort();
+  }, [recipientRequestVersion]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getHistoricalRecipients(controller.signal)
+      .then((history) => {
+        if (controller.signal.aborted) return;
+        setHistoricalIbans(history.ibans);
+        if (history.incomplete) {
+          setHistoryLoadError("Vissa tidigare mottagare kunde inte kontrolleras. Du kan fortfarande välja sparade mottagare eller ange IBAN manuellt.");
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setHistoryLoadError("Tidigare godkända mottagare kunde inte hämtas. Du kan fortfarande välja sparade mottagare eller ange IBAN manuellt.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoadingHistory(false);
+      });
+    return () => controller.abort();
+  }, [recipientRequestVersion]);
+
+  function refreshRecipients() {
+    setIsLoadingRecipients(true);
+    setDemoConfirmationEnabled(false);
+    setRecipientLoadError(null);
+    setIsLoadingHistory(true);
+    setHistoryLoadError(null);
+    setHistoricalIbans([]);
+    setRecipientRequestVersion((version) => version + 1);
+  }
+
+  function selectRecipient(value: number | string, iban: string) {
+    setSelectedRecipientId(String(value));
+    setPaymentForm((current) => ({ ...current, toIban: iban }));
+    setSubmitError(null);
+    setCreatedPayment(null);
+  }
+
+  function handleRecipientSaved(recipient: Recipient) {
+    setRecipients((current) => [...current.filter((item) => item.id !== recipient.id), recipient]
+      .sort((left, right) => left.name.localeCompare(right.name, "sv-SE")));
+    selectRecipient(recipient.id, recipient.iban);
+    setRecipientSaveMessage(`${recipient.name} har sparats och valts som mottagare.`);
+    setIsRecipientDialogOpen(false);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (isSubmitting) {
+      return;
+    }
+
+    if (role === "attestant") {
+      setSubmitError(PAYMENT_PERMISSION_ERROR);
+      setCreatedPayment(null);
       return;
     }
 
@@ -100,10 +208,12 @@ function NewPayment() {
       setIsSubmitting(true);
       setSubmitError(null);
       setCreatedPayment(null);
+      setIsPaymentConfirmationOpen(false);
 
       const payment = await createPayment(paymentToCreate);
 
       setCreatedPayment(payment);
+      setIsPaymentConfirmationOpen(true);
     } catch (error) {
       setSubmitError(
         error instanceof Error
@@ -131,6 +241,10 @@ function NewPayment() {
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target;
 
+    if (name === "toIban") {
+      setSelectedRecipientId("");
+      setRecipientSaveMessage(null);
+    }
     setPaymentForm((currentForm) => ({
       ...currentForm,
       [name]: value,
@@ -171,13 +285,7 @@ function NewPayment() {
               />
             </div>
 
-            <button
-              className="dashboard-notification-button"
-              type="button"
-              aria-label="Notifikationer"
-            >
-              <FiBell className="dashboard-notification-icon" />
-            </button>
+            <ApprovalNotifications />
           </div>
         </header>
 
@@ -195,7 +303,14 @@ function NewPayment() {
                 <h2 id="new-payment-title">Skapa betalning</h2>
               </div>
 
-              <form className="new-payment-form" onSubmit={handleSubmit}>
+              {role === "attestant" && (
+                <div className="new-payment-role-notice" role="status">
+                  <p>{PAYMENT_PERMISSION_ERROR}</p>
+                  <Link to="/">Byt användare</Link>
+                </div>
+              )}
+
+              <form className="new-payment-form" onSubmit={handleSubmit} autoComplete="off">
                 <div className="new-payment-field">
                   <label htmlFor="from-account">Konto</label>
                   <select
@@ -224,18 +339,82 @@ function NewPayment() {
                   ) : null}
                 </div>
 
+                <div className="new-payment-field new-payment-recipient-field">
+                  <div className="new-payment-recipient-heading">
+                    <label htmlFor="saved-recipient">Mottagare</label>
+                    <div className="new-payment-recipient-controls">
+                      <Button type="button" className="new-payment-recipient-retry" onClick={refreshRecipients} disabled={isLoadingRecipients}>Uppdatera mottagare</Button>
+                      {canAddRecipients && (
+                        <Button
+                          type="button"
+                          className="new-payment-add-recipient"
+                          disabled={isLoadingRecipients || !demoConfirmationEnabled || isSubmitting}
+                          onClick={() => { setRecipientSaveMessage(null); setIsRecipientDialogOpen(true); }}
+                          aria-haspopup="dialog"
+                          aria-describedby={!demoConfirmationEnabled ? "recipient-add-availability" : undefined}
+                        >
+                          <FiPlus aria-hidden="true" />Lägg till mottagare
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <select
+                    id="saved-recipient"
+                    value={selectedRecipient ? String(selectedRecipient.value) : ""}
+                    disabled={isLoadingRecipients || recipientOptions.length === 0}
+                    onChange={(event) => {
+                      const recipient = recipientOptions.find((item) => String(item.value) === event.target.value);
+                      setRecipientSaveMessage(null);
+                      if (recipient) selectRecipient(recipient.value, recipient.iban);
+                      else setSelectedRecipientId("");
+                    }}
+                  >
+                    <option value="">{isLoadingRecipients ? "Laddar mottagare..." : "Ange IBAN manuellt eller välj mottagare"}</option>
+                    {recipientOptions.map((recipient) => (
+                      <option key={recipient.value} value={recipient.value}>{recipient.label}</option>
+                    ))}
+                  </select>
+                  {recipientLoadError ? (
+                    <div className="new-payment-recipient-feedback">
+                      <small role="alert">{recipientLoadError}</small>
+                    </div>
+                  ) : !isLoadingRecipients && !isLoadingHistory && recipientOptions.length === 0 ? (
+                    <small>Inga sparade mottagare ännu. Du kan ange IBAN manuellt nedan.</small>
+                  ) : null}
+                  {isLoadingHistory && <small role="status">Hämtar tidigare godkända mottagare...</small>}
+                  {historyLoadError && <small role="status">{historyLoadError}</small>}
+                  {canAddRecipients && !demoConfirmationEnabled && (
+                    <small id="recipient-add-availability">{isLoadingRecipients
+                      ? "Hämtar tillgänglighet för att lägga till mottagare..."
+                      : recipientLoadError
+                        ? "Uppdatera mottagarlistan för att kontrollera om mottagare kan läggas till."
+                        : "Att lägga till mottagare med demobekräftelse är inte aktiverat i den här miljön."}</small>
+                  )}
+                  {recipientSaveMessage && <small role="status">{recipientSaveMessage}</small>}
+                </div>
+
                 <div className="new-payment-field">
                   <label htmlFor="recipient-iban">Mottagare / IBAN</label>
-                  <input
-                    id="recipient-iban"
-                    name="toIban"
-                    type="text"
-                    placeholder="SE00 0000 0000 0000 0000 0000"
-                    maxLength={34}
-                    value={paymentForm.toIban}
-                    onChange={handleInputChange}
-                    required
-                  />
+                  {selectedRecipient ? (
+                    <>
+                      <output id="recipient-iban" htmlFor="saved-recipient" aria-describedby="recipient-manual-entry-help">{paymentForm.toIban}</output>
+                      <small id="recipient-manual-entry-help">Välj Ange IBAN manuellt i listan ovan för att ändra IBAN.</small>
+                    </>
+                  ) : (
+                    <input
+                      id="recipient-iban"
+                      name="toIban"
+                      type="text"
+                      autoComplete="off"
+                      autoCapitalize="characters"
+                      spellCheck={false}
+                      placeholder="SE00 0000 0000 0000 0000 0000"
+                      maxLength={34}
+                      value={paymentForm.toIban}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  )}
                 </div>
 
                 <div className="new-payment-field">
@@ -270,7 +449,7 @@ function NewPayment() {
                   <Button
                     type="submit"
                     className="new-payment-submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || role === "attestant"}
                   >
                     {isSubmitting ? "Skapar betalning..." : "Skapa betalning"}
                   </Button>
@@ -288,6 +467,12 @@ function NewPayment() {
           </section>
         </div>
       </main>
+      {isRecipientDialogOpen && canAddRecipients && demoConfirmationEnabled && (
+        <NewRecipientDialog onClose={() => setIsRecipientDialogOpen(false)} onSaved={handleRecipientSaved} />
+      )}
+      {createdPayment && isPaymentConfirmationOpen && (
+        <PaymentConfirmationDialog payment={createdPayment} onClose={() => setIsPaymentConfirmationOpen(false)} />
+      )}
     </div>
   );
 }

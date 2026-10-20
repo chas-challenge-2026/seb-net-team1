@@ -10,7 +10,8 @@ namespace SebPortal.Api.Services;
 public class AuditService(
     AuditRepository auditRepository,
     AuditLockProvider lockProvider,
-    IAuditSigner signer)
+    IAuditSigner signer,
+    IHttpContextAccessor? httpContextAccessor = null)
 {
     private const string GenesisSignature = "GENESIS";
 
@@ -39,6 +40,8 @@ public class AuditService(
     {
         var previousSignature = await auditRepository.GetLatestSignatureAsync(tenantId) ?? GenesisSignature;
 
+        // Trusted forwarding middleware has already resolved the connection address.
+        var remoteAddress = httpContextAccessor?.HttpContext?.Connection.RemoteIpAddress;
         var entry = new AuditEntry
         {
             TenantId = tenantId,
@@ -48,6 +51,9 @@ public class AuditService(
             EntityId = entityId,
             Description = description,
             CreatedAt = DateTime.UtcNow,
+            IpAddress = remoteAddress?.IsIPv4MappedToIPv6 == true
+                ? remoteAddress.MapToIPv4().ToString()
+                : remoteAddress?.ToString(),
             PreviousSignature = previousSignature
         };
 
@@ -78,11 +84,12 @@ public class AuditService(
         }
     }
 
-    public async Task<AuditLogResponseDto> GetAuditLogAsync(int tenantId, int limit, string? cursor)
+    public async Task<AuditLogResponseDto> GetAuditLogAsync(
+        int tenantId, int limit, string? cursor, AuditLogQuery? filters = null)
     {
         var beforeId = DecodeCursor(cursor);
 
-        var rows = await auditRepository.GetPageAsync(tenantId, limit, beforeId);
+        var rows = await auditRepository.GetPageAsync(tenantId, limit, beforeId, filters);
 
         var hasMore = rows.Count > limit;
         var page = hasMore ? rows.Take(limit).ToList() : rows;
@@ -94,6 +101,9 @@ public class AuditService(
         };
     }
 
+    public Task<AuditLogFiltersDto> GetFiltersAsync(int tenantId) =>
+        auditRepository.GetFiltersAsync(tenantId);
+
     private static AuditEntryDto ToDto(AuditEntry entry) => new()
     {
         Id = entry.Id,
@@ -101,8 +111,9 @@ public class AuditService(
         EntityType = entry.EntityType,
         EntityId = entry.EntityId,
         Description = entry.Description ?? "",
-        CreatedAt = entry.CreatedAt,
-        UserName = entry.User?.Name ?? "Systemet"
+        CreatedAt = DateTime.SpecifyKind(entry.CreatedAt, DateTimeKind.Utc),
+        UserName = entry.User?.TenantId == entry.TenantId ? entry.User.Name : "Systemet",
+        IpAddress = entry.IpAddress
     };
 
     /// <summary>Opaque to the client, just a base64-encoded id.</summary>

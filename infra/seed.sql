@@ -19,6 +19,18 @@ CREATE TABLE users (
     role VARCHAR(20) -- 'initiator', 'attestant', 'admin'
 );
 
+CREATE TABLE recipients (
+    id SERIAL PRIMARY KEY,
+    tenant_id INT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+    name VARCHAR(100) NOT NULL,
+    iban VARCHAR(34) NOT NULL,
+    created_by INT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_recipients_name CHECK (char_length(btrim(name)) BETWEEN 1 AND 100),
+    CONSTRAINT ck_recipients_iban CHECK (iban ~ '^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$')
+);
+CREATE UNIQUE INDEX ux_recipients_tenant_iban ON recipients (tenant_id, iban);
+
 CREATE TABLE accounts (
     id SERIAL PRIMARY KEY,
     tenant_id INT REFERENCES tenants(id),
@@ -78,6 +90,7 @@ CREATE TABLE audit_entries (
     entity_id INT,
     description TEXT,
     created_at TIMESTAMP DEFAULT NOW(),
+    ip_address VARCHAR(45),
     signature TEXT NOT NULL,
     previous_signature TEXT NOT NULL
 );
