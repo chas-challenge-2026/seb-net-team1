@@ -161,7 +161,7 @@ public sealed class RecipientsApiIntegrationTests
         using var created = await creator.PostAsJsonAsync("/api/recipients", new
         {
             name = "  Leverantoren AB  ",
-            iban = " se45 5000\t0000 0549\n1000 0099 ",
+            iban = " se62 5000\t0000 0549\n1000 0099 ",
             demoConfirmed = true
         });
 
@@ -209,7 +209,7 @@ public sealed class RecipientsApiIntegrationTests
         using var duplicate = await colleague.PostAsJsonAsync("/api/recipients", new
         {
             name = "Overwritten name",
-            iban = "se45 5000 0000 0549 1000 0099",
+            iban = "se62 5000 0000 0549 1000 0099",
             demoConfirmed = true
         });
 
