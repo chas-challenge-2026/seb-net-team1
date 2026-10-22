@@ -103,7 +103,7 @@ public class ApprovalServiceTests
             Id = paymentId,
             TenantId = tenantId,
             FromAccountId = AccountId,
-            ToIban = "SE8550000000054910000004",
+            ToIban = "SE0850000000054910000004",
             Amount = amount,
             Currency = "SEK",
             Reference = reference,
@@ -224,7 +224,7 @@ public class ApprovalServiceTests
         var pending = Assert.Single(inbox.Pending);
         Assert.Equal(42, pending.PaymentId);
         Assert.Equal(TestIds.Step(501), pending.ApprovalStepId);
-        Assert.Equal("SE8550000000054910000004", pending.ToIban);
+        Assert.Equal("SE0850000000054910000004", pending.ToIban);
         Assert.Equal("250000.00", pending.Amount);
         Assert.Equal("SEK", pending.Currency);
         Assert.Equal("Faktura 2026-114", pending.Reference);

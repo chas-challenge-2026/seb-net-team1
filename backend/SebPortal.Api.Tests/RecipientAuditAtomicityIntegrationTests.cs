@@ -79,7 +79,7 @@ public sealed class RecipientAuditAtomicityIntegrationTests(PostgreSqlFixture po
 
             using var response = await client.PostAsJsonAsync("/api/recipients", new
             {
-                name = "Atomic recipient", iban = "SE4550000000054910000099", demoConfirmed = true
+                name = "Atomic recipient", iban = "SE6250000000054910000099", demoConfirmed = true
             });
             Assert.Equal(expected, response.StatusCode);
 
@@ -96,7 +96,7 @@ public sealed class RecipientAuditAtomicityIntegrationTests(PostgreSqlFixture po
             {
                 var recipient = Assert.Single(recipients);
                 Assert.Equal("Atomic recipient", recipient.Name);
-                Assert.Equal("SE4550000000054910000099", recipient.Iban);
+                Assert.Equal("SE6250000000054910000099", recipient.Iban);
                 RecipientsApiIntegrationTests.AssertSimulatedAudit(Assert.Single(auditEntries), recipient.Id);
             }
         }

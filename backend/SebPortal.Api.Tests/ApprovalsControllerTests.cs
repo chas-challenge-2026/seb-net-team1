@@ -115,7 +115,7 @@ public class ApprovalsControllerTests
             Id = 42,
             TenantId = TenantId,
             FromAccountId = AccountId,
-            ToIban = "SE8550000000054910000004",
+            ToIban = "SE0850000000054910000004",
             Amount = 75000m,
             Currency = "SEK",
             Reference = "Faktura #1043",

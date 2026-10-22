@@ -28,7 +28,7 @@ No request body, no query parameters for MVP.
     {
       "paymentId": 42,
       "approvalStepId": "3f2b7c1e-8a4d-4b6a-9d52-1c0e7f5a9b34",
-      "toIban": "SE4550000000054910000099",
+      "toIban": "SE6250000000054910000099",
       "amount": "250000.00",
       "currency": "SEK",
       "reference": "Faktura 2026-114",

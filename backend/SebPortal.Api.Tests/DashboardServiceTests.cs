@@ -82,7 +82,7 @@ public class DashboardServiceTests
             Id = 1,
             TenantId = 1,
             FromAccountId = 1,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 8000m,
             Reference = "Löner september",
             Status = "pending_approval"
@@ -134,7 +134,7 @@ public class DashboardServiceTests
             Id = 1,
             TenantId = 1,
             FromAccountId = 1,
-            ToIban = "SE4550000000054910000099",
+            ToIban = "SE6250000000054910000099",
             Amount = 8000m,
             CreatedById = 2,
             Status = "pending_approval"
