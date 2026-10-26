@@ -30,16 +30,41 @@ public class PaymentService(
     public static string NormalizeIban(string iban) =>
         new string(iban.Where(character => !char.IsWhiteSpace(character)).ToArray()).ToUpperInvariant();
 
+    /// <summary>
+    /// Checks a normalized (no spaces, upper case) IBAN: length and characters, then
+    /// the MOD97 checksum (ISO 13616). A wrong check digit is rejected here instead of
+    /// being saved and paid out.
+    /// </summary>
     public static bool HasValidIbanFormat(string iban)
     {
         if (iban.Length is < 15 or > 34 ||
             !char.IsAsciiLetter(iban[0]) || !char.IsAsciiLetter(iban[1]) ||
-            !char.IsAsciiDigit(iban[2]) || !char.IsAsciiDigit(iban[3]))
+            !char.IsAsciiDigit(iban[2]) || !char.IsAsciiDigit(iban[3]) ||
+            !iban.All(character => char.IsAsciiLetterOrDigit(character)))
         {
             return false;
         }
 
-        return iban.All(character => char.IsAsciiLetterOrDigit(character));
+        return HasValidIbanChecksum(iban);
+    }
+
+    private static bool HasValidIbanChecksum(string iban)
+    {
+        var rearranged = string.Concat(iban.AsSpan(4), iban.AsSpan(0, 4));
+        var remainder = 0;
+
+        foreach (var character in rearranged)
+        {
+            var value = char.IsAsciiDigit(character)
+                ? character - '0'
+                : char.ToUpperInvariant(character) - 'A' + 10;
+
+            remainder = value < 10
+                ? (remainder * 10 + value) % 97
+                : (remainder * 100 + value) % 97;
+        }
+
+        return remainder == 1;
     }
 
     /// <summary>

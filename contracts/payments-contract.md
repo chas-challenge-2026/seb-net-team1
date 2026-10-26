@@ -36,7 +36,7 @@ new payment must use a new key.
 ```json
 {
   "fromAccountId": 1,
-  "toIban": "SE4550000000054910000099",
+  "toIban": "SE6250000000054910000099",
   "amount": "12500.00",
   "reference": "Faktura #2001"
 }
@@ -62,7 +62,7 @@ new payment must use a new key.
   "id": 101,
   "status": "pending_approval",
   "fromAccountId": 1,
-  "toIban": "SE4550000000054910000099",
+  "toIban": "SE6250000000054910000099",
   "amount": "12500.00",
   "currency": "SEK",
   "reference": "Faktura #2001",

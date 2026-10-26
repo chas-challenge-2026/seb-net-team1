@@ -19,7 +19,7 @@ namespace SebPortal.Api.Tests;
 /// <summary>Exercises saved recipients through authorization, validation and the HTTP contract.</summary>
 public sealed class RecipientsApiIntegrationTests
 {
-    private const string Iban = "SE4550000000054910000099";
+    private const string Iban = "SE6250000000054910000099";
 
     [Theory]
     [InlineData("GET")]
@@ -161,7 +161,7 @@ public sealed class RecipientsApiIntegrationTests
         using var created = await creator.PostAsJsonAsync("/api/recipients", new
         {
             name = "  Leverantoren AB  ",
-            iban = " se45 5000\t0000 0549\n1000 0099 ",
+            iban = " se62 5000\t0000 0549\n1000 0099 ",
             demoConfirmed = true
         });
 
@@ -209,7 +209,7 @@ public sealed class RecipientsApiIntegrationTests
         using var duplicate = await colleague.PostAsJsonAsync("/api/recipients", new
         {
             name = "Overwritten name",
-            iban = "se45 5000 0000 0549 1000 0099",
+            iban = "se62 5000 0000 0549 1000 0099",
             demoConfirmed = true
         });
 

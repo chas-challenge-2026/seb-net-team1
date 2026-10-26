@@ -85,7 +85,7 @@ public sealed class PaymentAuditAtomicityIntegrationTests
 	private static CreatePaymentRequestDto Request(decimal amount) => new()
 	{
 		FromAccountId = 1,
-		ToIban = "SE4550000000054910000099",
+		ToIban = "SE6250000000054910000099",
 		Amount = amount,
 		Reference = "Atomicity test"
 	};

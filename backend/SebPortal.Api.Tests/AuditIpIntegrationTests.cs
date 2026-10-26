@@ -35,7 +35,7 @@ public sealed class AuditIpIntegrationTests
             remoteIp, forwardedIp, new
             {
                 fromAccountId = 1,
-                toIban = "SE4550000000054910000099",
+                toIban = "SE6250000000054910000099",
                 amount = 125.50m,
                 reference = "Audit IP integration test"
             });
