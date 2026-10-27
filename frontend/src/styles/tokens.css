@@ -1,0 +1,122 @@
+/*
+ * Design tokens. Everything else references these custom properties, so the look
+ * of the whole app is defined here.
+ */
+:root {
+  color-scheme: light;
+
+  /* Brand */
+  --brand-900: #0b2e23; /* sidebar, login panel */
+  --brand-800: #103b2d;
+  --brand-accent: #6ee7a8; /* highlights on the dark brand surface */
+  --primary: #0f7a4a;
+  --primary-hover: #0c6a40;
+  --primary-active: #0a5a36;
+  --primary-soft: #e8f5ee;
+  --primary-soft-border: #b9dfc9;
+  --primary-text: #0b5e39;
+  --focus-ring: 0 0 0 3px rgba(15, 122, 74, 0.35);
+  --focus-ring-danger: 0 0 0 3px rgba(185, 28, 28, 0.25);
+
+  /* Surfaces and borders */
+  --bg: #f5f7f6;
+  --surface: #ffffff;
+  --surface-muted: #f8faf9;
+  --surface-sunken: #f1f4f3;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-hover: #94a3b8;
+
+  /* Text */
+  --text: #0f172a;
+  --text-secondary: #334155;
+  --text-muted-strong: #475569; /* muted text on the grey page background */
+  --text-muted: #64748b; /* muted text on white surfaces */
+  --text-subtle: #94a3b8; /* placeholders, decorative text */
+  --text-inverse: #ffffff;
+
+  /* Status */
+  --success: #15803d;
+  --success-bg: #dcfce7;
+  --success-soft: #f0fdf4;
+  --success-border: #bbf7d0;
+  --warning: #b45309;
+  --warning-bg: #fef3c7;
+  --warning-soft: #fffbeb;
+  --warning-border: #fde68a;
+  --danger: #b91c1c;
+  --danger-hover: #991b1b;
+  --danger-bg: #fee2e2;
+  --danger-soft: #fef2f2;
+  --danger-border: #fecaca;
+  --info: #1d4ed8;
+  --info-bg: #dbeafe;
+  --info-soft: #eff6ff;
+  --info-border: #bfdbfe;
+  --neutral: #475569;
+  --neutral-bg: #f1f5f9;
+
+  /* Charts */
+  --chart-bar: var(--primary);
+  --chart-bar-active: var(--primary-active);
+  --chart-grid: #e9eef2;
+  --chart-baseline: var(--border-strong);
+
+  /* Typography */
+  --font-sans: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+  --text-2xs: 0.6875rem; /* 11px */
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.8125rem; /* 13px */
+  --text-base: 0.875rem; /* 14px */
+  --text-md: 1rem; /* 16px */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.25rem; /* 20px */
+  --text-2xl: 1.5rem; /* 24px */
+  --text-3xl: 1.875rem; /* 30px */
+  --text-4xl: 2.25rem; /* 36px */
+
+  /* Spacing, 4px grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px; /* controls */
+  --radius-lg: 8px; /* cards */
+  --radius-xl: 12px; /* dialogs */
+  --radius-full: 999px;
+
+  /* Elevation */
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.03);
+  --shadow-raised: 0 4px 12px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-overlay: 0 16px 40px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.08);
+
+  /* Layout */
+  --sidebar-width: 256px;
+  --topbar-height: 64px;
+  --content-max: 1360px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 260ms;
+
+  /* Stacking */
+  --z-topbar: 20;
+  --z-overlay: 35;
+  --z-sidebar: 40;
+  --z-popover: 50;
+  --z-dialog: 60;
+  --z-toast: 70;
+}

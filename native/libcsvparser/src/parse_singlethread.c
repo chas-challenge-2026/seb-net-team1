@@ -70,7 +70,25 @@ CsvResult parse_csv_single(const char* content, int content_len) {
     while(1) {
         if (readHead >= dataEnd && fieldIndex == 0) break;
 
-        char fieldData[FIELD_MAX_LEN];
+        // Skip blank lines (empty or only spaces/tabs) between rows, e.g. a trailing
+        // empty line or an empty line left in the middle of the file.
+        if (fieldIndex == 0) {
+            for (;;) {
+                const char* peek = readHead;
+                while (peek < dataEnd && (*peek == ' ' || *peek == '\t')) peek++;
+                if (peek < dataEnd && (*peek == '\r' || *peek == '\n')) {
+                    readHead = peek + 1;
+                    if (*peek == '\r' && readHead < dataEnd && *readHead == '\n') readHead++;
+                    continue;
+                }
+                if (peek >= dataEnd) readHead = peek;
+                break;
+            }
+            if (readHead >= dataEnd) break;
+        }
+
+        // One extra byte for the terminating NUL: a field may be exactly FIELD_MAX_LEN long.
+        char fieldData[FIELD_MAX_LEN + 1];
         char* writeHead = fieldData;
         char* fieldDataEnd = fieldData + FIELD_MAX_LEN;
         bool isQuotedField = *readHead == '\"';

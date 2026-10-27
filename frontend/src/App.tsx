@@ -69,4 +69,32 @@ function App() {
   );
 }
 
-export default App;
+/** The refresh token was rejected: go to the login page and come back here afterwards. */
+function handleSessionExpired() {
+  const { pathname, href } = router.state.location;
+  if (pathname === '/login') return;
+  void router.navigate({
+    to: '/login',
+    search: { redirect: safeRedirect(href), reason: 'expired' },
+    replace: true,
+  });
+}
+
+function AppRouter() {
+  const { status } = useAuth();
+  // Wait until the session has been restored so the route guards see the right user.
+  if (status === 'bootstrapping') return <SplashScreen />;
+  return <RouterProvider router={router} />;
+}
+
+export function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>
+        <AuthProvider onSignedOut={handleSignedOut} onSessionExpired={handleSessionExpired}>
+          <AppRouter />
+        </AuthProvider>
+      </ToastProvider>
+    </QueryClientProvider>
+  );
+}

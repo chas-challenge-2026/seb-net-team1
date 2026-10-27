@@ -1,0 +1,223 @@
+/* Konton */
+
+.account-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-4);
+}
+
+.account-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.account-card--interactive {
+  transition:
+    border-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
+}
+
+.account-card--interactive:hover {
+  border-color: var(--primary-soft-border);
+  box-shadow: var(--shadow-raised);
+}
+
+.account-card--interactive:has(.account-card__link:focus-visible) {
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+}
+
+.account-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.account-card__icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.account-card__icon > svg {
+  width: 20px;
+  height: 20px;
+}
+
+.account-card__title-wrap {
+  min-width: 0;
+}
+
+.account-card__title {
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+/* The whole card is clickable; the copy button sits above the link overlay. */
+.account-card__link {
+  color: var(--text);
+}
+
+.account-card__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.account-card__link:hover {
+  text-decoration: none;
+}
+
+.account-card__link:focus-visible {
+  outline: none;
+}
+
+.account-card__iban {
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.account-card__balance {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.account-card__label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.account-card__amount {
+  font-size: 1.625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  font-variant-numeric: normal;
+}
+
+.account-card__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.account-card__facts dt {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.account-card__facts dd {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.account-card__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.account-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.account-card__cta > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.balance-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.balance-strip__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 18px var(--space-5);
+  background: var(--surface);
+}
+
+.balance-strip__label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.balance-strip__value {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.balance-strip__value .money {
+  font-variant-numeric: normal;
+}
+
+.balance-strip__item.is-primary .balance-strip__value {
+  font-size: 1.625rem;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 900px) {
+  .balance-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .balance-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.transaction-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.transaction-type > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.transaction-type--in > svg {
+  color: var(--success);
+}
+
+.transaction-type--out > svg {
+  color: var(--text-muted);
+}

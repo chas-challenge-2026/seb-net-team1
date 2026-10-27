@@ -13,6 +13,7 @@ public class DashboardRepository(SebDbContext db)
 
     public Task<List<Account>> GetAccountsAsync(int tenantId) =>
         db.Accounts
+            .AsNoTracking()
             .Where(a => a.TenantId == tenantId)
             .Include(a => a.Transactions)
             .ToListAsync();

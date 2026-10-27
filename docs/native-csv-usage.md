@@ -1,6 +1,11 @@
 # libcsvparser Usage Guide
 Instructions for the Backend team on how to use libcsvparser in C# code.
 
+> [!NOTE]
+> **How the API uses it today.** The API's Dockerfile has a `native-build` stage that runs `make libcsvparser.so` (and `make libiban.so` when `native/libiban` exists) and copies the libraries next to `SebPortal.Api.dll`. `backend/SebPortal.Api/Native/LibCsvParser.cs` binds to them with `DllImport("libcsvparser")`, using the structs below (with `valid` declared as a `byte` so the struct stays blittable). When the library cannot be loaded, for example on a Windows developer machine, `Batch/CsvPaymentParser.cs` falls back to a managed RFC 4180 parser with the same rules. Batch responses report which one ran in their `parser` field (`native` or `managed`).
+>
+> The parser skips blank lines between rows, and fields may be exactly 100 characters long.
+
 > [!WARNING]
 > Unsafe code has to be allowed in the project, to properly interface with heap memory.
 

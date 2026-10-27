@@ -138,6 +138,36 @@ int test_invalid_column_count() {
     return 0;
 }
 
+int test_blank_lines_are_skipped() {
+    const char testData[] = CSV_HEADER "\r\n\r\n1,SE3550000000054910000003,5000.00,A\n   \n\r\n2,SE0850000000054910000004,10.00,B\n\n";
+    CsvResult res = parse_csv(testData, sizeof(testData)-1);
+    TEST_ASSERT(res.valid == 1, "parser failed on blank lines between rows: %s", res.error);
+    TEST_ASSERT(res.row_count == 2, "parser returned %d rows instead of 2", res.row_count);
+    TEST_ASSERT(strcmp(res.rows[1].reference, "B") == 0, "parser returned an incorrect reference for row 2");
+    free_csv_rows(res.rows);
+    return 0;
+}
+
+int test_field_of_maximum_length() {
+    // Exactly 100 characters: must be accepted and fully NUL terminated.
+    const char testData[] = CSV_HEADER "\r\n1,SE3550000000054910000003,5000.00,"
+        "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuv";
+    CsvResult res = parse_csv(testData, sizeof(testData)-1);
+    TEST_ASSERT(res.valid == 1, "parser rejected a 100 character reference: %s", res.error);
+    TEST_ASSERT(strlen(res.rows->reference) == 100, "reference has length %zu instead of 100", strlen(res.rows->reference));
+    free_csv_rows(res.rows);
+    return 0;
+}
+
+int test_quoted_comma_in_reference() {
+    const char testData[] = CSV_HEADER "\n1,SE3550000000054910000003,5000.00,\"Malmo Bygg, faktura 99\"";
+    CsvResult res = parse_csv(testData, sizeof(testData)-1);
+    TEST_ASSERT(res.valid == 1, "parser failed on a quoted comma: %s", res.error);
+    TEST_ASSERT(strcmp(res.rows->reference, "Malmo Bygg, faktura 99") == 0, "parser returned an incorrect reference");
+    free_csv_rows(res.rows);
+    return 0;
+}
+
 int main() {
     printf("Running libcsvparser tests...\n");
 
@@ -149,6 +179,9 @@ int main() {
     RUN_TEST(test_invalid_values);
     RUN_TEST(test_multiple_different_rows);
     RUN_TEST(test_invalid_column_count);
+    RUN_TEST(test_blank_lines_are_skipped);
+    RUN_TEST(test_field_of_maximum_length);
+    RUN_TEST(test_quoted_comma_in_reference);
 
     if(tests_failed > 0)
         return 1;

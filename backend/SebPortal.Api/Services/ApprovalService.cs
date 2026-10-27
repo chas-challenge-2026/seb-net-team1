@@ -1,4 +1,4 @@
-using System.Globalization;
+using SebPortal.Api.Auditing;
 using SebPortal.Api.DTOs;
 using SebPortal.Api.Exceptions;
 using SebPortal.Api.Models;
@@ -32,11 +32,11 @@ public class ApprovalService(
     /// </summary>
     /// <param name="tenantId">Tenant from the JWT.</param>
     /// <param name="userId">User from the JWT. Never a client supplied id (BUG-011).</param>
-    /// <param name="role">Role from the JWT. Admins see the whole tenant's pending steps.</param>
+    /// <param name="role">Role from the JWT. Admins see the whole tenant's pending steps, except their own payments.</param>
     public async Task<ApprovalInboxResponse> GetInboxAsync(int tenantId, int userId, string? role)
     {
         var pendingSteps = IsAdmin(role)
-            ? await approvalRepository.GetPendingStepsForTenantAsync(tenantId)
+            ? await approvalRepository.GetPendingStepsForTenantAsync(tenantId, excludeCreatedById: userId)
             : await approvalRepository.GetPendingStepsForAttestantAsync(userId, tenantId);
 
         var handledSteps = await approvalRepository.GetHandledStepsForAttestantAsync(
@@ -133,7 +133,7 @@ public class ApprovalService(
         }
     }
 
-    private async Task ApproveAsync(ApprovalStep step, Payment payment, int userId, string? comment)
+    private async Task ApproveAsync(ApprovalStep step, Payment payment, List<ApprovalStep> steps, int userId, string? comment)
     {
         var steps = await approvalRepository.GetStepsForPaymentAsync(payment.Id);
         var requiresDoubleApproval = paymentService.RequiresDoubleApproval(payment.Amount);
@@ -164,13 +164,16 @@ public class ApprovalService(
             : steps.Count(s => s.Status == ApprovalStatuses.Approved);
         var pendingSteps = steps.Count(s => s.Status == ApprovalStatuses.Pending);
 
-        // Safety net for a payment that was created with fewer steps than the double
-        // approval rule requires (BUG-006). We never complete a payment on fewer
-        // approvals than the rule asks for, and we never leave it stuck either: the
-        // missing step is created and assigned so someone can still act on it.
+        // Double approval is sequential: step 2 is created when step 1 is approved, and
+        // this is also the safety net for a payment created with fewer steps than the
+        // rule requires (BUG-006). We never complete a payment on fewer approvals than
+        // the rule asks for, and we never leave it stuck either: the missing step is
+        // created and assigned so someone can still act on it.
         if (pendingSteps == 0 && approvedSteps < requiredSteps)
         {
-            await AddMissingApprovalStepAsync(payment, steps);
+            var nextStep = await approvalAssignment.CreateNextStepAsync(payment, steps);
+            approvalRepository.AddApprovalStep(nextStep);
+            await approvalAssignment.NotifyAsync(payment, nextStep, [.. steps, nextStep], requiredSteps);
             pendingSteps = 1;
         }
 
@@ -207,7 +210,7 @@ public class ApprovalService(
             $"{payment.Currency} till {payment.ToIban}.");
     }
 
-    private async Task RejectAsync(ApprovalStep step, Payment payment, int userId, string? comment)
+    private void Reject(ApprovalStep step, Payment payment, List<ApprovalStep> steps, int userId, string decidedByName, string? comment)
     {
         var decidedAt = DateTime.UtcNow;
 
@@ -221,8 +224,6 @@ public class ApprovalService(
 
         // One rejection stops the payment, so no other attestant should be left
         // with a step they can still act on.
-        var steps = await approvalRepository.GetStepsForPaymentAsync(payment.Id);
-
         foreach (var remaining in steps.Where(s => s.Status == ApprovalStatuses.Pending))
         {
             remaining.Status = ApprovalStatuses.Rejected;
@@ -309,7 +310,7 @@ public class ApprovalService(
             PaymentId = payment.Id,
             ApprovalStepId = step.PublicId,
             ToIban = payment.ToIban,
-            Amount = FormatAmount(payment.Amount),
+            Amount = Money.Format(payment.Amount),
             Currency = payment.Currency,
             Reference = payment.Reference ?? "",
             CreatedAt = payment.CreatedAt,
@@ -334,7 +335,12 @@ public class ApprovalService(
     private static HandledApprovalDto ToHandledApprovalDto(ApprovalStep step) => new()
     {
         PaymentId = step.PaymentId,
-        Amount = FormatAmount(step.Payment?.Amount ?? 0m),
+        ApprovalStepId = step.Id,
+        StepNumber = step.StepNumber,
+        Amount = Money.Format(step.Payment?.Amount ?? 0m),
+        Currency = step.Payment?.Currency ?? "SEK",
+        Reference = step.Payment?.Reference ?? "",
+        ToIban = step.Payment?.ToIban ?? "",
         Status = step.Status,
         DecidedAt = ToUtcTimestamp(step.DecidedAt),
         Comment = step.Comment ?? "",
