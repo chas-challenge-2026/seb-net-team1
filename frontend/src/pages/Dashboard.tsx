@@ -11,8 +11,21 @@ import UpcomingPayments from "../components/dashboard/UpcomingPayments";
 import PendingApprovals from "../components/dashboard/PendingApprovals";
 import RecentActivity from "../components/dashboard/RecentActivity";
 import QuickActions from "../components/dashboard/QuickActions";
+import LisaDashboardView from "../components/dashboard/LisaDashboardView";
+import type { User } from "../types/User";
 import { canReadAuditLog } from "../utils/auditAccess";
 import "../styles/dashboard.css";
+
+function getStoredUser(): User | null {
+  try {
+    const stored = JSON.parse(localStorage.getItem("user") ?? "null") as Partial<User> | null;
+    return stored && typeof stored.email === "string" && typeof stored.name === "string"
+      ? stored as User
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 function filterBySearch<T>(
   items: T[] | null,
@@ -33,6 +46,7 @@ function Dashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const currentUser = dashboardData?.user ?? getStoredUser();
 
   useEffect(() => {
     let isCurrent = true;
@@ -59,6 +73,16 @@ function Dashboard() {
       isCurrent = false;
     };
   }, []);
+
+  if (currentUser?.email.toLocaleLowerCase("sv-SE") === "lisa@malmobygg.se") {
+    return (
+      <LisaDashboardView
+        data={dashboardData}
+        user={currentUser}
+        error={dashboardError}
+      />
+    );
+  }
 
   const normalizedSearchTerm = searchTerm.trim().toLocaleLowerCase("sv-SE");
   const visibleAccounts = filterBySearch(
