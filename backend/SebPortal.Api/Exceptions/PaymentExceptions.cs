@@ -15,10 +15,10 @@ public class InvalidPaymentAmountException(decimal amount)
         userMessage: "Beloppet måste vara större än 0.",
         technicalMessage: $"Rejected payment amount: {amount}.");
 
-public class InvalidIbanException(string iban, string? reason = null)
+public class InvalidIbanException(string iban)
     : BadRequestException(
-        userMessage: reason ?? "Ogiltigt IBAN-format. Kontrollera att du angett rätt format.",
-        technicalMessage: $"IBAN '{iban}' failed validation: {reason ?? "format"}.");
+        userMessage: "Ogiltigt IBAN-format. Kontrollera att du angett rätt format.",
+        technicalMessage: $"IBAN '{iban}' failed MOD97 checksum validation.");
 
 public class InsufficientFundsException(decimal amount, decimal availableBalance)
     : BadRequestException(

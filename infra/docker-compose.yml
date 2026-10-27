@@ -9,20 +9,19 @@
 # En automatisk kontroll (.github/workflows/infra-guard.yml) ger rött X
 # på push som bryter mot regel 1-3.
 # =====================================================================
+version: "3.9"
 name: seb
 
 services:
   db:
-    # v2: PostgreSQL 16 (v1 ran 12). The schema is created by the API's EF Core
-    # migrations at startup, so no seed.sql is mounted anymore. Switching version
-    # needs a database reset once, see DRIFT.md.
-    image: postgres:16
+    image: postgres:12
     environment:
       POSTGRES_DB: "${POSTGRES_DB:?Set POSTGRES_DB in infra/.env}"
       POSTGRES_USER: "${POSTGRES_USER:?Set POSTGRES_USER in infra/.env}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in infra/.env}"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./seed.sql:/docker-entrypoint-initdb.d/seed.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s

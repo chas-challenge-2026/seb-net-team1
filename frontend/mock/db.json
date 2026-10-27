@@ -1,0 +1,273 @@
+{
+  "tenants": [
+    {
+      "id": 1,
+      "name": "Malmö Bygg AB"
+    }
+  ],
+  "roles": [
+    {
+      "id": 1,
+      "name": "initiator"
+    },
+    {
+      "id": 2,
+      "name": "attestant_1"
+    },
+    {
+      "id": 3,
+      "name": "attestant_2"
+    },
+    {
+      "id": 4,
+      "name": "admin"
+    }
+  ],
+  "users": [
+    {
+      "id": 1,
+      "tenantId": 1,
+      "name": "Lisa Persson",
+      "email": "lisa@malmobygg.se",
+      "password": "password123",
+      "role": "initiator"
+    },
+    {
+      "id": 2,
+      "tenantId": 1,
+      "name": "Johan Berg",
+      "email": "johan@malmobygg.se",
+      "password": "password123",
+      "role": "attestant_1"
+    },
+    {
+      "id": 3,
+      "tenantId": 1,
+      "name": "Anna Lind",
+      "email": "anna@malmobygg.se",
+      "password": "password123",
+      "role": "attestant_2"
+    },
+    {
+      "id": 4,
+      "tenantId": 1,
+      "name": "Sara Ek",
+      "email": "sara@malmobygg.se",
+      "password": "password123",
+      "role": "admin"
+    }
+  ],
+  "accounts": [
+    {
+      "id": 1,
+      "tenantId": 1,
+      "accountName": "Driftkonto",
+      "iban": "SE4550000000058398257466",
+      "balance": 2500000,
+      "currency": "SEK"
+    },
+    {
+      "id": 2,
+      "tenantId": 1,
+      "accountName": "Lönekonto",
+      "iban": "SE4550000000058398257467",
+      "balance": 890000,
+      "currency": "SEK"
+    },
+    {
+      "id": 3,
+      "tenantId": 1,
+      "accountName": "Projektkonto",
+      "iban": "SE4550000000058398257468",
+      "balance": 450000,
+      "currency": "SEK"
+    }
+  ],
+  "payments": [
+    {
+      "id": 1,
+      "tenantId": 1,
+      "fromAccountId": 1,
+      "toIban": "SE8550000000054910000003",
+      "bic": "ESSESESS",
+      "amount": 15000,
+      "currency": "SEK",
+      "reference": "Faktura #1042",
+      "status": "completed",
+      "createdBy": 1,
+      "createdAt": "2026-08-25T08:00:00",
+      "executedAt": "2026-08-25T08:10:00"
+    },
+    {
+      "id": 2,
+      "tenantId": 1,
+      "fromAccountId": 1,
+      "toIban": "SE8550000000054910000004",
+      "bic": "ESSESESS",
+      "amount": 75000,
+      "currency": "SEK",
+      "reference": "Faktura #1043",
+      "status": "pending_approval",
+      "createdBy": 1,
+      "createdAt": "2026-08-25T09:00:00",
+      "executedAt": null
+    },
+    {
+      "id": 3,
+      "tenantId": 1,
+      "fromAccountId": 2,
+      "toIban": "SE3550000000054910000005",
+      "bic": "SWEDSESS",
+      "amount": 250000,
+      "currency": "SEK",
+      "reference": "Entreprenad augusti",
+      "status": "pending_approval",
+      "createdBy": 1,
+      "createdAt": "2026-08-25T10:00:00",
+      "executedAt": null
+    }
+  ],
+  "approvalFlows": [
+    {
+      "id": 1,
+      "tenantId": 1,
+      "name": "Standard approval",
+      "minAmount": 50000,
+      "maxAmount": 199999.99,
+      "requiredSteps": 1,
+      "active": true
+    },
+    {
+      "id": 2,
+      "tenantId": 1,
+      "name": "High value approval",
+      "minAmount": 200000,
+      "maxAmount": null,
+      "requiredSteps": 2,
+      "active": true
+    }
+  ],
+  "approvalSteps": [
+    {
+      "id": 1,
+      "paymentId": 2,
+      "attestantId": 2,
+      "stepNumber": 1,
+      "status": "pending",
+      "decidedAt": null,
+      "comment": null
+    },
+    {
+      "id": 2,
+      "paymentId": 3,
+      "attestantId": 2,
+      "stepNumber": 1,
+      "status": "pending",
+      "decidedAt": null,
+      "comment": null
+    },
+    {
+      "id": 3,
+      "paymentId": 3,
+      "attestantId": 3,
+      "stepNumber": 2,
+      "status": "waiting",
+      "decidedAt": null,
+      "comment": null
+    }
+  ],
+  "notifications": [
+    {
+      "id": 1,
+      "recipientId": 2,
+      "type": "approval_required",
+      "paymentId": 2,
+      "status": "unread",
+      "sentAt": "2026-08-25T09:01:00",
+      "readAt": null
+    },
+    {
+      "id": 2,
+      "recipientId": 2,
+      "type": "approval_required",
+      "paymentId": 3,
+      "status": "unread",
+      "sentAt": "2026-08-25T10:01:00",
+      "readAt": null
+    },
+    {
+      "id": 3,
+      "recipientId": 2,
+      "type": "reminder",
+      "paymentId": 2,
+      "status": "unread",
+      "sentAt": "2026-08-25T12:00:00",
+      "readAt": null
+    }
+  ],
+  "batchUploads": [
+    {
+      "id": 1,
+      "tenantId": 1,
+      "uploadedBy": 1,
+      "fileName": "loner-augusti.csv",
+      "rowCount": 25,
+      "validRows": 24,
+      "invalidRows": 1,
+      "status": "validated",
+      "createdAt": "2026-08-25T07:30:00"
+    }
+  ],
+  "ibanValidations": [
+    {
+      "id": 1,
+      "paymentId": 1,
+      "iban": "SE8550000000054910000003",
+      "bic": "ESSESESS",
+      "ibanValid": true,
+      "bicValid": true,
+      "validatedAt": "2026-08-25T07:59:00"
+    },
+    {
+      "id": 2,
+      "paymentId": 2,
+      "iban": "SE8550000000054910000004",
+      "bic": "ESSESESS",
+      "ibanValid": true,
+      "bicValid": true,
+      "validatedAt": "2026-08-25T08:59:00"
+    }
+  ],
+  "auditEntries": [
+    {
+      "id": 1,
+      "userId": 1,
+      "action": "CREATE_PAYMENT",
+      "entityType": "payment",
+      "entityId": 1,
+      "description": "Skapade betalning 15000 SEK",
+      "createdAt": "2026-08-25T08:00:00",
+      "signature": "mock-signature-001"
+    },
+    {
+      "id": 2,
+      "userId": 1,
+      "action": "CREATE_PAYMENT",
+      "entityType": "payment",
+      "entityId": 2,
+      "description": "Skapade betalning 75000 SEK",
+      "createdAt": "2026-08-25T09:00:00",
+      "signature": "mock-signature-002"
+    },
+    {
+      "id": 3,
+      "userId": 1,
+      "action": "CREATE_PAYMENT",
+      "entityType": "payment",
+      "entityId": 3,
+      "description": "Skapade betalning 250000 SEK",
+      "createdAt": "2026-08-25T10:00:00",
+      "signature": "mock-signature-003"
+    }
+  ]
+}

@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.Controllers;
 using SebPortal.Api.DTOs;
-using SebPortal.Api.Exceptions;
 using SebPortal.Api.Services;
 using SebPortal.Api.Signing;
 using Microsoft.EntityFrameworkCore;
@@ -96,7 +95,8 @@ public class PaymentsControllerTests
 
         await db.SaveChangesAsync();
 
-        var controller = TestServices.PaymentsController(db);
+        var service = CreatePaymentService(db);
+        var controller = new PaymentsController(service);
 
         SetAuthenticatedUser(controller);
 
@@ -134,7 +134,8 @@ public class PaymentsControllerTests
         // Arrange
         using var db = CreateContext();
 
-        var controller = TestServices.PaymentsController(db);
+        var service = CreatePaymentService(db);
+        var controller = new PaymentsController(service);
 
         SetAuthenticatedUser(controller);
 
@@ -146,9 +147,11 @@ public class PaymentsControllerTests
             Reference = "Faktura #2001"
         };
 
-        // Act & Assert: the exception becomes a 400 ProblemDetails in AppExceptionHandler
-        var exception = await Assert.ThrowsAsync<InvalidPaymentAmountException>(() => controller.CreatePayment(request));
-        Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
+        // Act
+        var result = await controller.CreatePayment(request);
+
+        // Assert
+        Assert.IsType<BadRequestObjectResult>(result);
     }
 
     /// <summary>
@@ -160,7 +163,8 @@ public class PaymentsControllerTests
         // Arrange
         using var db = CreateContext();
 
-        var controller = TestServices.PaymentsController(db);
+        var service = CreatePaymentService(db);
+        var controller = new PaymentsController(service);
 
         SetAuthenticatedUser(controller);
 
@@ -172,9 +176,11 @@ public class PaymentsControllerTests
             Reference = "Faktura #2001"
         };
 
-        // Act & Assert: the exception becomes a 400 ProblemDetails in AppExceptionHandler
-        var exception = await Assert.ThrowsAsync<InvalidIbanException>(() => controller.CreatePayment(request));
-        Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
+        // Act
+        var result = await controller.CreatePayment(request);
+
+        // Assert
+        Assert.IsType<BadRequestObjectResult>(result);
     }
 
     /// <summary>
@@ -186,7 +192,8 @@ public class PaymentsControllerTests
         // Arrange
         using var db = CreateContext();
 
-        var controller = TestServices.PaymentsController(db);
+        var service = CreatePaymentService(db);
+        var controller = new PaymentsController(service);
 
         SetAuthenticatedUser(controller);
 
@@ -198,8 +205,10 @@ public class PaymentsControllerTests
             Reference = "Faktura #2001"
         };
 
-        // Act & Assert: the exception becomes a 400 ProblemDetails in AppExceptionHandler
-        var exception = await Assert.ThrowsAsync<MissingSourceAccountException>(() => controller.CreatePayment(request));
-        Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
+        // Act
+        var result = await controller.CreatePayment(request);
+
+        // Assert
+        Assert.IsType<BadRequestObjectResult>(result);
     }
 }

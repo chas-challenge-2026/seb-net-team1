@@ -9,15 +9,5 @@ public class Transaction
     public string? TransactionType { get; set; }
     public int AccountId { get; set; }
 
-    /// <summary>The payment that caused this transaction, null for deposits.</summary>
-    public int? PaymentId { get; set; }
-
     public Account? Account { get; set; }
-    public Payment? Payment { get; set; }
-}
-
-public static class TransactionTypes
-{
-    public const string Payment = "payment";
-    public const string Deposit = "deposit";
 }

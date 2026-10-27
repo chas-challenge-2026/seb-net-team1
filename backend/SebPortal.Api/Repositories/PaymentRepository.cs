@@ -12,6 +12,7 @@ public class PaymentRepository(SebDbContext dbContext)
         int tenantId)
     {
         return await dbContext.Accounts
+            .Include(a => a.Transactions)
             .FirstOrDefaultAsync(a => a.Id == accountId && a.TenantId == tenantId);
     }
 

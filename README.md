@@ -1,8 +1,8 @@
 # SEB Företagsbetalningar
 
-En betalningsportal för SEB:s SME-kunder. Initiatorer skapar betalningar (en och en eller som CSV-batch), attestanter godkänner dem, och allt loggas i en manipuleringssäker granskningslogg.
+Ett betalningsportal-system för SEB:s SME-kunder. Initiator skapar betalningar, attestanter godkänner, allt loggas i en granskningslogg.
 
-Det här är **v2**: ett .NET 8 Web API och en React 18-frontend som ersätter v1:s Razor Pages-monolit (`backend/SebPortal`, kvar som referens). Se [docs/v2-targets.md](docs/v2-targets.md) för kraven och [docs/known-bugs.md](docs/known-bugs.md) för v1:s buggar.
+**Detta är v1 — ett avsiktligt spaghetti-system. Er uppgift är att bygga v2.**
 
 ---
 
@@ -24,7 +24,7 @@ cd infra
 docker compose up --build
 ```
 
-Ctrl+C stoppar allt. Utan skriptet: `cd infra && docker compose up --build` ger samma sak som `-Docker`.
+Öppna [http://localhost:8081](http://localhost:8081)
 
 | Roll | E-post |
 |------|--------|
@@ -273,69 +273,64 @@ beskrivs i [API-kontraktet](contracts/API.md#browser-authentication).
 ## Mappstruktur
 
 ```
+ChasChallenge/
 ├── backend/
-│   ├── SebPortal.Api/        — v2: ASP.NET Core 8 Web API
-│   │   ├── Controllers/      — tunna controllers, bara HTTP
-│   │   ├── Services/         — affärsregler (betalningar, attest, användare, rapporter ...)
-│   │   ├── Repositories/     — dataåtkomst med EF Core
-│   │   ├── Data/             — DbContext, migrationer, demodata
-│   │   ├── Auditing/         — HMAC-kedjan för granskningsloggen
-│   │   ├── Notifications/    — kö, bakgrundsarbetare och MailKit
-│   │   ├── Batch/            — CSV-parser och batchbetalningar
-│   │   ├── Validation/       — IBAN MOD97 och BIC
-│   │   └── Native/           — P/Invoke mot native/-modulerna (med managed fallback)
-│   ├── SebPortal.Api.Tests/  — xUnit: enhets- och integrationstester
-│   └── SebPortal/            — v1 (Razor Pages), kvar som referens
-├── contracts/                — API-kontrakt per område, börja i API.md
-├── docs/                     — v1-arkitektur, kända buggar, v2-mål
-├── frontend/                 — React 18 + TypeScript + Vite, se frontend/README.md
-├── infra/                    — docker-compose (plattformsfil) och lokal override
-├── native/                   — C-moduler: libcsvparser (och libiban)
-├── shared/                   — exempel-CSV för batchuppladdning
-└── start-local.ps1           — startar hela stacken lokalt
+│   └── SebPortal/        — ASP.NET Core 6 Razor Pages
+│       ├── Pages/        — En PageModel per sida, all logik här
+│       ├── wwwroot/      — Statiska filer
+│       ├── Dockerfile
+│       ├── Program.cs
+│       └── appsettings.json
+├── docs/
+│   ├── architecture.md   — Hur v1 är byggd
+│   ├── known-bugs.md     — Lista med 12 kända buggar (avsiktliga)
+│   ├── README-pain-points.md — Vad som fungerar vs. går sönder
+│   └── v2-targets.md     — Vad ni ska bygga
+├── frontend/             — Tom — er v2 React-app placeras här
+├── infra/
+│   ├── docker-compose.yml
+│   └── seed.sql          — Schema + testdata
+├── native/
+│   └── README.md         — Spec för C/C++ native moduler (v2)
+└── shared/
+    └── example-batch.csv — Exempelfil för batchuppladdning
 ```
 
 ---
 
-## Utveckling
+## Kända problem
 
-```bash
-dotnet test                                    # alla backend-tester (från repo-roten)
-dotnet tool restore                            # installerar dotnet-ef lokalt
-dotnet tool run dotnet-ef migrations add Namn --project backend/SebPortal.Api --output-dir Data/Migrations
-```
+Se [docs/known-bugs.md](docs/known-bugs.md) för fullständig lista. De allvarligaste:
 
-- Databasschemat ägs av EF Core-migrationerna i `backend/SebPortal.Api/Data/Migrations` och körs när API:t startar. Ändra modellen, lägg till en migration, klart.
-- Samtidighetstesterna mot riktig PostgreSQL körs när `SEB_TEST_POSTGRES` är satt, t.ex. mot den lokala databasen: `SEB_TEST_POSTGRES="Host=localhost;Port=5433;Username=seb;Password=seb123;Database=postgres" dotnet test`. I CI körs de alltid.
-- Frontend: se [frontend/README.md](frontend/README.md). Native-modulerna: `cd native && make test`.
-- CI (`.github/workflows/ci.yml`) kör backendtesterna mot PostgreSQL, frontendens lint och bygge samt C-testerna på varje pull request.
-
-Drift och deploy: se [DRIFT.md](DRIFT.md).
+- **SQL-injektion** i inloggningsformuläret (BUG-001)
+- **MD5-lösenord** — trivialt att knäcka (BUG-002)
+- **IBAN-validering** kontrollerar inte kontrollsiffror (BUG-003)
+- **CSV-parser** bryter på kommatecken i fält (BUG-004)
+- **Attesttröskel** definierad med olika värden i två filer (BUG-006)
+- **Notifieringar** misslyckas tyst, ingen retry (BUG-007)
+- **Dubbel audit-logg** — DB + fil, inkonsekvent (BUG-008)
 
 ---
 
-## Kända v1-buggar och hur v2 löser dem
+## Vad ska ni bygga
 
-| Bugg | Lösning i v2 |
-|---|---|
-| BUG-001 SQL-injektion i inloggningen | EF Core-frågor med parametrar, inga strängbyggda SQL-satser |
-| BUG-002 MD5-lösenord | BCrypt (`PasswordHasher`), test på `UserService.CreateUserAsync` |
-| BUG-003 IBAN utan kontrollsiffror | MOD97 + längd per land (`IbanValidator`, native `libiban` när den finns), 77 kända IBAN:er i testerna |
-| BUG-004 CSV bryter på kommatecken | RFC 4180-parser (native `libcsvparser` i Docker, managed annars) |
-| BUG-005 Batch utan transaktion | Allt-eller-inget i en databastransaktion |
-| BUG-006 Olika attesttrösklar | En källa: `PaymentRules` i konfigurationen, även frontend läser den via `/api/config` |
-| BUG-007 Notifieringar sväljs | Kö + MailKit + tre försök, felet sparas i `notifications` och loggas |
-| BUG-008 Dubbel audit-logg | Endast databasen, alla händelser, HMAC-kedja |
-| BUG-009 Saldot dras inte vid direktbetalning | Saldo, status och transaktion sparas tillsammans, optimistisk låsning (`xmin`) |
-| BUG-010 Hårdkodad anslutningssträng | Endast konfiguration/miljövariabler |
-| BUG-011 IDOR i attestkorgen | Steget måste vara tilldelat den inloggade (eller admin i samma tenant) |
-| BUG-012 Ingen filstorleksgräns | 1 MB och 1000 rader, kontrolleras innan filen tolkas |
+Se [docs/v2-targets.md](docs/v2-targets.md) för fullständiga krav.
+
+Kortversion:
+- .NET 8 **Web API** (ersätter Razor Pages)
+- **React 18** frontend
+- **Entity Framework Core 8** (ersätter raw ADO.NET)
+- Proper **autentisering** (JWT, Bcrypt)
+- **Notifieringskö** med retry
+- **IBAN MOD97**-validering
+- C/C++ **native moduler** (CSV, IBAN, audit-signering)
 
 ---
 
-## Teknisk stack
+## Teknisk stack (v1)
 
-- **Backend**: ASP.NET Core 8 Web API, EF Core 8 + Npgsql, PostgreSQL 16, JWT Bearer, BCrypt.Net, MailKit, Serilog, Swagger, health checks, rate limiting
-- **Frontend**: React 18, TypeScript, Vite, TanStack Router, TanStack Query, Zod
-- **Native**: C (gcc, OpenMP), anropas med P/Invoke
-- **Drift**: Docker (flerstegsbygge: frontend, native, backend, runtime), Docker Compose
+- ASP.NET Core 6 Razor Pages
+- Npgsql (ADO.NET)
+- PostgreSQL 12
+- Docker Compose
+- Bootstrap 5 (CDN)

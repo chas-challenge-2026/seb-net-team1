@@ -1,3 +1,4 @@
+using System.Globalization;
 using SebPortal.Api.DTOs;
 using SebPortal.Api.Models;
 using SebPortal.Api.Repositories;
@@ -30,8 +31,6 @@ public class DashboardService(DashboardRepository dashboardRepository)
         var totalPayments = await dashboardRepository.GetPaymentCountAsync(tenantId);
         var validationErrors = await dashboardRepository.GetValidationErrorCountAsync(tenantId);
         var recentActivity = await dashboardRepository.GetRecentPaymentActivityAsync(tenantId, RecentActivityCount);
-
-        var accountDtos = accounts.Select(account => ToAccountDto(account, reserved)).ToList();
 
         return new DashboardResponse
         {
@@ -117,7 +116,7 @@ public class DashboardService(DashboardRepository dashboardRepository)
         FromAccountName = p.FromAccount?.AccountName,
         CreatedByName = p.CreatedBy?.Name,
         ToIban = p.ToIban,
-        Amount = Money.Format(p.Amount),
+        Amount = p.Amount.ToString("F2", CultureInfo.InvariantCulture),
         Currency = p.Currency,
         Reference = p.Reference ?? "",
         Status = p.Status,

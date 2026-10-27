@@ -18,6 +18,7 @@ public class JwtTokenService
     /// </summary>
     public JwtTokenService(JwtConfiguration configuration)
     {
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -29,11 +30,7 @@ public class JwtTokenService
     /// <param name="role">User's authorization role, e.g. "initiator", "attestant", "admin" (stored in Role claim).</param>
     /// <param name="name">Full name or display name of the user (stored in Name claim).</param>
     /// <returns>A serialized, signed JWT string.</returns>
-    public string GenerateToken(int userId, int tenantId, string email, string role, string name) =>
-        CreateAccessToken(userId, tenantId, email, role, name).Token;
-
-    /// <summary>Like <see cref="GenerateToken"/>, but also returns when the token expires.</summary>
-    public (string Token, DateTime ExpiresAt) CreateAccessToken(int userId, int tenantId, string email, string role, string name)
+    public string GenerateToken(int userId, int tenantId, string email, string role, string name)
     {
         // Sign only with the active key. The previous key is reserved for validation.
         var credentials = new SigningCredentials(_configuration.ActiveKey, SecurityAlgorithms.HmacSha256);
@@ -55,10 +52,7 @@ public class JwtTokenService
             new Claim(ClaimTypes.Name, name),
 
             // Role claim: Used by ASP.NET Core authorization attributes [Authorize(Roles = "...")]
-            new Claim(ClaimTypes.Role, role),
-
-            // Unique token id, so two tokens issued in the same second still differ
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N"))
+            new Claim(ClaimTypes.Role, role)
         };
 
         // Construct the JWT security token object.
@@ -71,6 +65,6 @@ public class JwtTokenService
 
         // Serialize the token object into its compact 3-part string representation:
         // "<Header>.<Payload>.<Signature>"
-        return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

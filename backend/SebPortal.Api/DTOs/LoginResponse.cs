@@ -1,10 +1,6 @@
 namespace SebPortal.Api.DTOs;
 
-/// <summary>
-/// Returned by POST /api/auth/login and POST /api/auth/refresh. The refresh token is
-/// not part of the body: it is set as an httpOnly cookie so scripts cannot read it.
-/// </summary>
-public class LoginResponse
+public class LoginResponse // Backend skicka tillbaka en Response till fronend vid lyckad inlogg
 {
     public AuthenticatedUserDto? User { get; set; }
 }

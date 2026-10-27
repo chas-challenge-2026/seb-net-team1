@@ -8,11 +8,6 @@ using SebPortal.Api.Services;
 
 namespace SebPortal.Api.Controllers;
 
-/// <summary>
-/// Login, silent refresh and logout. The access token (JWT, 15 min) is returned in
-/// the body and kept in memory by the frontend; the refresh token is an httpOnly,
-/// Secure, SameSite=Strict cookie limited to /api/auth, so scripts can never read it.
-/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [RequireCsrf]
@@ -36,8 +31,7 @@ public class AuthController(
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return Problem(statusCode: StatusCodes.Status400BadRequest, title: "BadRequest",
-                detail: "E-post och lösenord måste anges.");
+            return BadRequest(new { message = "E-post och lösenord måste anges." });
         }
 
         var user = authService.Login(request);

@@ -1,7 +1,8 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.Auth;
-using SebPortal.Api.Batch;
 using SebPortal.Api.DTOs;
 using SebPortal.Api.Models;
 using SebPortal.Api.Services;
@@ -11,21 +12,17 @@ namespace SebPortal.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
-public class PaymentsController(
-    PaymentService paymentService,
-    PaymentQueryService paymentQueryService,
-    BatchPaymentService batchPaymentService) : ControllerBase
+public class PaymentsController(PaymentService paymentService) : ControllerBase
 {
     private const int MaxBatchFileBytes = 1024 * 1024; // 1 MiB
 
     /// <summary>
-    /// Creates a new payment request for an authenticated initiator or admin.
-    /// Tenant and user come from the JWT, never from the body. Validation, the
-    /// approval rules and persistence live in PaymentService; errors are thrown as
-    /// custom exceptions and returned as ProblemDetails by AppExceptionHandler.
+    /// Creates a new payment request for an authenticated user.
+    /// The endpoint validates required fields, reads user information from the JWT,
+    /// delegates payment creation to PaymentService, and returns a response that
+    /// follows the payment API contract.
     /// </summary>
     /// <param name="request">The payment data sent from the frontend.</param>
-    /// <param name="idempotencyKey">Optional key; a retry with the same key returns the original payment.</param>
     /// <returns>
     /// 201 Created with the created payment data when the request is valid,
     /// 401 Unauthorized when the token is missing required user information,
@@ -38,7 +35,10 @@ public class PaymentsController(
         CreatePaymentRequestDto request,
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null)
     {
-        if (User.GetUserId() is not { } userId || User.GetTenantId() is not { } tenantId)
+        var userId = User.GetUserId();
+        var tenantId = User.GetTenantId();
+
+        if (userId is null || tenantId is null)
         {
             return Unauthorized(new { message = "Ogiltig eller saknad användarinformation i token." });
         }
@@ -70,6 +70,7 @@ public class PaymentsController(
             request.FromAccountId,
             normalizedToIban,
             request.Amount,
+            currency,
             request.Reference,
             createdById,
             idempotencyKey);

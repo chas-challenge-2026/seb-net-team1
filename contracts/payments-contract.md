@@ -1,26 +1,14 @@
 ## Payments
 
-**Related tickets:** US-03 (shape), US-21/US-22 (payment API and PaymentService), US-23 (frontend), US-24 (atomic balance handling), US-25/US-26 (approval steps). Update this doc in the same PR if anything changes.
+**Related tickets:** This contract defines the shape only (US-03, Sprint 1). The real implementation is US-21 (`Skapa payment API utifrån v1 NewPayment`) and US-22 (`Flytta betalningslogik till PaymentService`), both Sprint 3. Frontend build-out is US-23. Atomic balance handling is US-24. Whoever picks up those tickets should follow this contract, not redefine it. Update this doc in the same PR if anything changes.
 
-Endpoints:
+### POST `/api/payments`
 
-| Method | Path | Roles | Purpose |
-|---|---|---|---|
-| POST | `/api/payments` | initiator, admin | Create one payment |
-| GET | `/api/payments` | all | Payment history, filtered and paged |
-| GET | `/api/payments/{id}` | all | One payment with approval steps and audit trail |
-| GET | `/api/payments/export` | all | Payment history as a CSV file |
-| POST | `/api/payments/batch/validate` | initiator, admin | Check a CSV batch file without creating anything |
-| POST | `/api/payments/batch` | initiator, admin | Create every payment in a CSV batch file, or none |
+Creates a new outgoing payment. If the amount is above the approval threshold, the payment is created with status `pending_approval` instead of being completed immediately.
 
-All require a valid JWT. Everything is scoped to the caller's tenant from the JWT.
+Frontend uses this endpoint when a user submits the "Ny betalning" form.
 
-### Business rules
-
-- A payment `<= PaymentRules:ApprovalThreshold` (50 000 SEK) is completed immediately: the balance is drawn and a transaction is written, in the same database transaction as the payment.
-- A payment above the threshold is created as `pending_approval` with its first approval step assigned to an attestant (never the creator), who is notified. Above `PaymentRules:DoubleApprovalThreshold` (200 000 SEK) it needs two approvals by two different people; step 2 is created when step 1 is approved. See [approvals-contract.md](approvals-contract.md).
-- New payments must fit in the account's **available balance**: balance minus the money reserved by the account's payments that are waiting for attest.
-- Concurrent writes to the same account are detected with PostgreSQL's `xmin` (optimistic locking) and retried, so the balance can never be overdrawn or double counted.
+Requires a valid JWT (`Authorization: Bearer <token>`), role `initiator` or `admin`.
 
 ### Idempotency header
 
@@ -43,9 +31,7 @@ new payment must use a new key.
 
 ---
 
-### POST `/api/payments`
-
-Headers: `Idempotency-Key: <uuid>` (optional, max 64 characters). Generate one per form submission and reuse it when retrying the *same* submission: a request with a key that was already used returns the original payment with `200 OK` (and the header `Idempotent-Replayed: true`) instead of creating a duplicate.
+## Request
 
 ```json
 {
@@ -56,14 +42,20 @@ Headers: `Idempotency-Key: <uuid>` (optional, max 64 characters). Generate one p
 }
 ```
 
+### Request fields
+
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `fromAccountId` | number | Yes | Account to pay from. Must belong to the logged-in user's tenant |
-| `toIban` | string | Yes | Recipient IBAN. Spaces and lower case are accepted and normalized. Validated with MOD97 |
-| `amount` | string | Yes | Decimal string, greater than 0, at most two decimals |
-| `reference` | string | No | Free text, max 100 characters |
+| `fromAccountId` | number | Yes | Id of the account to pay from. Must belong to the logged-in user's tenant |
+| `toIban` | string | Yes | Recipient IBAN, no spaces |
+| `amount` | string | Yes | Payment amount as a decimal string, never a float. Must be greater than 0 |
+| `reference` | string | No | Free-text payment reference, max 100 chars |
 
-#### `201 Created`
+---
+
+## Success Response
+
+### `201 Created`
 
 ```json
 {
@@ -78,7 +70,7 @@ Headers: `Idempotency-Key: <uuid>` (optional, max 64 characters). Generate one p
 }
 ```
 
-`status` is `completed` at or below the approval threshold, otherwise `pending_approval`. Currency is always `SEK`.
+### Response fields
 
 | Field | Type | Description |
 |---|---|---|
@@ -93,9 +85,9 @@ Headers: `Idempotency-Key: <uuid>` (optional, max 64 characters). Generate one p
 
 ---
 
-### GET `/api/payments`
+## Error Responses
 
-Query parameters (all optional):
+### `400 Bad Request`
 
 Returned when a field is missing, the IBAN format is invalid, the amount is not
 greater than 0, or the idempotency key exceeds 128 characters.
@@ -104,8 +96,7 @@ greater than 0, or the idempotency key exceeds 128 characters.
 {
   "status": 400,
   "title": "BadRequest",
-  "detail": "Batchfilen innehåller fel. Inga betalningar har skapats.",
-  "validation": { "...": "same shape as the validate response" }
+  "detail": "Ogiltigt IBAN-format. Kontrollera att du angett rätt format."
 }
 ```
 
@@ -161,8 +152,25 @@ Frontend can use this contract to:
 
 ## Backend Notes
 
-- Tenant and user always come from the JWT, never from the request.
-- IBAN validation uses MOD97 (ISO 13616) with the per-country lengths from the SWIFT IBAN registry: the native `libiban` when it is built into the image, otherwise the managed `IbanValidator` with the same rules (BUG-003).
-- The payment, balance change, transaction, approval step, audit entry and notification are committed in one database transaction (`UnitOfWork`).
-- The approval thresholds come only from `PaymentRules` (BUG-006).
-- Errors are thrown as custom exceptions and turned into ProblemDetails by `AppExceptionHandler`.
+Backend should use this contract to:
+- implement `POST /api/payments`
+- derive `tenantId` and the user id from the JWT claims only. Never trust a client-supplied id
+- validate that `fromAccountId` belongs to the logged-in user's tenant before creating the payment (`403` if not)
+- validate the IBAN using real **MOD97** checksum validation, not just a format check. v1's regex accepted IBANs that looked right but had an invalid checksum (BUG-003). The MOD97 check itself is the native C/C++ module's job, not this endpoint's. This contract just requires the endpoint to call it and return `400` on failure
+- represent `amount` as a decimal string, never a floating-point number
+- read the approval threshold from a single shared source of truth, not a hardcoded constant per file. v1 defined the same threshold inconsistently across `NewPayment.cs`, `ApprovalInbox.cs`, and `appsettings.json` (BUG-006). This contract only defines the endpoint's behavior. Consolidating the threshold value itself belongs to whichever ticket owns approval-chain logic (US-25/US-26)
+- return `201 Created` with the payment, not `200 OK`, since a new resource was created
+- return consistent ProblemDetails error responses (status, title, detail) per the format above
+- throw the matching custom exception (InvalidIbanException, InvalidPaymentAmountException, AccountAccessDeniedException) rather than returning ad-hoc error objects. The global exception handler converts these to the responses shown above automatically
+
+**Out of scope for this contract (belongs to later sprints):**
+- Atomic balance deduction on completed payments (US-24)
+- Creating approval steps / notifying attestants (US-25, US-26)
+- Actual MOD97 implementation inside the native module
+
+---
+
+## Important
+
+This contract is a first version and can be changed if frontend or backend needs adjustments.
+If the request or response format changes, this document should be updated so the whole team stays aligned.
