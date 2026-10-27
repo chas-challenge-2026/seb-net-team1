@@ -139,8 +139,7 @@ public class PaymentService(
         };
 
         // 3. Determine the payment flow from the configured approval threshold.
-        var requiresApproval = amount > paymentRules.Value.ApprovalThreshold ||
-            RequiresDoubleApproval(amount);
+        var requiresApproval = RequiresApproval(amount);
 
         if (requiresApproval)
         {
@@ -194,9 +193,7 @@ public class PaymentService(
                 "CREATE_PAYMENT",
                 "payment",
                 payment.Id,
-                $"Betalning skapad: {amount.ToString("F2", CultureInfo.InvariantCulture)} {currency} " +
-                $"till {toIban}. " +
-                (requiresApproval ? "Väntar på attest." : "Genomförd direkt."));
+                PaymentCreatedDescription(amount, currency, toIban, requiresApproval));
 
             await paymentRepository.SaveChangesAsync();
 

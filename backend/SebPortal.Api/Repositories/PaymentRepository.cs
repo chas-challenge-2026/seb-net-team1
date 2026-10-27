@@ -37,6 +37,15 @@ public class PaymentRepository(SebDbContext dbContext)
         return payment;
     }
 
+    /// <summary>
+    /// Tracks several payments without saving, so the caller can save them (and the
+    /// account changes made with them) in one SaveChangesAsync.
+    /// </summary>
+    public void AddPayments(IEnumerable<Payment> payments)
+    {
+        dbContext.Payments.AddRange(payments);
+    }
+
     public async Task SaveChangesAsync()
     {
         await dbContext.SaveChangesAsync();
