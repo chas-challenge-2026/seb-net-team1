@@ -11,6 +11,7 @@
   color: var(--lisa-text);
   font-family: var(--font-family);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .lisa-navbar {
@@ -710,7 +711,7 @@
 }
 
 .lisa-status-icon--success { background: #d8f7df; color: #009344; }
-.lisa-status-icon--progress { background: #fff0cc; color: #e18b00; }
+.lisa-status-icon--progress { background: #DBEAFE; color: #1D4ED8; }
 .lisa-status-icon--pending { background: #fff0cc; color: #e18b00; }
 .lisa-status-icon--rejected { background: #ffe2e1; color: #dc2626; }
 .lisa-status-icon--failed { background: #eef2f7; color: #8ea0b7; }
@@ -792,7 +793,7 @@
   .lisa-status-card li > strong { grid-column: 2; }
 }
 
-@media (max-width: 920px) {
+@media (max-width: 1024px) {
   .lisa-navbar {
     gap: 16px;
     min-height: 88px;
@@ -804,12 +805,18 @@
     background: transparent;
     border: 0;
     color: #fff;
+    cursor: pointer;
     display: flex;
     height: 42px;
     justify-content: center;
     margin-left: auto;
     order: 2;
     width: 42px;
+  }
+  .lisa-navbar__menu-toggle:focus-visible {
+    border-radius: 8px;
+    outline: 2px solid #fff;
+    outline-offset: 3px;
   }
   .lisa-navbar__menu-toggle svg { height: 23px; width: 23px; }
   .lisa-navbar__links {
@@ -839,37 +846,7 @@
     padding: 0 20px;
   }
   .lisa-navbar__brand { width: 96px; }
-  .lisa-navbar__menu-toggle {
-    align-items: center;
-    background: transparent;
-    border: 0;
-    color: #fff;
-    display: flex;
-    height: 42px;
-    justify-content: center;
-    margin-left: auto;
-    order: 2;
-    width: 42px;
-  }
-  .lisa-navbar__menu-toggle svg { height: 23px; width: 23px; }
-  .lisa-navbar__links {
-    align-items: stretch;
-    background: var(--lisa-green);
-    border-top: 1px solid rgba(255, 255, 255, .15);
-    display: none;
-    flex-direction: column;
-    gap: 4px;
-    left: 0;
-    padding: 12px 20px 16px;
-    position: absolute;
-    right: 0;
-    top: 100%;
-  }
-  .lisa-navbar__links.is-open { display: flex; }
-  .lisa-navbar__link { min-height: 44px; padding: 0 10px; }
-  .lisa-navbar__right { gap: 10px; order: 1; }
-  .lisa-navbar__profile summary { min-width: 0; }
-  .lisa-navbar__identity { display: none; }
+  .lisa-navbar__links { padding-right: 20px; padding-left: 20px; }
   .lisa-navbar__avatar { flex-basis: 38px; height: 38px; width: 38px; }
   .lisa-navbar .dashboard-notification-button { height: 38px; width: 38px; }
   .lisa-hero { min-height: 178px; }
@@ -889,10 +866,16 @@
       "status";
     grid-template-columns: minmax(0, 1fr);
   }
-  .lisa-balance-card { flex-wrap: wrap; gap: 13px; min-height: 0; padding: 16px; }
-  .lisa-balance-card__copy { flex: 1 1 calc(100% - 80px); margin-left: 8px; }
-  .lisa-balance-card__copy strong { font-size: 29px; }
-  .lisa-button--primary { margin: 0; min-height: 44px; width: 100%; }
+  .lisa-balance-card {
+    display: grid;
+    gap: 13px;
+    grid-template-columns: 48px minmax(0, 1fr);
+    min-height: 0;
+    padding: 16px;
+  }
+  .lisa-balance-card__copy { margin: 0; }
+  .lisa-balance-card__copy strong { font-size: clamp(23px, 7.5vw, 29px); overflow-wrap: anywhere; }
+  .lisa-button--primary { grid-column: 1 / -1; margin: 0; min-height: 44px; width: 100%; }
   .lisa-quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lisa-quick-action { min-height: 82px; }
   .lisa-pending-card { gap: 12px; padding: 13px; }
@@ -907,6 +890,33 @@
   .lisa-help-banner small { font-size: 12px; }
   .lisa-help-banner__icon { flex-basis: 27px; }
   .lisa-help-banner__icon svg { height: 25px; width: 25px; }
+}
+
+@media (max-width: 960px) and (min-width: 761px) {
+  .lisa-status-card ul { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 380px) {
+  .lisa-navbar {
+    gap: 8px;
+    min-height: 72px;
+    padding: 0 12px;
+  }
+  .lisa-navbar__brand { width: 82px; }
+  .lisa-navbar__right { gap: 2px; }
+  .lisa-navbar__avatar { flex-basis: 34px; height: 34px; width: 34px; }
+  .lisa-navbar .dashboard-notification-button { height: 34px; width: 34px; }
+  .lisa-navbar__menu-toggle { height: 38px; width: 38px; }
+  .lisa-hero__content { width: calc(100% - 32px); }
+  .lisa-dashboard__main { width: calc(100% - 24px); }
+  .lisa-balance-card { gap: 9px; padding: 13px; }
+  .lisa-balance-card__copy strong { font-size: clamp(22px, 7vw, 26px); }
+  .lisa-list-card,
+  .lisa-status-card,
+  .lisa-quick-card { padding-right: 12px; padding-left: 12px; }
+  .lisa-payment-row { gap: 7px; padding-right: 7px; padding-left: 7px; }
+  .lisa-payment-row__amount small { font-size: 8px; }
+  .lisa-help-banner { gap: 10px; padding: 14px 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

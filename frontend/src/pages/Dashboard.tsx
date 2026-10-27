@@ -12,6 +12,7 @@ import PendingApprovals from "../components/dashboard/PendingApprovals";
 import RecentActivity from "../components/dashboard/RecentActivity";
 import QuickActions from "../components/dashboard/QuickActions";
 import LisaDashboardView from "../components/dashboard/LisaDashboardView";
+import JohanDashboardView from "../components/dashboard/JohanDashboardView";
 import type { User } from "../types/User";
 import { canReadAuditLog } from "../utils/auditAccess";
 import "../styles/dashboard.css";
@@ -77,6 +78,16 @@ function Dashboard() {
   if (currentUser?.email.toLocaleLowerCase("sv-SE") === "lisa@malmobygg.se") {
     return (
       <LisaDashboardView
+        data={dashboardData}
+        user={currentUser}
+        error={dashboardError}
+      />
+    );
+  }
+
+  if (currentUser?.email.toLocaleLowerCase("sv-SE") === "johan@malmobygg.se") {
+    return (
+      <JohanDashboardView
         data={dashboardData}
         user={currentUser}
         error={dashboardError}
