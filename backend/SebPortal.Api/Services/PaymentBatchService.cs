@@ -106,9 +106,10 @@ public class PaymentBatchService(
 
             // Only a row that is otherwise valid takes money from the running balance,
             // so one bad row doesn't cause misleading balance errors further down.
-            if (problems.Count == 0 && account is not null && row.Amount is { } amount
-                && !paymentService.RequiresApproval(amount))
+            if (problems.Count == 0 && account is not null && row.Amount.HasValue
+                && !paymentService.RequiresApproval(row.Amount.Value))
             {
+                var amount = row.Amount.Value;
                 var balance = runningBalances.GetValueOrDefault(account.Id, account.Balance);
 
                 if (balance < amount)

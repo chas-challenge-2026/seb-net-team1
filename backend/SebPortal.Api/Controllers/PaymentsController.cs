@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using System.Threading.Tasks;
+using System.IO;
 using Microsoft.AspNetCore.Mvc;
 using SebPortal.Api.Auth;
 using SebPortal.Api.DTOs;
@@ -165,4 +166,38 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
         // A batch has no single resource to point to, so there is no Location header.
         return StatusCode(StatusCodes.Status201Created, response);
     }
+
+    private async Task<byte[]?> ReadBodyAsync(int maxBytes)
+    {
+        using var buffer = new MemoryStream();
+        var chunk = new byte[16 * 1024];
+        int read;
+
+        while ((read = await Request.Body.ReadAsync(chunk.AsMemory())) > 0)
+        {
+            if (buffer.Length + read > maxBytes)
+            {
+                return null;
+            }
+
+            buffer.Write(chunk, 0, read);
+        }
+
+        return buffer.ToArray();
+    }
+
+    private BadRequestObjectResult Unparsed(string message) =>
+        BadRequest(new BatchUnparsedResponseDto { Message = message });
+
+    private static PaymentResponseDto ToResponse(Payment payment) => new()
+    {
+        Id = payment.Id,
+        Status = payment.Status,
+        FromAccountId = payment.FromAccountId,
+        ToIban = payment.ToIban,
+        Amount = payment.Amount.ToString("0.00", CultureInfo.InvariantCulture),
+        Currency = payment.Currency,
+        Reference = payment.Reference,
+        CreatedAt = payment.CreatedAt
+    };
 }
