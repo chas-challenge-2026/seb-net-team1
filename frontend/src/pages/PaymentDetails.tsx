@@ -19,6 +19,7 @@ import {
 } from "../utils/paymentPresentation";
 
 type DetailState = {
+  requestKey: string | null;
   data: PaymentDetailsData | null;
   loading: boolean;
   error: string | null;
@@ -26,6 +27,7 @@ type DetailState = {
 };
 
 const INITIAL_DETAIL_STATE: DetailState = {
+  requestKey: null,
   data: null,
   loading: true,
   error: null,
@@ -36,32 +38,35 @@ export default function PaymentDetails() {
   const { id } = useParams();
   const { data: overview } = usePaymentOverview();
   const paymentId = id && /^\d+$/.test(id) ? Number(id) : NaN;
+  const isValidPaymentId = Number.isSafeInteger(paymentId) && paymentId > 0;
   const [detail, setDetail] = useState<DetailState>(INITIAL_DETAIL_STATE);
   const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    if (!Number.isSafeInteger(paymentId) || paymentId <= 0) {
-      setDetail({
+  const requestKey = `${paymentId}:${attempt}`;
+  const displayedDetail = isValidPaymentId
+    ? detail.requestKey === requestKey ? detail : INITIAL_DETAIL_STATE
+    : {
+        requestKey,
         data: null,
         loading: false,
         error: "Betalningsnumret är ogiltigt.",
         needsLogin: false,
-      });
-      return;
-    }
+      };
+
+  useEffect(() => {
+    if (!isValidPaymentId) return;
 
     const controller = new AbortController();
-    setDetail(INITIAL_DETAIL_STATE);
 
     getPaymentDetails(paymentId, controller.signal)
       .then((payment) => {
         if (!controller.signal.aborted) {
-          setDetail({ data: payment, loading: false, error: null, needsLogin: false });
+          setDetail({ requestKey, data: payment, loading: false, error: null, needsLogin: false });
         }
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
           setDetail({
+            requestKey,
             data: null,
             loading: false,
             error: error instanceof TypeError
@@ -73,9 +78,9 @@ export default function PaymentDetails() {
       });
 
     return () => controller.abort();
-  }, [paymentId, attempt]);
+  }, [paymentId, attempt, isValidPaymentId, requestKey]);
 
-  const payment = detail.data;
+  const payment = displayedDetail.data;
   const status = getPaymentStatus(payment?.status ?? null);
   const canOpenInbox = canReadAuditLog(overview?.user?.role);
 
@@ -89,14 +94,14 @@ export default function PaymentDetails() {
         <FiArrowLeft aria-hidden="true" />Tillbaka till betalningar
       </Link>
 
-      {detail.loading ? (
+      {displayedDetail.loading ? (
         <Card className="payments-detail-card">
           <p className="payments-detail-state" role="status">Hämtar betalningen...</p>
         </Card>
-      ) : detail.error ? (
+      ) : displayedDetail.error ? (
         <Card className="payments-detail-card">
-          <p className="payments-error" role="alert">{detail.error}</p>
-          {detail.needsLogin ? (
+          <p className="payments-error" role="alert">{displayedDetail.error}</p>
+          {displayedDetail.needsLogin ? (
             <Link to="/" className="payments-text-link">Logga in</Link>
           ) : (
             <Button type="button" className="payments-action payments-action--secondary" onClick={() => setAttempt((value) => value + 1)}>

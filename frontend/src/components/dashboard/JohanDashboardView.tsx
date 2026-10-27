@@ -394,8 +394,6 @@ export default function JohanDashboardView({ data, user, error }: JohanDashboard
 
   useEffect(() => {
     const controller = new AbortController();
-    setApprovals(null);
-    setApprovalError(null);
 
     getApprovalInbox({ signal: controller.signal })
       .then((inbox) => {
@@ -416,6 +414,8 @@ export default function JohanDashboardView({ data, user, error }: JohanDashboard
   }, [approvalRequest]);
 
   function retryApprovals() {
+    setApprovals(null);
+    setApprovalError(null);
     setApprovalRequest((request) => request + 1);
   }
 
