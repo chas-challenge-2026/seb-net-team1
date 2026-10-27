@@ -1,0 +1,13 @@
+.portal-main { overflow-y: auto; }
+.portal-content { height: auto; overflow: visible; display: grid; gap: 20px; padding-bottom: 32px; }
+.portal-card { padding: 24px; min-width: 0; }
+.portal-card h2 { margin: 0 0 18px; font-size: 1.15rem; }
+.portal-table-scroll { overflow-x: auto; }
+.portal-card table { border-collapse: collapse; width: 100%; text-align: left; }
+.portal-card th, .portal-card td { padding: 14px 12px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
+.portal-card th { background: var(--light-green); font-weight: 600; white-space: nowrap; }
+.portal-card td { font-size: 0.9rem; overflow-wrap: anywhere; }
+.portal-action { display: inline-block; justify-self: start; background: var(--seb-green); color: white; border: 0; border-radius: 6px; padding: 12px 18px; text-decoration: none; cursor: pointer; }
+.portal-action:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.portal-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media (max-width: 700px) { .portal-card { padding: 16px; } .portal-card table { min-width: 540px; } }

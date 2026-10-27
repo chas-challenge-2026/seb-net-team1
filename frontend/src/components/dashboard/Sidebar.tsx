@@ -65,6 +65,15 @@ export default function DashboardSidebar({
     const auditLogClassName = `dashboard-sidebar-link${pathname === "/audit-log" ? " active" : ""}`;
     const settingsClassName = `dashboard-sidebar-link${pathname === "/settings" ? " active" : ""}`;
 
+    const [pendingCount, setPendingCount] = useState<number | null>(null);
+    useEffect(() => {
+      const controller = new AbortController();
+      getMockRows<{ status: string }>("approvalSteps", controller.signal)
+        .then(steps => setPendingCount(steps.filter(step => step.status === "pending").length))
+        .catch(() => {});
+      return () => controller.abort();
+    }, []);
+
     async function handleLogout() {
       setIsLoggingOut(true);
       setLogoutError("");

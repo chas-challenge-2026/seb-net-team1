@@ -1,9 +1,11 @@
+import { useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import {LuArrowRight,LuList,LuPlus,LuUpload,LuUserRoundPlus } from "react-icons/lu";
 import { Link } from "react-router-dom";
 import Card from "../shared/Card";
 
 interface QuickAction {
+	path: string;
 	label: string;
 	description: string;
 	icon: ReactNode;
@@ -12,9 +14,11 @@ interface QuickAction {
 }
 
 export default function QuickActions() {
+	const navigate = useNavigate();
 	const actions: QuickAction[] = [
 		{
 			label: "Ny betalning",
+			path: "/new-payment",
 			description: "Skapa en ny betalning",
 			icon: <LuPlus />,
 			variant: "green",
@@ -22,6 +26,7 @@ export default function QuickActions() {
 		},
 		{
 			label: "Ladda upp fil",
+			path: "/batch-files",
 			description: "Ladda upp batchfil",
 			icon: <LuUpload />,
 			variant: "blue",
@@ -31,11 +36,13 @@ export default function QuickActions() {
 			label: "Godkänn betalningar",
 			description: "Se och godkänn betalningar",
 			icon: <LuUserRoundPlus />,
+			path: "/approvals",
 			variant: "yellow",
 			to: "/approval-inbox",
 		},
 		{
 			label: "Visa alla betalningar",
+			path: "/payments",
 			description: "Gå till betalningsöversikten",
 			icon: <LuList />,
 			variant: "purple",
