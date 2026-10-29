@@ -7,9 +7,13 @@
 html,
 body,
 #root {
-	height: 100%;
 	margin: 0;
-	overflow: hidden;
+}
+
+body,
+#root {
+	min-height: 100vh;
+	min-height: 100dvh;
 }
 
 body {

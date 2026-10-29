@@ -12,13 +12,6 @@ const AccountList = ({ accounts }: AccountListProps) => {
   return (
     <section className="account-list">
       <Card className="account-list-card">
-        <div className="account-list-header">
-          <div>
-            <h2>Företagets konton</h2>
-            <p>Översikt över företagets konton och aktuella saldon.</p>
-          </div>
-        </div>
-
         {accounts && accounts.length > 0 && <AccountBalanceChart accounts={accounts} />}
 
         <div className="account-list-items">

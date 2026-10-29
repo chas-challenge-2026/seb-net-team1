@@ -3,6 +3,7 @@
 .dashboard-layout {
 	display: flex;
 	height: 100vh;
+	height: 100dvh;
 	min-height: 0;
 	overflow: hidden;
 	color: var(--ink);
@@ -15,6 +16,7 @@
 	flex: 1;
 	flex-direction: column;
 	height: 100vh;
+	height: 100dvh;
 	min-height: 0;
 	min-width: 0;
 	overflow: hidden;
@@ -36,6 +38,7 @@
 	background-size: cover, auto 220%;
 	border: 1px solid color-mix(in srgb, var(--seb-green) 16%, var(--border-color));
 	border-radius: 12px;
+	box-sizing: border-box;
 	display: flex;
 	gap: 20px;
 	justify-content: space-between;
@@ -95,7 +98,8 @@
 
 .dashboard-footer {
 	flex: 0 0 auto;
-	margin: 12px 0 10px;
+	margin: auto 0 0;
+	padding-top: 10px;
 }
 
 
@@ -369,7 +373,7 @@
 	height: auto;
 	min-height: 0;
 	overflow-y: auto;
-	padding: 16px 24px 24px;
+	padding: 16px 24px 12px;
 }
 
 .dashboard-content .card {
@@ -524,6 +528,10 @@
 }
 
 .dashboard-column:first-child > .card {
+	flex: 0 0 auto;
+}
+
+.dashboard-column:first-child > .recent-activity {
 	flex: 1 0 auto;
 }
 
@@ -1111,26 +1119,26 @@
 
 @media (min-width: 1101px) and (max-height: 950px) {
 	.dashboard-content {
-		padding: 12px 20px 24px;
+		padding: 8px 18px;
 	}
 
 	.dashboard-summary {
-		gap: 10px;
-		margin-bottom: 10px;
+		gap: 8px;
+		margin-bottom: 8px;
 	}
 
 	.summary-card {
-		min-height: 124px;
-		padding: 10px 12px;
+		min-height: clamp(88px, 12vh, 108px);
+		padding: 8px 10px;
 	}
 
 	.dashboard-panels,
 	.dashboard-column {
-		gap: 8px;
+		gap: 7px;
 	}
 
 	.dashboard-section__header {
-		margin-bottom: 7px;
+		margin-bottom: 6px;
 	}
 
 	.account-overview,
@@ -1139,23 +1147,32 @@
 	.pending-approvals,
 	.recent-activity,
 	.quick-actions {
-		padding: 10px;
+		padding: 8px;
 	}
 
 	.account-card {
-		min-height: 132px;
-		padding: 12px;
+		min-height: 108px;
+		padding: 9px;
 	}
 
 	.payment-status__row {
-		min-height: 26px;
+		min-height: 23px;
 	}
 
 	.upcoming-payments__item,
-	.pending-approvals__item,
+	.pending-approvals__item {
+		min-height: 31px;
+		padding: 1px 0;
+	}
+
 	.recent-activity__item {
-		min-height: 36px;
-		padding: 2px 0;
+		min-height: 38px;
+		padding: 4px 0;
+	}
+
+	.upcoming-payments__item {
+		min-height: 31px;
+		padding: 3px 0;
 	}
 
 	.quick-actions__grid {
@@ -1163,13 +1180,23 @@
 	}
 
 	.quick-actions__item {
-		min-height: 36px;
-		padding: 4px 6px;
+		min-height: 31px;
+		padding: 3px 5px;
 	}
 
 	.quick-actions__icon {
-		height: 24px;
-		width: 24px;
+		height: 22px;
+		width: 22px;
+	}
+
+	.dashboard-footer {
+		padding-top: 7px;
+	}
+
+	.dashboard-promo-banner {
+		min-height: clamp(58px, 8vh, 72px);
+		gap: 12px;
+		padding: 8px 14px;
 	}
 }
 
