@@ -83,6 +83,10 @@ public class PaymentsAuthorizationIntegrationTests
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", token);
 
+        _client.DefaultRequestHeaders.Add(
+            "Idempotency-Key",
+            Guid.NewGuid().ToString("N"));
+
         var request = new CreatePaymentRequestDto
         {
             FromAccountId = 1,
@@ -136,6 +140,10 @@ public class PaymentsAuthorizationIntegrationTests
 
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", token);
+
+        _client.DefaultRequestHeaders.Add(
+            "Idempotency-Key",
+            Guid.NewGuid().ToString("N"));
 
         var response = await _client.PostAsJsonAsync("/api/payments", new CreatePaymentRequestDto
         {

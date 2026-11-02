@@ -97,6 +97,10 @@ public class PaymentIbanValidationTests : IClassFixture<PaymentApiFactory>
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
+        request.Headers.Add(
+            "Idempotency-Key",
+            "wrong-iban-test-001");
+
         var response = await _client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

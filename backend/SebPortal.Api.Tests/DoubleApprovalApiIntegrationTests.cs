@@ -55,6 +55,10 @@ public class DoubleApprovalApiIntegrationTests
     private static async Task<PaymentResponseDto> CreateAsync(ApprovalApiFactory factory, decimal amount)
     {
         using var client = Client(factory, CreatorId, UserRoles.Initiator);
+        client.DefaultRequestHeaders.Add(
+            "Idempotency-Key",
+            Guid.NewGuid().ToString("N"));
+
         var response = await client.PostAsJsonAsync("/api/payments", new CreatePaymentRequestDto
         {
             FromAccountId = AccountId, ToIban = "SE0850000000054910000004",
