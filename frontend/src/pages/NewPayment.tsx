@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { FiArrowLeft, FiPlus, FiSearch } from "react-icons/fi";
@@ -48,6 +48,12 @@ function NewPayment() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const paymentAttemptRef = useRef<{
+    key: string;
+    fingerprint: string;
+  } | null>(null);
+
   const [createdPayment, setCreatedPayment] =
     useState<CreatePaymentResponse | null>(null);
   const [isPaymentConfirmationOpen, setIsPaymentConfirmationOpen] = useState(false);
@@ -204,13 +210,29 @@ function NewPayment() {
       reference: paymentForm.reference?.trim() || undefined,
     };
 
+    const paymentFingerprint = JSON.stringify(paymentToCreate);
+
+    if (
+      paymentAttemptRef.current === null ||
+      paymentAttemptRef.current.fingerprint !== paymentFingerprint
+    ) {
+      paymentAttemptRef.current = {
+        key: crypto.randomUUID(),
+        fingerprint: paymentFingerprint,
+      };
+    }
+
+    const idempotencyKey = paymentAttemptRef.current.key;
+
     try {
       setIsSubmitting(true);
       setSubmitError(null);
       setCreatedPayment(null);
       setIsPaymentConfirmationOpen(false);
 
-      const payment = await createPayment(paymentToCreate);
+      const payment = await createPayment(paymentToCreate, idempotencyKey);
+
+      paymentAttemptRef.current = null;
 
       setCreatedPayment(payment);
       setIsPaymentConfirmationOpen(true);

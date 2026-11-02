@@ -31,41 +31,12 @@ public class PaymentService(
         new string(iban.Where(character => !char.IsWhiteSpace(character)).ToArray()).ToUpperInvariant();
 
     /// <summary>
-    /// Checks a normalized (no spaces, upper case) IBAN: length and characters, then
-    /// the MOD97 checksum (ISO 13616). A wrong check digit is rejected here instead of
-    /// being saved and paid out.
+    /// Checks a normalized (no spaces, upper case) IBAN with libiban: length per country,
+    /// country code, characters and the MOD97 checksum (ISO 13616). A wrong check digit
+    /// is rejected here instead of being saved and paid out. See docs/native-iban-usage.md.
     /// </summary>
-    public static bool HasValidIbanFormat(string iban)
-    {
-        if (iban.Length is < 15 or > 34 ||
-            !char.IsAsciiLetter(iban[0]) || !char.IsAsciiLetter(iban[1]) ||
-            !char.IsAsciiDigit(iban[2]) || !char.IsAsciiDigit(iban[3]) ||
-            !iban.All(character => char.IsAsciiLetterOrDigit(character)))
-        {
-            return false;
-        }
-
-        return HasValidIbanChecksum(iban);
-    }
-
-    private static bool HasValidIbanChecksum(string iban)
-    {
-        var rearranged = string.Concat(iban.AsSpan(4), iban.AsSpan(0, 4));
-        var remainder = 0;
-
-        foreach (var character in rearranged)
-        {
-            var value = char.IsAsciiDigit(character)
-                ? character - '0'
-                : char.ToUpperInvariant(character) - 'A' + 10;
-
-            remainder = value < 10
-                ? (remainder * 10 + value) % 97
-                : (remainder * 100 + value) % 97;
-        }
-
-        return remainder == 1;
-    }
+    public static bool HasValidIbanFormat(string iban) =>
+        NativeProvider.IBAN.validate_iban(iban, out _) == 1;
 
     /// <summary>
     /// Creates a payment, validates the source account and tenant,
@@ -139,8 +110,7 @@ public class PaymentService(
         };
 
         // 3. Determine the payment flow from the configured approval threshold.
-        var requiresApproval = amount > paymentRules.Value.ApprovalThreshold ||
-            RequiresDoubleApproval(amount);
+        var requiresApproval = RequiresApproval(amount);
 
         if (requiresApproval)
         {
@@ -194,9 +164,7 @@ public class PaymentService(
                 "CREATE_PAYMENT",
                 "payment",
                 payment.Id,
-                $"Betalning skapad: {amount.ToString("F2", CultureInfo.InvariantCulture)} {currency} " +
-                $"till {toIban}. " +
-                (requiresApproval ? "Väntar på attest." : "Genomförd direkt."));
+                PaymentCreatedDescription(amount, currency, toIban, requiresApproval));
 
             await paymentRepository.SaveChangesAsync();
 
@@ -236,6 +204,85 @@ public class PaymentService(
         }
 
         return payment;
+    }
+
+    /// <summary>
+    /// Creates a validated batch as one database transaction. Each payment keeps the
+    /// same approval, balance, and audit behavior as a regular payment.
+    /// </summary>
+    public async Task<IReadOnlyList<Payment>> CreatePaymentsAsync(
+        int tenantId,
+        int? createdById,
+        IReadOnlyList<Payment> payments)
+    {
+        var accounts = new Dictionary<int, Account>();
+        var approvalFlags = new List<bool>(payments.Count);
+
+        foreach (var payment in payments)
+        {
+            if (!accounts.TryGetValue(payment.FromAccountId, out var account))
+            {
+                account = await paymentRepository.GetAccountAsync(payment.FromAccountId, tenantId)
+                    ?? throw new AccountNotFoundException(payment.FromAccountId);
+                accounts[payment.FromAccountId] = account;
+            }
+
+            payment.TenantId = tenantId;
+            payment.CreatedById = createdById;
+            payment.CreatedAt = DateTime.UtcNow;
+            payment.Status = PaymentStatuses.PendingApproval;
+
+            var requiresApproval = RequiresApproval(payment.Amount);
+            if (requiresApproval)
+            {
+                await AddInitialApprovalStepsAsync(payment);
+            }
+            else
+            {
+                CompletePaymentOrThrow(payment, account);
+            }
+
+            approvalFlags.Add(requiresApproval);
+        }
+
+        var tenantLock = auditService.GetTenantLock(tenantId);
+        await tenantLock.WaitAsync();
+
+        try
+        {
+            await using var transaction = await paymentRepository.BeginTransactionAsync();
+            paymentRepository.AddPayments(payments);
+            await paymentRepository.SaveChangesAsync();
+
+            for (var index = 0; index < payments.Count; index++)
+            {
+                var payment = payments[index];
+                await auditService.AppendEntryAsync(
+                    tenantId,
+                    createdById,
+                    "CREATE_PAYMENT",
+                    "payment",
+                    payment.Id,
+                    PaymentCreatedDescription(
+                        payment.Amount,
+                        payment.Currency,
+                        payment.ToIban,
+                        approvalFlags[index]));
+
+                await paymentRepository.SaveChangesAsync();
+            }
+
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync();
+            }
+        }
+        finally
+        {
+            tenantLock.Release();
+        }
+
+        return payments;
     }
 
     private async Task<Payment?> FindExistingIdempotentPaymentAsync(
@@ -422,6 +469,15 @@ public class PaymentService(
     /// </summary>
     public bool RequiresDoubleApproval(decimal amount) =>
         amount > paymentRules.Value.DoubleApprovalThreshold;
+
+    public bool RequiresApproval(decimal amount) =>
+        amount > paymentRules.Value.ApprovalThreshold || RequiresDoubleApproval(amount);
+
+    private static string PaymentCreatedDescription(
+        decimal amount, string currency, string toIban, bool requiresApproval) =>
+        $"Betalning skapad: {amount.ToString("F2", CultureInfo.InvariantCulture)} {currency} " +
+        $"till {toIban}. " +
+        (requiresApproval ? "Väntar på attest." : "Genomförd direkt.");
 
     /// <summary>How many approval steps a payment of this amount requires.</summary>
     public int RequiredApprovalSteps(decimal amount) =>

@@ -177,6 +177,10 @@ public class ApprovalsApiIntegrationTests
             userId: InitiatorId,
             role: UserRoles.Initiator);
 
+        initiatorClient.DefaultRequestHeaders.Add(
+            "Idempotency-Key",
+            Guid.NewGuid().ToString("N"));
+
         var createResponse = await initiatorClient.PostAsJsonAsync(
             "/api/payments",
             new CreatePaymentRequestDto

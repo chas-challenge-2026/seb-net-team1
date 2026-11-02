@@ -12,7 +12,7 @@ Requires a valid JWT (`Authorization: Bearer <token>`), role `initiator` or `adm
 
 ### Idempotency header
 
-Clients should send an `Idempotency-Key` header when creating a payment:
+Clients must send a non-empty `Idempotency-Key` header when creating a payment:
 
 ```http
 Idempotency-Key: 9f45f15e-23d4-4fa6-8df8-a80a45f05061
@@ -26,8 +26,8 @@ new payment must use a new key.
   creating another payment, transaction, approval step or audit entry.
 - Same tenant, user and key with different payment data: returns `409 Conflict`.
 - The same textual key may be used independently by another user or tenant.
-- The header is optional for backwards compatibility. Duplicate protection only
-  applies when a non-empty key is supplied.
+- A missing, empty or whitespace-only header returns `400 Bad Request` without
+  creating a payment.
 
 ---
 
@@ -78,7 +78,7 @@ new payment must use a new key.
 | `status` | string | `completed` if under the approval threshold, otherwise `pending_approval` |
 | `fromAccountId` | number | Account the payment was made from |
 | `toIban` | string | Recipient IBAN, no spaces |
-| `amount` | string | Payment amount, as a decimal string |
+| `amount` | number | Payment amount |
 | `currency` | string | Currently always `SEK` for MVP |
 | `reference` | string | Payment reference |
 | `createdAt` | string (ISO 8601) | When the payment was created |
@@ -90,7 +90,8 @@ new payment must use a new key.
 ### `400 Bad Request`
 
 Returned when a field is missing, the IBAN format is invalid, the amount is not
-greater than 0, or the idempotency key exceeds 128 characters.
+greater than 0, the `Idempotency-Key` header is missing or empty, or the
+idempotency key exceeds 128 characters.
 
 ```json
 {
@@ -154,6 +155,7 @@ Frontend can use this contract to:
 
 Backend should use this contract to:
 - implement `POST /api/payments`
+- require a non-empty `Idempotency-Key` header before creating a payment
 - derive `tenantId` and the user id from the JWT claims only. Never trust a client-supplied id
 - validate that `fromAccountId` belongs to the logged-in user's tenant before creating the payment (`403` if not)
 - validate the IBAN using real **MOD97** checksum validation, not just a format check. v1's regex accepted IBANs that looked right but had an invalid checksum (BUG-003). The MOD97 check itself is the native C/C++ module's job, not this endpoint's. This contract just requires the endpoint to call it and return `400` on failure

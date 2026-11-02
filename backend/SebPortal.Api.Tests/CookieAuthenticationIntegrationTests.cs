@@ -164,6 +164,10 @@ public class CookieAuthenticationIntegrationTests
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         var csrf = await GetCsrfAsync(client);
 
+        client.DefaultRequestHeaders.Add(
+            "Idempotency-Key",
+            Guid.NewGuid().ToString("N"));
+
         using var response = await PostAsync(client, "/api/payments", PaymentRequest(), csrf);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);

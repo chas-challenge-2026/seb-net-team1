@@ -118,6 +118,7 @@ builder.Services.AddScoped<PasswordHasher>();
 builder.Services.AddScoped<PaymentRepository>();
 builder.Services.AddScoped<PaymentQueryRepository>();
 builder.Services.AddScoped<PaymentService>();
+builder.Services.AddScoped<PaymentBatchService>();
 builder.Services.AddScoped<PaymentQueryService>();
 builder.Services.AddScoped<RecipientRepository>();
 builder.Services.AddScoped<RecipientService>();
