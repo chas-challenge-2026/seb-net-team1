@@ -43,6 +43,14 @@ public class PaymentsController(PaymentService paymentService) : ControllerBase
         {
             return Unauthorized(new { message = "Ogiltig eller saknad användarinformation i token." });
         }
+
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+        {
+            return BadRequest(new
+            {
+                message = "Idempotency-Key måste anges."
+            });
+        }
         if (request.Amount <= 0)
         {
             return BadRequest(new { message = "Beloppet måste vara större än 0." });

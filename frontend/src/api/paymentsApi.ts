@@ -133,7 +133,8 @@ type PaymentApiError = {
 };
 
 export async function createPayment(
-  payment: CreatePaymentRequest
+  payment: CreatePaymentRequest,
+  idempotencyKey: string
 ): Promise<CreatePaymentResponse> {
   if (typeof payment.amount !== "number" ||
       parsePaymentAmount(String(payment.amount)) === null) {
@@ -144,6 +145,7 @@ export async function createPayment(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
     },
     body: JSON.stringify(payment),
   });
