@@ -4,6 +4,7 @@ import { createBrowser, createFetch, deferred, loadProductionModule } from "./no
 
 const stepId = "3f2b7c1e-8a4d-4b6a-9d52-1c0e7f5a9b34";
 const token = { requestToken: "test-csrf" };
+const idempotencyKey = "notification-test-idempotency-key";
 const paymentRequest = { fromAccountId: 1, toIban: "SE4550000000054910000099", amount: 1250.5, reference: "Faktura" };
 const savedPayment = { ...paymentRequest, id: 42, amount: "1250.50", currency: "SEK", status: "pending_approval", createdAt: "2026-10-20T10:00:00Z" };
 const decision = (values = {}) => ({ paymentId: 42, approvalStepId: stepId, stepStatus: "approved", paymentStatus: "completed", ...values });
@@ -62,12 +63,13 @@ test("failed or unverifiable decisions never publish a saved-payment update", as
 test("a created payment publishes an update for both pending approval and immediate completion", async () => {
   for (const status of ["pending_approval", "completed"]) {
     const loaded = await loadApi("paymentsApi", [token, { ...savedPayment, status }]);
-    const result = await loaded.api.createPayment(paymentRequest);
+    const result = await loaded.api.createPayment(paymentRequest, idempotencyKey);
     assert.equal(result.status, status);
     assert.equal(loaded.events.length, 1);
     assert.equal(loaded.calls[1].options.method, "POST");
     assert.equal(loaded.calls[1].options.credentials, "include");
     assert.equal(loaded.calls[1].options.headers.get("X-CSRF-TOKEN"), "test-csrf");
+    assert.equal(loaded.calls[1].options.headers.get("Idempotency-Key"), idempotencyKey);
   }
 });
 
@@ -77,7 +79,7 @@ test("payment creation failures or incomplete responses do not publish an update
     { error: new TypeError("Connection lost") },
   ]) {
     const loaded = await loadApi("paymentsApi", [token, response]);
-    await assert.rejects(loaded.api.createPayment(paymentRequest));
+    await assert.rejects(loaded.api.createPayment(paymentRequest, idempotencyKey));
     assert.equal(loaded.events.length, 0);
     assert.equal(loaded.calls.length, 2);
   }

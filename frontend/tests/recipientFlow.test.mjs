@@ -28,7 +28,9 @@ async function loadComponent(entry, responses, {
   const cleanups = [];
   const calls = [];
   const payments = [];
+  const idempotencyKeys = [];
   const historyCalls = [];
+  let uuidCounter = 0;
   let cursor = 0;
   const hooks = {
     useState: (initial) => {
@@ -72,8 +74,9 @@ async function loadComponent(entry, responses, {
       return { ibans: historicalIbans, incomplete: historyIncomplete };
     } }],
     ["../api/paymentsApi", {
-      createPayment: async (payment) => {
+      createPayment: async (payment, idempotencyKey) => {
         payments.push(payment);
+        idempotencyKeys.push(idempotencyKey);
         if (paymentError) throw paymentError;
         return { ...payment, id: 99, status: paymentStatus, amount: payment.amount.toFixed(2), currency: "SEK", reference: payment.reference ?? "", createdAt: "2026-10-13T10:00:00Z" };
       },
@@ -91,6 +94,7 @@ async function loadComponent(entry, responses, {
       if (next.error) throw next.error;
       return new Response(JSON.stringify(next.body), { status: next.status ?? 200 });
     },
+    crypto: { randomUUID: () => `test-idempotency-key-${++uuidCounter}` },
   });
   const modules = new Map();
   function load(identifier) {
@@ -144,7 +148,7 @@ async function loadComponent(entry, responses, {
   }
   render();
   await flushEffects();
-  return { render, flushEffects, calls, payments, historyCalls, opener, heading, dialog, unmount: () => cleanups.forEach((cleanup) => cleanup?.()) };
+  return { render, flushEffects, calls, payments, idempotencyKeys, historyCalls, opener, heading, dialog, unmount: () => cleanups.forEach((cleanup) => cleanup?.()) };
 }
 
 test("saved recipients load again after reload, fill payment IBAN and remain optional for manual entry", async () => {
@@ -347,6 +351,52 @@ test("validation failure or a rejected creation request never opens a success di
   assert.equal(payments.length, 1);
   assert.equal(paymentConfirmation(render()), undefined);
   assert.match(find(render(), (node) => node.props?.role === "alert").props.children, /inte tillräckligt saldo/);
+});
+
+test("a failed retry reuses its idempotency key while changed payment data gets a new key", async () => {
+  const { render, payments, idempotencyKeys } = await loadComponent(
+    "../src/pages/NewPayment.tsx",
+    [{ body: { recipients: [], demoConfirmationEnabled: true } }],
+    { paymentError: new Error("Anslutningen bröts.") },
+  );
+  find(render(), byId("from-account")).props.onChange({ target: { value: "1" } });
+  find(render(), byId("recipient-iban")).props.onChange({ target: { name: "toIban", value: recipient.iban } });
+  find(render(), byId("amount")).props.onChange({ target: { name: "amount", value: "60000" } });
+  const submit = () => find(render(), (node) => node.type === "form").props.onSubmit({ preventDefault() {} });
+
+  await submit();
+  await submit();
+
+  assert.equal(payments.length, 2);
+  assert.equal(idempotencyKeys[0], "test-idempotency-key-1");
+  assert.equal(idempotencyKeys[1], idempotencyKeys[0]);
+
+  find(render(), byId("amount")).props.onChange({ target: { name: "amount", value: "61000" } });
+  await submit();
+
+  assert.equal(payments.length, 3);
+  assert.equal(idempotencyKeys[2], "test-idempotency-key-2");
+  assert.notEqual(idempotencyKeys[2], idempotencyKeys[1]);
+});
+
+test("a confirmed payment clears its attempt so another intentional payment gets a new key", async () => {
+  const { render, payments, idempotencyKeys } = await loadComponent(
+    "../src/pages/NewPayment.tsx",
+    [{ body: { recipients: [], demoConfirmationEnabled: true } }],
+  );
+  find(render(), byId("from-account")).props.onChange({ target: { value: "1" } });
+  find(render(), byId("recipient-iban")).props.onChange({ target: { name: "toIban", value: recipient.iban } });
+  find(render(), byId("amount")).props.onChange({ target: { name: "amount", value: "60000" } });
+  const submit = () => find(render(), (node) => node.type === "form").props.onSubmit({ preventDefault() {} });
+
+  await submit();
+  await submit();
+
+  assert.equal(payments.length, 2);
+  assert.deepEqual(idempotencyKeys, [
+    "test-idempotency-key-1",
+    "test-idempotency-key-2",
+  ]);
 });
 
 test("saving from the popup adds/selects the recipient and closes it", async () => {

@@ -109,7 +109,9 @@ public class PaymentsControllerTests
         };
 
         // Act
-        var result = await controller.CreatePayment(request);
+        var result = await controller.CreatePayment(
+            request,
+            "controller-payment-test-001");
 
         // Assert
         var createdResult = Assert.IsType<CreatedResult>(result);
@@ -148,7 +150,9 @@ public class PaymentsControllerTests
         };
 
         // Act
-        var result = await controller.CreatePayment(request);
+        var result = await controller.CreatePayment(
+            request,
+            "controller-payment-test-001");
 
         // Assert
         Assert.IsType<BadRequestObjectResult>(result);

@@ -620,6 +620,78 @@ public sealed class PaymentsIdempotencyIntegrationTests
         Assert.Equal(1000m, account.Balance);
     }
 
+    [Fact]
+    public async Task CreatePayment_WithoutIdempotencyKey_ReturnsBadRequest()
+    {
+        using var factory =
+            new PostgreSqlPaymentApiFactory(
+                _postgres.ConnectionString);
+
+        using var setupScope = factory.Services.CreateScope();
+
+        var setupDb = setupScope.ServiceProvider
+            .GetRequiredService<SebDbContext>();
+
+        await setupDb.Database.EnsureCreatedAsync();
+
+        setupDb.Tenants.Add(new Tenant
+        {
+            Id = 7,
+            Name = "Missing key test tenant"
+        });
+        setupDb.Users.Add(new User
+        {
+            Id = 9,
+            TenantId = 7,
+            Name = "Missing Key Test User",
+            Email = "missing-key@example.com",
+            Role = UserRoles.Initiator
+        });
+        setupDb.Accounts.Add(new Account
+        {
+            Id = 9,
+            TenantId = 7,
+            AccountName = "Missing key test account",
+            Iban = "SE9450000000054910000008",
+            Balance = 1000m,
+            Currency = "SEK"
+        });
+
+        await setupDb.SaveChangesAsync();
+
+        var token = setupScope.ServiceProvider
+            .GetRequiredService<JwtTokenService>()
+            .GenerateToken(
+                userId: 9,
+                tenantId: 7,
+                email: "missing-key@example.com",
+                role: UserRoles.Initiator,
+                name: "Missing Key Test User");
+
+        using var client = factory.CreateClient();
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/payments",
+            CreateRequest(fromAccountId: 9));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.False(
+            await setupDb.Payments.AnyAsync(
+                payment => payment.TenantId == 7));
+        Assert.False(
+            await setupDb.AuditEntries.AnyAsync(
+                entry => entry.TenantId == 7));
+
+        var account = await setupDb.Accounts
+            .AsNoTracking()
+            .SingleAsync(account => account.Id == 9);
+
+        Assert.Equal(1000m, account.Balance);
+    }
+
     private static void ConfigureClient(
         HttpClient client,
         string token,
