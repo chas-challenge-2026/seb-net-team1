@@ -25,4 +25,8 @@
     <ProjectReference Include="..\SebPortal.Api\SebPortal.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\native\*.so" Link="native\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
