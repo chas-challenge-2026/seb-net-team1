@@ -128,6 +128,11 @@ public sealed class AuditIpIntegrationTests
             context.Request.Method = method;
             context.Request.Path = path;
             context.Request.Headers.Authorization = $"Bearer {token}";
+            if (method == "POST" && path == "/api/payments")
+            {
+                context.Request.Headers["Idempotency-Key"] =
+                    Guid.NewGuid().ToString("N");
+            }
             if (forwardedIp is not null)
                 context.Request.Headers["X-Forwarded-For"] = forwardedIp;
             if (requestBody is not null)

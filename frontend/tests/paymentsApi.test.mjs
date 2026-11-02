@@ -65,6 +65,7 @@ for (const input of [
   });
 }
 
+const idempotencyKey = "test-idempotency-key";
 const request = {
   fromAccountId: 1,
   toIban: "SE4550000000054910000099",
@@ -90,12 +91,13 @@ for (const status of ["completed", "pending_approval"]) {
         : Response.json({ ...paymentResponse, status }, { status: 201 });
     });
 
-    const result = await api.createPayment(request);
+    const result = await api.createPayment(request, idempotencyKey);
 
     assert.equal(calls.length, 2);
     assert.equal(calls[0].url, "http://payment.test/api/auth/csrf");
     assert.equal(calls[0].options.credentials, "include");
     const post = calls[1];
+    assert.equal(post.options.headers.get("Idempotency-Key"), idempotencyKey);
     assert.equal(post.url, "http://payment.test/api/payments");
     assert.equal(post.options.method, "POST");
     assert.equal(post.options.credentials, "include");
@@ -111,7 +113,7 @@ for (const status of ["completed", "pending_approval"]) {
 for (const amount of ["1250.50", NaN, Infinity, -Infinity, 0, -1, 0.001, 0.1 + 0.2]) {
   test(`API rejects invalid numeric request ${String(amount)} before any fetch`, async () => {
     const api = await loadModule("api/paymentsApi.ts");
-    await assert.rejects(api.createPayment({ ...request, amount }), /giltigt belopp/);
+    await assert.rejects(api.createPayment({ ...request, amount }, idempotencyKey), /giltigt belopp/);
   });
 }
 
@@ -132,7 +134,7 @@ for (const [status, body, message] of [
         ? Response.json({ requestToken: "isolated-csrf" })
         : body ? Response.json(body, { status }) : new Response(null, { status });
     });
-    await assert.rejects(api.createPayment(request), message);
+    await assert.rejects(api.createPayment(request, idempotencyKey), message);
     assert.equal(calls, 2);
   });
 }
@@ -143,7 +145,7 @@ test("failed CSRF preparation never sends a payment", async () => {
     calls += 1;
     return new Response(null, { status: 400 });
   });
-  await assert.rejects(api.createPayment(request), /förbereda anropet/);
+  await assert.rejects(api.createPayment(request, idempotencyKey), /förbereda anropet/);
   assert.equal(calls, 1);
 });
 

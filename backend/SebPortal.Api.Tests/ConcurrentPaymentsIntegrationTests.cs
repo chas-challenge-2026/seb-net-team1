@@ -109,8 +109,16 @@ public sealed class ConcurrentPaymentsIntegrationTests
         firstClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", token);
 
+        firstClient.DefaultRequestHeaders.Add(
+            "Idempotency-Key",
+            Guid.NewGuid().ToString("N"));
+
         secondClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", token);
+
+        secondClient.DefaultRequestHeaders.Add(
+            "Idempotency-Key",
+            Guid.NewGuid().ToString("N"));
 
         var firstRequest = new CreatePaymentRequestDto
         {

@@ -56,6 +56,18 @@ public class PaymentIbanValidationTests : IClassFixture<PaymentApiFactory>
     }
 
     /// <summary>
+    /// Verifies that an IBAN with correct check digits is still rejected when its length
+    /// does not match its country, or its country code is unknown.
+    /// </summary>
+    [Theory]
+    [InlineData("SE05500000000549100000")]
+    [InlineData("XX81500000000549100000123456")]
+    public void HasValidIbanFormat_WithCorrectChecksumButInvalidCountry_ReturnsFalse(string iban)
+    {
+        Assert.False(PaymentService.HasValidIbanFormat(iban));
+    }
+
+    /// <summary>
     /// Verifies that malformed input is still rejected before the checksum is read.
     /// </summary>
     [Theory]
@@ -96,6 +108,10 @@ public class PaymentIbanValidationTests : IClassFixture<PaymentApiFactory>
             })
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        request.Headers.Add(
+            "Idempotency-Key",
+            "wrong-iban-test-001");
 
         var response = await _client.SendAsync(request);
 

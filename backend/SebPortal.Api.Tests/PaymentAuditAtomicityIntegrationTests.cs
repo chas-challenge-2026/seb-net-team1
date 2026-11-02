@@ -110,6 +110,10 @@ public sealed class PaymentAuditAtomicityIntegrationTests
 		client.DefaultRequestHeaders.Authorization =
 			new AuthenticationHeaderValue("Bearer", token);
 
+		client.DefaultRequestHeaders.Add(
+			"Idempotency-Key",
+			Guid.NewGuid().ToString("N"));
+
 		var response = await client.PostAsJsonAsync("/api/payments", Request(amount));
 
 		Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
@@ -137,6 +141,10 @@ public sealed class PaymentAuditAtomicityIntegrationTests
 		using var client = factory.CreateClient();
 		client.DefaultRequestHeaders.Authorization =
 			new AuthenticationHeaderValue("Bearer", token);
+
+		client.DefaultRequestHeaders.Add(
+			"Idempotency-Key",
+			Guid.NewGuid().ToString("N"));
 
 		var response = await client.PostAsJsonAsync("/api/payments", Request(amount));
 
