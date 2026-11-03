@@ -1,17 +1,27 @@
 # SEB Företagsbetalningar
 
-Ett betalningsportal-system för SEB:s SME-kunder. Initiator skapar betalningar, attestanter godkänner, allt loggas i en granskningslogg.
+Ett demonstrationssystem för företagsbetalningar. Initiatorer skapar betalningar, attestanter hanterar betalningar som kräver godkännande och händelser visas i en auditlogg.
 
-**Detta är v1 — ett avsiktligt spaghetti-system. Er uppgift är att bygga v2.**
+Den nuvarande lösningen består av en React-front-end, ett .NET 8 Web API, PostgreSQL och native-moduler för CSV och IBAN. Frontenden byggs in i app-containern för Docker.
+
+
+## Dokumentation för inlämningen
+
+- [Installation och körning](#snabbstart) och [driftinstruktioner](DRIFT.md).
+- [Beslutslogg och bearbetning av feedforward](docs/beslutslogg.md).
+- [Testkommandon och teststatus](docs/teststatus.md).
+- [Kända brister och avgränsningar](docs/kända-brister.md).
+- [Fallback för demo](docs/demo-fallback.md).
+
+Repot är publikt, så PL kan läsa det utan särskild GitHub-inbjudan.
 
 ---
 
 ## Snabbstart
 
 ```bash
-git clone <repo-url>
-cd ChasChallenge
-git checkout 3-seb
+git clone https://github.com/chas-challenge-2026/seb-net-team1.git
+cd seb-net-team1
 ```
 
 **Första gången:** skapa [JWT-nyckeln](#jwt-nyckel-för-docker) och fyll i
@@ -270,67 +280,60 @@ beskrivs i [API-kontraktet](contracts/API.md#browser-authentication).
 
 ---
 
+## Testa
+
+Kör från repots rot. Backendens integrationstester behöver Docker eftersom de startar en tillfällig PostgreSQL-databas.
+
+```bash
+# Native-tester och bygg bibliotek som backend använder
+make -C native all
+
+# Backendens unit- och integrationstester
+dotnet test backend/SebPortal.Api.Tests/SebPortal.Api.Tests.csproj
+
+# Frontendens tester, bygge och lint
+cd frontend
+npm ci
+npm run test:approvals
+npm run build
+npm run lint
+```
+
+I `frontend/package.json` heter testscriptet `test:approvals`, men det kör alla `tests/*.test.mjs`-filer. Se [teststatus](docs/teststatus.md) för vad CI kör och aktuellt testläge.
+
+---
+
 ## Mappstruktur
 
 ```
-ChasChallenge/
-├── backend/
-│   └── SebPortal/        — ASP.NET Core 6 Razor Pages
-│       ├── Pages/        — En PageModel per sida, all logik här
-│       ├── wwwroot/      — Statiska filer
-│       ├── Dockerfile
-│       ├── Program.cs
-│       └── appsettings.json
-├── docs/
-│   ├── architecture.md   — Hur v1 är byggd
-│   ├── known-bugs.md     — Lista med 12 kända buggar (avsiktliga)
-│   ├── README-pain-points.md — Vad som fungerar vs. går sönder
-│   └── v2-targets.md     — Vad ni ska bygga
-├── frontend/             — Tom — er v2 React-app placeras här
-├── infra/
-│   ├── docker-compose.yml
-│   └── seed.sql          — Schema + testdata
-├── native/
-│   └── README.md         — Spec för C/C++ native moduler (v2)
-└── shared/
-    └── example-batch.csv — Exempelfil för batchuppladdning
+backend/SebPortal.Api/          .NET 8 API och backendlogik
+backend/SebPortal.Api.Tests/    Backendens unit- och integrationstester
+contracts/                      API-kontrakt
+docs/                           Projekt- och inlämningsdokumentation
+frontend/                       React- och TypeScript-appen
+infra/                          Docker Compose, databas och seed-data
+native/                         C-moduler för CSV och IBAN
 ```
 
 ---
 
-## Kända problem
+## Kända brister
 
-Se [docs/known-bugs.md](docs/known-bugs.md) för fullständig lista. De allvarligaste:
-
-- **SQL-injektion** i inloggningsformuläret (BUG-001)
-- **MD5-lösenord** — trivialt att knäcka (BUG-002)
-- **IBAN-validering** kontrollerar inte kontrollsiffror (BUG-003)
-- **CSV-parser** bryter på kommatecken i fält (BUG-004)
-- **Attesttröskel** definierad med olika värden i två filer (BUG-006)
-- **Notifieringar** misslyckas tyst, ingen retry (BUG-007)
-- **Dubbel audit-logg** — DB + fil, inkonsekvent (BUG-008)
+Se [docs/kända-brister.md](docs/kända-brister.md) för nuläget. Bland annat är audit-signering ännu en placeholder, appen gör inga riktiga banköverföringar och den lokala mockdatan ersätter inte API:t för hela appen.
 
 ---
 
-## Vad ska ni bygga
+## Ursprungligt kravunderlag
 
-Se [docs/v2-targets.md](docs/v2-targets.md) för fullständiga krav.
-
-Kortversion:
-- .NET 8 **Web API** (ersätter Razor Pages)
-- **React 18** frontend
-- **Entity Framework Core 8** (ersätter raw ADO.NET)
-- Proper **autentisering** (JWT, Bcrypt)
-- **Notifieringskö** med retry
-- **IBAN MOD97**-validering
-- C/C++ **native moduler** (CSV, IBAN, audit-signering)
+[docs/v2-targets.md](docs/v2-targets.md), [docs/architecture.md](docs/architecture.md) och [docs/known-bugs.md](docs/known-bugs.md) beskriver utgångsläget v1 och det ursprungliga v2-kravet. De är bakgrundsmaterial; aktuell implementation och avgränsningar står i dokumenten ovan.
 
 ---
 
-## Teknisk stack (v1)
+## Teknisk stack
 
-- ASP.NET Core 6 Razor Pages
-- Npgsql (ADO.NET)
+- React 18, TypeScript och Vite
+- ASP.NET Core 8 Web API och Entity Framework Core 8
 - PostgreSQL 12
+- C-bibliotek för CSV-tolkning och IBAN-kontroll
 - Docker Compose
-- Bootstrap 5 (CDN)
+- JWT i HttpOnly-cookie med CSRF-skydd
